@@ -1,0 +1,13 @@
+__pycache__/
+build/
+build_*/
+dist/
+dist_*/
+*.zip
+*.log
+.claude/
+guncelleme_ayar.txt
+# calisma verisi (anahtarlar, kasa, gecmis): asla depoya girmez
+veri/
+KriptoQuantBot/
+venv/

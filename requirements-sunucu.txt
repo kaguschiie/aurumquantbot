@@ -1,0 +1,9 @@
+ccxt
+pandas
+numpy
+scikit-learn
+joblib
+requests
+websocket-client
+pillow
+anthropic

@@ -1,0 +1,15 @@
+[Unit]
+Description=KriptoQuantBot (sunucu modu)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/crypto_bot/aurumquantbot
+Environment=KQB_APP_DIR=/opt/crypto_bot/veri
+Environment=PYTHONIOENCODING=utf-8
+ExecStart=/opt/crypto_bot/venv/bin/python app.py --sunucu
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
