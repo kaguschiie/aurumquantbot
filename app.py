@@ -461,7 +461,7 @@ def portfoy():
     import portfoy as PF
     b = ENGINE.bot
     out = {"backtest": PF.BACKTEST, "on": C.PORTFOY, "live": C.PORTFOY_LIVE, "core": C.PORTFOY_CORE,
-           "training": PF.STATE["training"], "model_t": PF.STATE["model_t"]}
+           "training": PF.STATE["training"], "model_t": PF.STATE["model_t"], "kontrol": __import__("kontrolor").card()}
     if not b:
         return out
     with b.lock:
@@ -491,9 +491,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype + "; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
-        if cookie is not None:
+        if cookie is not None:  # oturum 30 gun kalici (uygulama/tarayici kapansa da); https arkasinda Secure
             self.send_header("Set-Cookie", f"kqb={cookie}; HttpOnly; SameSite=Strict; Path=/"
-                             + ("" if cookie else "; Max-Age=0"))
+                             + (f"; Max-Age={30 * 86400}" if cookie else "; Max-Age=0")
+                             + ("; Secure" if self.headers.get("X-Forwarded-Proto") == "https" else ""))
         self.end_headers()
         self.wfile.write(data)
 
@@ -503,7 +504,8 @@ class Handler(BaseHTTPRequestHandler):
         import sunucu
         host = self.headers.get("Host") or ""
         loop = re.fullmatch(r"(127\.0\.0\.1|localhost)(:\d+)?", host)  # SSH tuneli farkli yerel porttan gelebilir
-        ok = host in HOSTS or bool(loop) or C.SERVER_MODE or host == sunucu.tunnel_host()
+        ok = host in HOSTS or bool(loop) or C.SERVER_MODE or host == sunucu.tunnel_host() or \
+            (C.PUBLIC_HOST and host == C.PUBLIC_HOST)  # sunucu: HTTPS ters vekil (Caddy) arkasindaki alan adi
         return ok and (not post or self.headers.get("X-KQB") == "1")
 
     def _local(self):
@@ -567,7 +569,6 @@ class Handler(BaseHTTPRequestHandler):
             self._send(500, {"error": str(e)})
 
     def do_POST(self):
-        global MAXED
         if not self._guard(True):
             return self._send(403, {"error": "forbidden"})
         try:
@@ -578,24 +579,7 @@ class Handler(BaseHTTPRequestHandler):
         if p in ("/api/window", "/api/show") and not self._local():  # uzaktan pencere kontrolu yok
             return self._send(403, {"ok": False})
         if p == "/api/window":  # ozel baslik cubugu dugmeleri (giris ekraninda da calisir)
-            act = body.get("a")
-            if WINDOW and act in ("minimize", "max", "close", "full"):
-                if act == "minimize":
-                    WINDOW.minimize()
-                elif act == "max":
-                    if MAXED:  # normal boyut: ekranin %80'i, ortada
-                        WINDOW.restore()
-                        sw, sh = (lambda s: (s.width, s.height))(__import__("webview").screens[0])
-                        w, h = int(sw * 0.8), int(sh * 0.8)
-                        WINDOW.resize(w, h)
-                        WINDOW.move((sw - w) // 2, (sh - h) // 2)
-                    else:
-                        WINDOW.maximize()
-                    MAXED = not MAXED
-                elif act == "full":
-                    WINDOW.toggle_fullscreen()
-                else:
-                    WINDOW.hide()  # kapat = tepsiye in
+            win_action(body.get("a"))
             return self._send(200, {"ok": True, "max": MAXED})
         if p == "/api/show":
             if WINDOW:
@@ -852,7 +836,77 @@ def set_pause(mode, on):
         os.remove(f)
 
 
-WINDOW, TRAY, MAXED = None, None, True
+WINDOW, TRAY, MAXED, CLIENT = None, None, True, False
+
+
+def work_area():
+    """Gorev cubugu haric ekran alani (x, y, w, h): cercevesiz pencere 'buyut'ta gorev cubugunu ortmesin."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        r = wintypes.RECT()
+        if ctypes.windll.user32.SystemParametersInfoW(0x30, 0, ctypes.byref(r), 0):  # SPI_GETWORKAREA
+            return r.left, r.top, r.right - r.left, r.bottom - r.top
+    except (AttributeError, OSError):
+        pass
+    s = __import__("webview").screens[0]
+    return 0, 0, s.width, s.height
+
+
+def win_action(act):
+    """Ozel baslik cubugu dugmeleri. Buyut = gorev cubugu haric tam alan; kucult/kapat."""
+    global MAXED
+    if not WINDOW or act not in ("minimize", "max", "close"):
+        return
+    if act == "minimize":
+        WINDOW.minimize()
+    elif act == "max":
+        x, y, w, h = work_area()
+        if MAXED:  # normal boyut: calisma alaninin %80'i, ortada
+            w2, h2 = int(w * 0.8), int(h * 0.8)
+            WINDOW.resize(w2, h2)
+            WINDOW.move(x + (w - w2) // 2, y + (h - h2) // 2)
+        else:
+            WINDOW.resize(w, h)
+            WINDOW.move(x, y)
+        MAXED = not MAXED
+    elif CLIENT:  # istemci: kapat = cik (motor sunucuda calisiyor)
+        os._exit(0)
+    else:
+        WINDOW.hide()  # kapat = tepsiye in
+
+
+class JsApi:
+    """Istemci modunda arayuz (sunucudan gelir) pencere dugmelerini bu kopruyle kullanir."""
+    def win(self, act):
+        win_action(act)
+        return {"max": MAXED}
+
+
+def client_url():
+    """Masaustu istemci: sunucu adresi dosyasi varsa (veri klasorunde ya da exe icinde) yerel motor calismaz."""
+    for f in (C.SUNUCU_URL_FILE, os.path.join(C.BASE_DIR, "sunucu_adresi.txt")):
+        try:
+            with open(f, encoding="utf-8") as fh:
+                u = fh.read().strip()
+            if u.startswith(("http://", "https://")):
+                return u
+        except OSError:
+            pass
+    return None
+
+
+def run_client(url):
+    """Sadece pencere: arayuz ve motor sunucuda. Oturum cerezi kalici (bir kez giris)."""
+    global WINDOW, CLIENT
+    import webview
+    CLIENT = True
+    if not os.path.exists(ICON):
+        make_icon()
+    x, y, w, h = work_area()
+    WINDOW = webview.create_window("KriptoQuantBot", url, x=x, y=y, width=w, height=h, min_size=(1100, 700),
+                                   background_color="#0b0e14", frameless=True, easy_drag=False, js_api=JsApi())
+    webview.start(icon=ICON, private_mode=False, storage_path=os.path.join(C.APP_DIR, "pencere"))
 
 
 def quit_app():
@@ -902,14 +956,14 @@ def update_watch():
     import guncelle
     time.sleep(60)
     while True:
-        if C.AUTO_UPDATE_CHECK and C.UPDATE_REPO:
+        if C.AUTO_UPDATE_CHECK and (C.UPDATE_REPO or guncelle.GIT):
             st = guncelle.check()
             v = (st.get("latest") or {}).get("version")
             if st["newer"] and v != guncelle.STATE["notified"] and ENGINE.bot:
                 guncelle.STATE["notified"] = v
-                ENGINE.bot.say(f"Yeni sürüm hazır: {v} (kurulu {C.VERSION}). Ayarlar → Güncelleme → Tek tıkla güncelle; "
-                               "veri klasörü korunur.", True, "uyari")
-        time.sleep(6 * 3600)
+                ENGINE.bot.say(f"Yeni güncelleme var ({v}). Ayarlar → Güncelleme → Tek tıkla güncelle. Hesaplar, kasa ve "
+                               "Telegram bağlantısı korunur.", True, "uyari")
+        time.sleep(3600 if guncelle.GIT else 6 * 3600)
 
 
 def migrate_old_files():
@@ -930,6 +984,9 @@ def migrate_old_files():
 
 def main():
     global WINDOW
+    url = None if "--sunucu" in sys.argv else client_url()
+    if url:  # istemci: bot sunucuda; bu bilgisayar sadece pencere
+        return run_client(url)
     migrate_old_files()
     logging.basicConfig(filename=C.LOG_FILE, level=logging.INFO, encoding="utf-8",
                         format="%(asctime)s %(levelname)s %(message)s")
@@ -961,9 +1018,10 @@ def main():
         return
     threading.Thread(target=server.serve_forever, daemon=True).start()
     import webview
-    # Cercevesiz: Windows'un beyaz baslik cubugu yok, uygulamanin kendi koyu cubugu var; tam ekran acilir
-    WINDOW = webview.create_window("KriptoQuantBot", URL, width=1500, height=950, min_size=(1100, 700),
-                                   background_color="#0b0e14", frameless=True, easy_drag=False, maximized=True)
+    # Cercevesiz koyu cubuk; ekrani gorev cubugu HARIC kaplar (Windows'un 'maximize'i cercevesizde gorev cubugunu ortuyor)
+    x, y, w, h = work_area()
+    WINDOW = webview.create_window("KriptoQuantBot", URL, x=x, y=y, width=w, height=h, min_size=(1100, 700),
+                                   background_color="#0b0e14", frameless=True, easy_drag=False, js_api=JsApi())
 
     def on_closing():  # kapat -> tepsiye in, motor calismaya devam etsin
         threading.Thread(target=WINDOW.hide, daemon=True).start()

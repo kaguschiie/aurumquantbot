@@ -32,7 +32,26 @@ systemctl status kriptoquantbot
 journalctl -u kriptoquantbot -f
 ```
 
-## Arayüze erişim
+## Herkese açık güvenli adres (HTTPS) — önerilen
+
+Tek komut: Caddy + ücretsiz `IP.sslip.io` adresi + otomatik sertifika + bot servisi + güvenlik duvarı.
+
+```bash
+bash /opt/crypto_bot/aurumquantbot/sunucu_kur.sh
+```
+
+Sonunda yazan `https://...sslip.io` adresi tarayıcıdan ve masaüstü uygulamasından açılır. Her kullanıcı kendi adı ve şifresiyle girer (Ayarlar → Kullanıcılar); oturum 30 gün açık kalır, güncellemede düşmez.
+
+Claude aboneliği (sunucuda bir kez):
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+~/.local/bin/claude
+```
+
+Açılan ekranda `/login` → çıkan bağlantıyı bilgisayarda aç, kodu yapıştır, `/exit`.
+
+## Arayüze erişim (SSH tüneli, HTTPS kurmadan)
 
 Bot arayüzü güvenlik için sadece sunucunun içinde (`127.0.0.1:8765`) açılır. Kendi bilgisayarından SSH tüneliyle bağlan:
 
@@ -44,10 +63,10 @@ Sonra tarayıcıda `http://127.0.0.1:8765` → ilk açılışta admin hesabını
 
 ## Güncelleme
 
+Arayüzde: Ayarlar → Güncelleme → **Tek tıkla güncelle** (admin). Sunucu GitHub'dan yeni kodu çeker ve kendini yeniden başlatır; hesaplar, oturumlar, kasa ve Telegram bağlantısı korunur. Elle:
+
 ```bash
-cd /opt/crypto_bot/aurumquantbot && git pull
-/opt/crypto_bot/venv/bin/pip install -r requirements-sunucu.txt
-systemctl restart kriptoquantbot
+cd /opt/crypto_bot/aurumquantbot && git pull && systemctl restart kriptoquantbot
 ```
 
 Veriler (`/opt/crypto_bot/veri`: kasa, ayarlar, anahtarlar, günlükler) güncellemede korunur ve depoya girmez.

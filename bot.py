@@ -23,6 +23,7 @@ import gecmis as G
 import gunluk as GT
 import hafiza as HF
 import komite as K
+import kontrolor as KT
 import model as M
 import montecarlo as MC
 import portfoy as PF
@@ -1465,26 +1466,72 @@ class Bot:
                 with self.lock:
                     self.bid[s], self.ask[s] = t["bid"] or t["last"], t["ask"] or t["last"]
         accts = [a for m, a in self.accounts.items() if m == "PAPER" or (C.PORTFOY_LIVE and C.LIVE_ALLOWED and a.synced)]
-        lines, res = [], {}
+        word = lambda f: "güçlü" if f >= 0.75 else "orta" if f >= 0.5 else "zayıf" if f > 0 else "yok"
+        lines, res, usd, model, ozet, cnote = [], {}, 0.0, "yerel", "", ""
+        try:  # ogrenme: gecmis itirazlari ve haftalik secimleri puanla (7 gun sonra)
+            KT.score(self.ex)
+            pf["ml_card"] = PF.ml_card(self.ex, pf)
+        except Exception as e:
+            log.warning("karne: %s", e)
+        buys = self._pf_buys(tg, info, ml_day)
+        if buys and A.brain() != "local":  # dusunerek alim: Claude kontrolor (sadece ertele / yariya indir)
+            try:
+                ozet, objs, cnote, usd = KT.review(A.ask_json, buys, self._pf_context(info))
+                self.add_cost(usd)
+                model = "Claude kontrolör"
+                cur = {s: c for s, _, c, _, _ in buys}
+                for s, k in objs.items():
+                    tg[s] = cur[s] if k == "ertele" else cur[s] + (tg[s] - cur[s]) / 2
+            except A.AgentError as e:
+                cnote = f"Claude'a ulaşılamadı ({e}); plan kuralla uygulandı."
         for a in accts:
             try:
                 res[a.mode] = a.rebalance(tg, ml_day)
             except ccxt.BaseError as e:
                 res[a.mode] = [f"borsa hatası: {str(e)[:120]}"]
-        core = ", ".join(f"{s.split('/')[0]} trend {v['trend'] * 100:.0f}% oynaklık %{v['vol'] * 100:.0f} → %{v['w'] * 100:.1f}"
-                         for s, v in info["core"].items())
         ml = info["ml"]
+        for s, v in info["core"].items():
+            lines.append(f"{s.split('/')[0]}: yükseliş gücü {word(v['trend'])} → kasadaki payı %{v['w'] * 100:.0f}")
         picks = ", ".join(s.split("/")[0] for s, _ in ml["picks"]) or "-"
-        lines.append(f"Çekirdek (%{C.PORTFOY_CORE * 100:.0f}): {core}")
-        lines.append(f"ML sepeti (%{(1 - C.PORTFOY_CORE) * 100:.0f}, haftalık): {picks}"
-                     + ("" if ml["reg"] else " — BTC 100 günlük ortalamanın altında: sepet nakitte") + f" ({ml['note']})")
-        lines.append("Hedef: " + ", ".join(f"{s.split('/')[0]} %{w * 100:.1f}" for s, w in sorted(tg.items(), key=lambda x: -x[1])
-                                           if w > 0) + f", nakit %{max(0.0, 1 - sum(tg.values())) * 100:.1f}")
-        pf.update(last=time.time(), targets=tg, info={"core": info["core"]}, result=res)
+        lines.append("Haftalık sepet: " + ("dinlenmede (model son 6 ayda isabet kaybetti, pay nakitte)" if ml.get("rest") else
+                                          f"{picks}" if ml["reg"] else "piyasa zayıf, sepet nakitte"))
+        lines.append(f"Nakitte bekleyen: %{max(0.0, 1 - sum(tg.values())) * 100:.0f}")
+        if ozet:
+            lines.insert(0, ozet)
+        if cnote:
+            lines.append("Kontrolör: " + cnote)
+        pf.update(last=time.time(), targets=tg, info={"core": info["core"]}, result=res, ozet=ozet, kontrol=cnote)
         results = [{"type": "rebalance", "sym": "PORTFÖY", "label": "Yeniden dengeleme", "reason": "hedef ağırlıklar",
                     "result": "; ".join(f"{'sanal' if m == 'PAPER' else 'gerçek'}: " + " / ".join(r) for m, r in res.items())}]
-        self._publish("portfoy", [], " | ".join(lines), results, 0.0, "yerel", t0)
+        self._publish("portfoy", [], " | ".join(lines), results, usd, model, t0)
         PF.maybe_train(lambda t: self.say(t, kind="oz"))
+
+    def _pf_buys(self, tg, info, ml_day):
+        """Bugun alinacaklar (sanal hesaba gore, Account.rebalance ile ayni esik): [(sym, hedef, simdiki, fiyat, aciklama)]."""
+        band = PF.BAND_ML if ml_day else PF.BAND
+        a = self.accounts["PAPER"]
+        with self.lock:
+            held = {s: p["qty"] * self.bid.get(s, p["entry"]) for s, p in a.st["positions"].items() if p.get("kind") == PF.KIND}
+            base = a.st["cash"] + sum(held.values())
+        out = []
+        for s, t in tg.items():
+            c = held.get(s, 0.0) / base if base > 0 else 0.0
+            if (t - c >= band or (s not in held and t >= 0.01)) and self.ask.get(s):
+                why = "çekirdek (trend)" if s in info["core"] else "haftalık ML seçimi"
+                out.append((s, t, c, self.ask[s], why))
+        return out
+
+    def _pf_context(self, info):
+        """Kontrolore sade piyasa ozeti: BTC/ETH ve alinacak coinlerin son 7/30 gunu, makro risk."""
+        out = [f"Makro risk iştahı: {self.macro.risk()[0]}"]
+        for s in sorted(set(info["core"]) | {x for x, _ in info["ml"]["picks"]}):
+            try:
+                c = PF.klines(self.ex, s, 95)["c"]
+                out.append(f"{s}: son 7 gün %{(c.iloc[-1] / c.iloc[-8] - 1) * 100:+.1f}, son 30 gün "
+                           f"%{(c.iloc[-1] / c.iloc[-31] - 1) * 100:+.1f}, 90 günlük zirveden %{(c.iloc[-1] / c.max() - 1) * 100:+.1f}")
+            except Exception:
+                continue
+        return out
 
     def daily_trend(self):
         """Gunluk Trend Kolu (gunluk.py): UTC gun kapanisindan sonra once kolun pozisyonlarinda 10 gunluk dip cikisi,

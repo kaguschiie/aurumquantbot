@@ -432,8 +432,43 @@ def decide(brief, model=None):
     return dec, usd, r.model
 
 
+def ask_json(system, prompt, schema, model=None):
+    """Kucuk yapisal soru (or. portfoy kontrolu): API > CLI (abonelik). Donus: (dict, $, model). Yoksa AgentError."""
+    b = brain()
+    model = model or C.REVIEW_MODEL
+    if b == "api":
+        try:
+            r = _call(False, model=model, max_tokens=4000, system=system, messages=[{"role": "user", "content": prompt}],
+                      output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}})
+            return json.loads(next(x.text for x in r.content if x.type == "text")), cost(r.model, r.usage), r.model
+        except (anthropic.APIError, StopIteration, ValueError) as e:
+            raise AgentError(friendly(e) if isinstance(e, anthropic.APIError) else "Claude cevabı okunamadı.") from e
+    if b != "cli":
+        raise AgentError("Claude bağlı değil (yerel motor).")
+    cm = CLI_MODEL.get(model, "sonnet")
+    args = ["-p", "--output-format", "json", "--json-schema", json.dumps(schema), "--tools", "", "--model", cm,
+            "--setting-sources", "", "--no-session-persistence", "--strict-mcp-config", "--system-prompt",
+            system + "\nSadece semaya uygun JSON dondur."]
+    try:
+        out = json.loads(_cli(args, inp=prompt, timeout=240).stdout or "{}")
+    except subprocess.TimeoutExpired:
+        _cli_fail("Claude CLI zaman aşımı")
+    except (OSError, ValueError) as e:
+        _cli_fail(f"Claude CLI cevabı okunamadı: {str(e)[:80]}")
+    if out.get("is_error"):
+        _cli_fail(f"Claude CLI: {str(out.get('result'))[:120]}")
+    dec = out.get("structured_output")
+    if not isinstance(dec, dict):
+        txt = str(out.get("result") or "")
+        try:
+            dec = json.loads(txt[txt.index("{"):txt.rindex("}") + 1])
+        except ValueError:
+            raise AgentError("Claude CLI cevabı JSON değil.")
+    return dec, 0.0, f"Claude CLI ({cm})"
+
+
 # ---------------- sohbet ----------------
-CHAT_SYSTEM = """Sen Claude'sun ve KriptoQuantBot'u yonetiyorsun: Binance spot al-sat kararlarini sen veriyorsun
+CHAT_SYSTEM ="""Sen Claude'sun ve KriptoQuantBot'u yonetiyorsun: Binance spot al-sat kararlarini sen veriyorsun
 (her saat basi ve onemli piyasa olaylarinda). Saniyelik fiyat takibi, stop, kademeli kar ve iz suren stop yerel
 motorda calisir; yerel risk yoneticisi senin emirlerini kasa sinirlarina gore denetler.
 

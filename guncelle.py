@@ -35,9 +35,34 @@ def _headers(raw=False):
     return h
 
 
+GIT = not getattr(sys, "frozen", False) and os.path.isdir(os.path.join(C.BASE_DIR, ".git"))  # sunucu: git ile kurulu
+
+
+def _git(*a):
+    return subprocess.run(["git", "-C", C.BASE_DIR, *a], capture_output=True, text=True, timeout=120)
+
+
+def _check_git():
+    """Sunucu (git klonu): GitHub'daki main ile yerel surumu karsilastirir."""
+    f = _git("fetch", "-q", "origin")
+    if f.returncode:
+        raise ValueError(f.stderr.strip()[:160] or "git fetch başarısız")
+    head, remote = _git("rev-parse", "HEAD").stdout.strip(), _git("rev-parse", "origin/main").stdout.strip()
+    notes = _git("log", "--format=• %s", f"{head}..{remote}").stdout.strip()
+    STATE.update(error="", latest={"version": remote[:7], "notes": notes[:2000], "zip": None, "sha": None, "size": None,
+                                   "published": _git("log", "-1", "--format=%cI", remote).stdout.strip(),
+                                   "newer": bool(remote) and remote != head and bool(notes)})
+
+
 def check():
     """En son yayini okur. Donus: durum sozlugu (arayuz icin)."""
     STATE["t"] = time.time()
+    if GIT:
+        try:
+            _check_git()
+        except (OSError, ValueError, subprocess.SubprocessError) as e:
+            STATE["error"] = f"Güncelleme kontrolü başarısız: {str(e)[:160]}"
+        return status()
     if not C.UPDATE_REPO:
         STATE.update(latest=None, error="Güncelleme deposu ayarlanmadı (Ayarlar → Güncelleme).")
         return status()
@@ -63,7 +88,8 @@ def check():
 
 def status():
     lt = STATE["latest"]
-    return {"version": C.VERSION, "repo": C.UPDATE_REPO, "frozen": bool(getattr(sys, "frozen", False)),
+    return {"version": C.VERSION if not GIT else _git("rev-parse", "--short", "HEAD").stdout.strip() or C.VERSION,
+            "repo": C.UPDATE_REPO, "frozen": bool(getattr(sys, "frozen", False)) or GIT,
             "latest": {k: v for k, v in lt.items() if k not in ("zip", "sha")} if lt else None,
             "newer": bool(lt and lt["newer"]), "error": STATE["error"], "t": STATE["t"], "progress": STATE["progress"]}
 
@@ -116,7 +142,17 @@ def restart(quit_cb):
 
 
 def apply(quit_cb):
-    """Indir -> SHA-256 dogrula -> cikar -> kapan; yardimci betik dosyalari degistirip yeniden acar. Hata metni/None."""
+    """Indir -> SHA-256 dogrula -> cikar -> kapan; yardimci betik dosyalari degistirip yeniden acar. Hata metni/None.
+    Sunucuda (git): git pull + paketler; kapanir, systemd yeniden baslatir (veri, oturumlar, Telegram korunur)."""
+    if GIT:
+        p = _git("pull", "--ff-only", "-q", "origin", "main")
+        if p.returncode:
+            return f"git pull başarısız: {p.stderr.strip()[:200]}"
+        req = os.path.join(C.BASE_DIR, "requirements-sunucu.txt")
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", req], capture_output=True, timeout=900)
+        log.info("Sunucu guncellendi: %s", _git("log", "-1", "--format=%h %s").stdout.strip())
+        quit_cb()  # systemd (Restart=always) yeni kodla yeniden baslatir
+        return None
     if not getattr(sys, "frozen", False):
         return "Geliştirici modunda (python) güncelleme uygulanmaz; exe sürümünde çalışır."
     lt = STATE["latest"] or (check() and STATE["latest"])

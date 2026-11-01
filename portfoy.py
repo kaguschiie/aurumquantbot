@@ -28,7 +28,8 @@ VT = 0.4            # cekirdek hedef yillik oynaklik
 K, TOP = 5, 50      # ML sepeti: en iyi K coin, en likit TOP coin icinde
 BAND, BAND_ML = 0.03, 0.01   # agirlik farki bu kadardan kucukse islem yok (gunluk / haftalik yeniden dengeleme)
 STOP_FRAC = 0.65    # felaket stopu: ortalama girisin %35 alti (strateji kendi gunluk kuraliyla cikar)
-RETRAIN_DAYS = 90
+RETRAIN_DAYS = 30  # her ay yeni veriyle yeniden egitim + saglik kontrolu
+MIN_IC = 0.02      # son 6 ay tahmin isabeti (sira korelasyonu) bunun altindaysa ML sepeti dinlenmede (nakit)
 MODEL_FILE = os.path.join(C.APP_DIR, "portfoy_model.joblib")
 DATA = os.path.join(C.APP_DIR, "gunluk_veri")
 BUNDLED = os.path.join(C.BASE_DIR, "portfoy_model.joblib")
@@ -163,11 +164,17 @@ def targets(ex, st, ml_day, core_frac=None):
         try:
             picks, reg, note = ml_pick(ex, st.setdefault("age", {}))
             st["ml"] = {"picks": picks, "reg": reg, "note": note, "t": time.time()}
+            if picks:  # karne: secim anindaki fiyatlar (7 gun sonra BTC ile karsilastirilir)
+                px = {s: float(klines(ex, s, 2)["c"].iloc[-1]) for s, _ in picks}
+                px["BTC/USDT"] = px.get("BTC/USDT") or float(klines(ex, "BTC/USDT", 2)["c"].iloc[-1])
+                st["ml_hist"] = (st.get("ml_hist", []) + [{"t": time.time(), "px": px, "picks": [s for s, _ in picks]}])[-60:]
         except Exception as e:  # ML hatasi cekirdegi durdurmasin; onceki secim korunur
             log.warning("ML sepeti: %s", e)
             st.setdefault("ml", {"picks": [], "reg": False, "note": f"hata: {e}", "t": time.time()})
     ml = st["ml"]
-    if ml["reg"]:
+    ic = (_M or {}).get("ic")
+    ml["rest"] = ic is not None and ic < MIN_IC  # saglik kontrolu: tahmin gucu kaybolduysa sepet nakitte
+    if ml["reg"] and not ml["rest"]:
         for s, _ in ml["picks"]:
             w[s] = w.get(s, 0.0) + (1 - cf) / K
     info["ml"] = ml
@@ -261,16 +268,26 @@ def train(say=lambda t: None):
             continue
         m = pd.DataFrame({k: Fr[k].loc[d, cols] for k in FEATS})
         m["y"] = y.loc[d, cols]
+        m["d"] = d
         rows.append(m)
     Dd = pd.concat(rows).dropna(subset=["y"])
-    model = HistGradientBoostingRegressor(max_iter=200, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=200,
-                                          l2_regularization=1.0, random_state=0).fit(Dd[FEATS], Dd.y)
-    out = {"model": model, "feats": FEATS, "t": time.time(), "n": len(Dd), "end": str(c.index[-1].date())}
+    mk = lambda: HistGradientBoostingRegressor(max_iter=200, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=200,
+                                               l2_regularization=1.0, random_state=0)
+    # saglik kontrolu: son 26 haftayi gormeden egit, o haftalarda tahmin isabetini (sira korelasyonu) olc
+    cut = Dd.d.max() - pd.Timedelta(weeks=26)
+    old, new = Dd[Dd.d < cut - pd.Timedelta(days=8)], Dd[Dd.d >= cut].copy()
+    new["p"] = mk().fit(old[FEATS], old.y).predict(new[FEATS])
+    ic = float(new.groupby("d").apply(lambda g: g.p.corr(g.y, method="spearman")).mean())
+    model = mk().fit(Dd[FEATS], Dd.y)
+    out = {"model": model, "feats": FEATS, "t": time.time(), "n": len(Dd), "end": str(c.index[-1].date()),
+           "ic": round(ic, 3)}
     joblib.dump(out, MODEL_FILE)
     _M.clear()
     _M.update(out)
     STATE["model_t"] = out["t"]
-    say(f"Portföy ML modeli yeniden eğitildi: {len(Dd)} haftalık örnek, veri sonu {out['end']}.")
+    say(f"Portföy ML modeli yeniden eğitildi ({out['end']} verisiyle). Sağlık kontrolü: son 6 ayda tahmin isabeti "
+        f"{ic:+.3f} → " + ("sepet çalışmaya devam ediyor." if ic >= MIN_IC else
+                            "tahmin gücü kayboldu, ML sepeti dinlenmeye alındı (o pay nakitte bekler)."))
     return out
 
 
@@ -291,6 +308,22 @@ def maybe_train(say):
         finally:
             STATE["training"] = False
     threading.Thread(target=run, name="portfoy-egitim", daemon=True).start()
+
+
+def ml_card(ex, st):
+    """ML sepeti karnesi: her haftalik secim 7 gun sonra BTC ile karsilastirilir (gercek ileri test)."""
+    for h in st.get("ml_hist", []):
+        if "ret" not in h and time.time() - h["t"] >= 7 * 86400:
+            try:
+                p = lambda s: ex.fetch_ohlcv(s, "1d", since=int((h["t"] + 7 * 86400) * 1000), limit=1)[0][4]
+                rets = [p(s) / h["px"][s] - 1 for s in h["picks"]]
+                h["ret"], h["btc"] = round(sum(rets) / len(rets), 4), round(p("BTC/USDT") / h["px"]["BTC/USDT"] - 1, 4)
+            except Exception:
+                continue
+    done = [h for h in st.get("ml_hist", []) if "ret" in h]
+    return {"n": len(done), "gecti": sum(h["ret"] > h["btc"] for h in done),
+            "fark_pct": round(sum(h["ret"] - h["btc"] for h in done) / len(done) * 100, 2) if done else None,
+            "ic": (_M or {}).get("ic")}
 
 
 def track(trades, curve, btc_now):

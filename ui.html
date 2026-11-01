@@ -898,7 +898,7 @@ async function loadSchool() {
 }
 async function loadPF() {
   const h = await api("/api/portfoy"); if (!h.backtest) return;
-  const B = h.backtest, pf = h.pf || {}, tg = pf.targets || {}, W = h.weights || {}, ml = pf.ml || {}, T = h.track || {};
+  const B = h.backtest, pf = h.pf || {}, tg = pf.targets || {}, W = h.weights || {}, ml = pf.ml || {}, T = h.track || {}, MC = pf.ml_card || {}, K = h.kontrol || {};
   $("#pfcore").textContent = "%" + Math.round(h.core * 100);
   $("#pfst").innerHTML = (h.on ? '<span class="up">açık</span>' : '<span class="warn">kapalı</span>') + " · gerçek hesap " +
     (h.live ? '<span class="up">açık</span>' : '<span class="mute">kapalı</span>') + (pf.last ? ` · son dengeleme ${ago(pf.last)} önce` : " · ilk dengeleme bekleniyor") +
@@ -912,12 +912,17 @@ async function loadPF() {
   const yrs = Object.entries(B.yillar).map(([y, v]) => `<span class="tag">${y}: <b class="${v[0] >= 0 ? "up" : "down"}">%${v[0]}</b> <span class="dim">BTC %${v[1]}</span></span>`).join(" ");
   $("#pfbody").innerHTML = `<div class="g2 g11"><div>${syms.length ? `<table><tr><th>Coin</th><th class="r">Hedef</th><th class="r">Şu an</th><th class="r">Neden</th></tr>${rows}
       <tr><td class="dim">Nakit (USDT)</td><td class="r">%${fmt(cash * 100, 1)}</td><td class="r"></td><td></td></tr></table>` : '<div class="dim">İlk dengeleme bekleniyor.</div>'}
-      ${ml.reg === false ? '<div class="dim" style="font-size:12px;margin-top:6px">ML sepeti şu an nakitte (piyasa zayıf).</div>' : ""}</div>
+      ${ml.rest ? '<div class="warn" style="font-size:12px;margin-top:6px">ML sepeti dinlenmede: model son 6 ayda isabet kaybetti, pay nakitte.</div>'
+        : ml.reg === false ? '<div class="dim" style="font-size:12px;margin-top:6px">ML sepeti şu an nakitte (piyasa zayıf).</div>' : ""}
+      ${pf.ozet ? `<div class="banner info" style="display:block;margin:10px 0 0">🧠 ${esc(pf.ozet)}</div>` : ""}
+      ${pf.kontrol ? `<div class="dim" style="font-size:12px;margin-top:6px">Kontrolör: ${esc(pf.kontrol)}</div>` : ""}</div>
     <div><div class="kv"><span>Test dönemi</span><span>${esc(B.donem)}</span>
       <span>Strateji (maliyet dahil)</span><span><b class="up">yıllık %${B.strateji.cagr}</b> · en derin düşüş %${B.strateji.dd} · Sharpe ${B.strateji.sharpe}</span>
       <span>BTC al-tut</span><span>yıllık %${B.btc.cagr} · en derin düşüş %${B.btc.dd} · Sharpe ${B.btc.sharpe}</span>
       <span>Çekirdek / ML ayrı</span><span>%${B.cekirdek.cagr} (düşüş %${B.cekirdek.dd}) / %${B.ml.cagr} (düşüş %${B.ml.dd})</span>
-      <span>Sanal karne</span><span>${T.eq_pct != null ? `kasa %${fmt(T.eq_pct, 2)} · aynı sürede BTC %${fmt(T.btc_pct, 2)}` : "başlangıç"} · ${T.n || 0} kapanan işlem</span></div>
+      <span>Sanal karne</span><span>${T.eq_pct != null ? `kasa %${fmt(T.eq_pct, 2)} · aynı sürede BTC %${fmt(T.btc_pct, 2)}` : "başlangıç"} · ${T.n || 0} kapanan işlem</span>
+      <span>ML sepeti karnesi</span><span>${MC.n ? `${MC.n} haftanın ${MC.gecti}'ünde BTC'yi geçti · ortalama fark %${fmt(MC.fark_pct, 2)}` : "ilk hafta doluyor"}${MC.ic != null ? ` · model isabeti ${fmt(MC.ic, 3)}` : ""}</span>
+      <span>Claude kontrolör</span><span>${K.n ? `${K.n} itirazın %${Math.round(K.isabet * 100)}'i isabetli · ${K.aktif ? '<span class="up">söz hakkı var</span>' : '<span class="warn">sadece izliyor</span>'}` : `henüz puanlanan itiraz yok${K.bekleyen ? ` (${K.bekleyen} bekliyor)` : ""}`}</span></div>
       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">${yrs}</div>
       <div class="dim" style="font-size:12px;margin-top:6px">Geçmiş sonuç geleceği garanti etmez.</div></div></div>`;
 }
@@ -1409,8 +1414,12 @@ every(30000, () => visible("macro") && loadMacro());
 every(15000, () => visible("lessons") && loadLessons());
 every(30000, () => visible("home") && loadPF().catch(() => {}));
 every(3000, () => visible("settings") && loadTelegram());
-function win(a) { fetch("/api/window", {method: "POST", headers: {"X-KQB": "1", "Content-Type": "application/json"}, body: JSON.stringify({a})}); }
+function win(a) {  // masaustu pencere dugmeleri: pywebview koprusu (istemci/sunucu), yoksa yerel API
+  if (window.pywebview?.api?.win) return window.pywebview.api.win(a);
+  fetch("/api/window", {method: "POST", headers: {"X-KQB": "1", "Content-Type": "application/json"}, body: JSON.stringify({a})});
+}
 fetch("/api/app").then(r => r.json()).then(a => { if (a.desktop) $("#wctl").style.display = "flex"; });
+addEventListener("pywebviewready", () => $("#wctl").style.display = "flex");
 boot().catch(() => showLogin());
 </script>
 </body>
