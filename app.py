@@ -949,8 +949,15 @@ def main():
     import telegram_bot
     threading.Thread(target=telegram_bot.poll_forever, name="telegram", daemon=True).start()
     threading.Thread(target=update_watch, name="guncelleme", daemon=True).start()
-    if "--sunucu" in sys.argv:  # pencere/tepsi olmadan (test, ileride VPS): arayuz tarayicidan acilir
-        return server.serve_forever()
+    if "--sunucu" in sys.argv:  # pencere/tepsi olmadan (test, VPS): arayuz tarayicidan acilir
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:  # Ctrl+C: durumu kaydet ve tum is parcaciklariyla birlikte cik
+            try:
+                ENGINE.bot and ENGINE.bot.save()
+            finally:
+                os._exit(0)
+        return
     threading.Thread(target=server.serve_forever, daemon=True).start()
     import webview
     # Cercevesiz: Windows'un beyaz baslik cubugu yok, uygulamanin kendi koyu cubugu var; tam ekran acilir
