@@ -14,7 +14,7 @@ if errorlevel 1 goto hata
 echo [2/3] Uygulama paketleniyor (birkac dakika surer)...
 python -c "import app; app.make_icon('icon.ico')"
 python -m PyInstaller --noconfirm --clean --windowed --name KriptoQuantBot --icon icon.ico ^
-  --add-data "ui.html;." --add-data "lw.js;." --add-data "surum.txt;." --add-data "portfoy_model.joblib;." --hidden-import pystray._win32 ^
+  --add-data "ui.html;." --add-data "lw.js;." --add-data "surum.txt;." --add-data "portfoy_model.joblib;." --add-data "sunucu_adresi.txt;." --hidden-import pystray._win32 ^
   --collect-submodules webview --collect-submodules anthropic --collect-submodules sklearn ^
   --hidden-import bot --hidden-import agent --hidden-import chat --hidden-import teknik --hidden-import quant --hidden-import telegram_bot ^
   --hidden-import dersler --hidden-import makro --hidden-import portfoy --hidden-import kontrolor --hidden-import zincir --hidden-import guncelle --hidden-import sunucu ^
