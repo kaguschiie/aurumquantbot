@@ -231,11 +231,8 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
 }
 .ntb td{white-space:normal;vertical-align:top}.ntb td:nth-child(3){min-width:180px}
 .wn{position:fixed;inset:38px 0 0 0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(5,8,13,.72);backdrop-filter:blur(6px);animation:wnin .35s var(--ease)}
-.wn.out{opacity:0;transition:opacity .3s}.wn .wc{position:relative;width:min(420px,100%);background:var(--panel);border:1px solid var(--line2);border-radius:18px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:wnup .4s var(--ease)}
+.wn .wc{position:relative;width:min(420px,100%);background:var(--panel);border:1px solid var(--line2);border-radius:18px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:wnup .4s var(--ease)}
 .wn h2{margin:0 0 4px;font-size:19px}.wn .sub{color:var(--mute);font-size:12.5px;margin-bottom:18px}
-.wn .it{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}.wn .it b{display:block;font-size:14px;margin-bottom:2px}
-.wn .it span{color:var(--mute);font-size:13px;line-height:1.45}.wn .ic{flex:none;width:36px;height:36px;border-radius:10px;background:var(--panel3);display:flex;align-items:center;justify-content:center;font-size:19px;font-family:"Segoe UI Emoji","Apple Color Emoji",sans-serif}
-.wn .x{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:9px;border:0;background:var(--panel3);color:var(--text);font-size:18px;cursor:pointer}.wn .x:hover{background:var(--line2)}
 @keyframes wnin{from{opacity:0}}@keyframes wnup{from{opacity:0;transform:translateY(14px) scale(.98)}}
 @media (max-width:760px){.wn{inset:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -248,17 +245,6 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
     <button class="wbtn" title="Simge durumuna küçült" onclick="win('minimize')"><svg viewBox="0 0 11 11"><path d="M0 5.5h11"/></svg></button>
     <button class="wbtn" title="Ekranı kapla / küçült" onclick="win('max')"><svg viewBox="0 0 11 11"><rect x=".5" y=".5" width="10" height="10"/></svg></button>
     <button class="wbtn x" title="Kapat (bot tepside çalışmaya devam eder)" onclick="win('close')"><svg viewBox="0 0 11 11"><path d="M0 0l11 11M11 0L0 11"/></svg></button>
-  </div>
-</div>
-
-<!-- YENILIKLER (her acilista) -->
-<div class="wn" id="whatsnew" role="dialog" aria-modal="true" aria-labelledby="wnt">
-  <div class="wc">
-    <button class="x" aria-label="Kapat" onclick="closeNew()">×</button>
-    <h2 id="wnt">Yenilikler</h2><div class="sub">Son güncellemede neler değişti</div>
-    <div class="it"><span class="ic">🤖</span><div><b>Akıllı Portföy</b><span>Bot her gün portföyü kendisi dengeliyor. Gereksiz al-sat yok, komisyon boşa gitmiyor.</span></div></div>
-    <div class="it"><span class="ic">🛡️</span><div><b>Güvenli Mod</b><span>Paranın çoğu en sağlam coinlerde (BTC/ETH). Düşüşlerde nakde geçip zararı küçültüyor.</span></div></div>
-    <div class="it"><span class="ic">📊</span><div><b>Sanal Test</b><span>İçimiz rahat edene kadar sistem sanal kasada deneniyor. Gerçek para riskte değil.</span></div></div>
   </div>
 </div>
 
@@ -1446,8 +1432,6 @@ async function boot() {
   layout(); await tick(); loadScreener().catch(() => {}); loadChat().catch(() => {}); loadPF().catch(() => {}); $$("section.page").forEach(s => visible(s.id) && s.id !== "home" && show(s.id));
   toast(`Hoş geldin, ${me.user}.`, "up", 2500);
 }
-function closeNew() { const w = $("#whatsnew"); if (!w || w.hidden) return; w.classList.add("out"); setTimeout(() => w.hidden = true, 300); }
-addEventListener("keydown", e => e.key === "Escape" && closeNew());
 every(1000, tick);
 every(1000, () => (visible("screen") || visible("chartp") || visible("home")) && loadScreener());
 every(1000, () => visible("chartp") && cmode === "bot" && loadCandles(false));
