@@ -61,6 +61,14 @@ ssh -L 8765:127.0.0.1:8765 root@SUNUCU_IP
 
 Sonra tarayıcıda `http://127.0.0.1:8765` → ilk açılışta admin hesabını oluştur. API anahtarları ve Telegram sadece arayüzdeki **Ayarlar**'dan girilir; dosyaya veya koda yazılmaz.
 
+## Güvenlik, yedek, bekçi
+
+```bash
+bash /opt/crypto_bot/aurumquantbot/sunucu_guvenlik.sh
+```
+
+Sistem güncellemesi, otomatik güvenlik yamaları, fail2ban; dakikada bir bot kontrolü (3 dakika cevap yoksa Telegram'dan haber verir, sunucunun tamamı kapanırsa haber veremez); her gece 03:30 veri yedeği (`/opt/crypto_bot/yedek`, 14 gün). SSH anahtarı ekledikten sonra şifreli girişi kapatmak için: `bash sunucu_guvenlik.sh sifre-kapat`. Yedeği bilgisayara indirmek: `yedek_indir.ps1`.
+
 ## Güncelleme
 
 Arayüzde: Ayarlar → Güncelleme → **Tek tıkla güncelle** (admin). Sunucu GitHub'dan yeni kodu çeker ve kendini yeniden başlatır; hesaplar, oturumlar, kasa ve Telegram bağlantısı korunur. Elle:

@@ -528,6 +528,12 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, fh.read(), ctype)
             if u.path == "/api/app":
                 return self._send(200, {"desktop": WINDOW is not None, "max": MAXED})
+            if u.path == "/api/health":  # sunucu bekcisi: sadece makinenin icinden; motor dongusu donuyor mu?
+                if not self._local():
+                    return self._send(403, {"ok": False})
+                b = ENGINE.bot
+                age = round(time.time() - b.updated) if b else None
+                return self._send(200, {"ok": bool(b) and age < 180, "age": age, "status": b.status if b else "baslatiliyor"})
             if u.path == "/api/avatar":  # giris ekraninda da gosterilir (sadece bu bilgisayar)
                 f = avatar_file(q.get("u"))
                 if not f:

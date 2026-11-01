@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = ['pystray._win32', 'bot', 'agent', 'chat', 'teknik', 'quant', 'telegram_bot', 'dersler', 'makro', 'portfoy', 'kontrolor', 'zincir', 'guncelle', 'sunucu', 'gecmis', 'komite', 'hafiza', 'gunluk', 'montecarlo']
+hiddenimports = ['pystray._win32', 'bot', 'agent', 'chat', 'teknik', 'quant', 'telegram_bot', 'dersler', 'makro', 'portfoy', 'kontrolor', 'haberler', 'feedparser', 'zincir', 'guncelle', 'sunucu', 'gecmis', 'komite', 'hafiza', 'gunluk', 'montecarlo']
 hiddenimports += collect_submodules('webview')
 hiddenimports += collect_submodules('anthropic')
 hiddenimports += collect_submodules('sklearn')
