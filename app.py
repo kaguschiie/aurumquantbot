@@ -505,7 +505,7 @@ class Handler(BaseHTTPRequestHandler):
         host = self.headers.get("Host") or ""
         loop = re.fullmatch(r"(127\.0\.0\.1|localhost)(:\d+)?", host)  # SSH tuneli farkli yerel porttan gelebilir
         ok = host in HOSTS or bool(loop) or C.SERVER_MODE or host == sunucu.tunnel_host() or \
-            (C.PUBLIC_HOST and host == C.PUBLIC_HOST)  # sunucu: HTTPS ters vekil (Caddy) arkasindaki alan adi
+            host in C.PUBLIC_HOST  # sunucu: HTTPS ters vekil (Caddy) arkasindaki alan adlari
         return ok and (not post or self.headers.get("X-KQB") == "1")
 
     def _local(self):

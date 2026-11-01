@@ -151,6 +151,14 @@ def apply(quit_cb):
         req = os.path.join(C.BASE_DIR, "requirements-sunucu.txt")
         subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", req], capture_output=True, timeout=900)
         log.info("Sunucu guncellendi: %s", _git("log", "-1", "--format=%h %s").stdout.strip())
+        try:  # ayni kodu kullanan diger botlar (melik, fatih...) da yeni surume gecer; bu bot asagida kendisi kapanir
+            ls = subprocess.run(["systemctl", "list-units", "--type=service", "--plain", "--no-legend", "kriptoquantbot*"],
+                                capture_output=True, text=True, timeout=30).stdout.split("\n")
+            others = [x.split()[0] for x in ls if x.strip() and x.split()[0] != os.environ.get("KQB_UNIT")]
+            if others:
+                subprocess.run(["systemctl", "restart", "--no-block", *others], timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            pass
         quit_cb()  # systemd (Restart=always) yeni kodla yeniden baslatir
         return None
     if not getattr(sys, "frozen", False):

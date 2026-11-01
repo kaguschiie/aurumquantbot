@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = ['pystray._win32', 'bot', 'agent', 'chat', 'teknik', 'quant', 'telegram_bot', 'dersler', 'makro', 'portfoy', 'zincir', 'guncelle', 'sunucu', 'gecmis', 'komite', 'hafiza', 'gunluk', 'montecarlo']
+hiddenimports = ['pystray._win32', 'bot', 'agent', 'chat', 'teknik', 'quant', 'telegram_bot', 'dersler', 'makro', 'portfoy', 'kontrolor', 'zincir', 'guncelle', 'sunucu', 'gecmis', 'komite', 'hafiza', 'gunluk', 'montecarlo']
 hiddenimports += collect_submodules('webview')
 hiddenimports += collect_submodules('anthropic')
 hiddenimports += collect_submodules('sklearn')
@@ -11,7 +11,7 @@ a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[('ui.html', '.'), ('lw.js', '.'), ('surum.txt', '.'), ('portfoy_model.joblib', '.')],
+    datas=[('ui.html', '.'), ('lw.js', '.'), ('surum.txt', '.'), ('portfoy_model.joblib', '.'), ('sunucu_adresi.txt', '.')],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

@@ -129,7 +129,7 @@ JOURNAL_FILE = os.path.join(APP_DIR, "tahmin_defteri.csv")  # oz-degerlendirme i
 LESSON_DB = os.path.join(APP_DIR, "ders_defteri.db")         # otopsiler, dersler, ogrenme ornekleri
 SETTINGS_FILE = os.path.join(APP_DIR, "settings.json")      # arayuzden degistirilen ayarlar
 PORT = int(os.environ.get("KQB_PORT") or 8765)
-PUBLIC_HOST = os.environ.get("KQB_PUBLIC_HOST", "")  # sunucu: HTTPS alan adi (or. 1-2-3-4.sslip.io), Caddy arkasinda
+PUBLIC_HOST = {h.strip() for h in os.environ.get("KQB_PUBLIC_HOST", "").split(",") if h.strip()}  # sunucu: HTTPS adresleri
 SUNUCU_URL_FILE = os.path.join(APP_DIR, "sunucu_adresi.txt")  # masaustu istemci: varsa yerel motor yerine bu sunucu acilir
 
 # Arayuzden degistirilebilen ayarlar (settings.json bu dosyadaki degerleri ezer). Hepsini admin degistirir;

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KriptoQuantBot</title>
+<style>
+:root{--bg:#0a0d13;--panel:#131822;--line:#2c3546;--text:#e8ebf1;--mute:#8a93a6;--acc:#5b8cff}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at top,#121a2c,var(--bg) 60%);
+  color:var(--text);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.c{width:min(380px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px 24px}
+h1{margin:0 0 4px;font-size:20px}p{margin:0 0 20px;color:var(--mute);font-size:13.5px}
+a.b{display:block;text-decoration:none;color:var(--text);background:#1f2733;border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;margin-bottom:10px;font-weight:600}
+a.b:hover{border-color:var(--acc)}a.b span{display:block;color:var(--mute);font-weight:400;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="c">
+  <h1>Hangi bot?</h1>
+  <p>Seçimin bu cihazda hatırlanır. Değiştirmek için uygulamada Ayarlar → Hesabım → Bot değiştir.</p>
+  <a class="b" href="#" data-bot="melik">Melik'in botu<span>melik.<i class="h"></i></span></a>
+  <a class="b" href="#" data-bot="fatih">Fatih'in botu<span>fatih.<i class="h"></i></span></a>
+</div>
+<script>
+const K = "kqb.bot", host = location.host;
+document.querySelectorAll("i.h").forEach(e => e.textContent = host);
+let saved = null;
+try { saved = localStorage.getItem(K); } catch (e) {}
+const go = b => location.replace(location.protocol + "//" + b + "." + host + "/");
+if (saved && !location.search.includes("sec")) go(saved);
+document.querySelectorAll("a.b").forEach(a => a.onclick = e => {
+  e.preventDefault();
+  try { localStorage.setItem(K, a.dataset.bot); } catch (err) {}
+  go(a.dataset.bot);
+});
+</script>
+</body>
+</html>
