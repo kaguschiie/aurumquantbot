@@ -229,6 +229,7 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
   nav .navbtn.on::before{display:none}header{padding:8px 10px;gap:6px}#dock{display:none!important}section.page{padding:12px 10px}
   .titlebar{display:none}.login{inset:0}.lcard{padding:20px}
 }
+.ntb td{white-space:normal;vertical-align:top}.ntb td:nth-child(3){min-width:180px}
 .wn{position:fixed;inset:38px 0 0 0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(5,8,13,.72);backdrop-filter:blur(6px);animation:wnin .35s var(--ease)}
 .wn.out{opacity:0;transition:opacity .3s}.wn .wc{position:relative;width:min(420px,100%);background:var(--panel);border:1px solid var(--line2);border-radius:18px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:wnup .4s var(--ease)}
 .wn h2{margin:0 0 4px;font-size:19px}.wn .sub{color:var(--mute);font-size:12.5px;margin-bottom:18px}
@@ -395,6 +396,13 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
   </section>
 
   <!-- CLAUDE KARARLARI -->
+  <section id="news" class="page">
+    <div class="chips"><span class="mute" id="nst"></span><span class="grow"></span><label class="mute" style="font-size:12.5px"><input type="checkbox" id="nall" onchange="loadNews()"> Elenenleri de göster</label></div>
+    <div id="nblock"></div>
+    <div class="kpis" id="nk"></div>
+    <div class="card scrollbox"><div id="nlist" class="dim">Yükleniyor...</div></div>
+  </section>
+
   <section id="decisions" class="page">
     <div class="chips"><span class="mute" id="dinfo"></span><span class="grow"></span><button class="btn sm" onclick="go('lessons')">Ders Defteri</button><button class="btn sm" data-admin onclick="decideNow()">Şimdi karar ver</button></div>
     <div class="card" id="declessons" hidden></div>
@@ -455,16 +463,17 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&
 const base = s => s.split("/")[0];
 const REG = {trend: ["Yükseliş trendi", "up"], yatay: ["Yatay", "warn"], dusus: ["Sert düşüş", "down"]};
 const KINDS = {hepsi: "Hepsi", karar: "Kararlar", bekleme: "Beklemeler", islem: "İşlemler", kalkan: "Kalkan", radar: "Radar", oz: "Öz-değerlendirme", egitim: "Eğitim", uyari: "Uyarılar", sistem: "Sistem"};
-const REASON = {HEDEF: "Hedef", STOP: "Stop", IZ_STOP: "İz süren stop", BASABAS: "Başabaş", SURE_DOLDU: "Süre doldu", CLAUDE_KAPATTI: "Claude kapattı", ELLE_KAPATILDI: "Elle kapatıldı", ZAMAN_ASIMI: "Zaman aşımı", ZAMAN_STOPU: "Zaman stopu", BALINA_SATIS: "Balina satışı", PORTFOY_CIKIS: "Portföy dengeleme",KESINTI: "Uygulama kapalıyken", GUNLUK_CIKIS: "10 günlük dip"};
+const REASON = {HEDEF: "Hedef", STOP: "Stop", IZ_STOP: "İz süren stop", BASABAS: "Başabaş", SURE_DOLDU: "Süre doldu", CLAUDE_KAPATTI: "Claude kapattı", ELLE_KAPATILDI: "Elle kapatıldı", ZAMAN_ASIMI: "Zaman aşımı", ZAMAN_STOPU: "Zaman stopu", BALINA_SATIS: "Balina satışı", PORTFOY_CIKIS: "Portföy dengeleme", HABER_ACIL: "Haber: acil satış", KESINTI: "Uygulama kapalıyken", GUNLUK_CIKIS: "10 günlük dip"};
 const ICON = {home: '<path d="M3 12l9-8 9 8M5 10v10h14V10"/>', chartp: '<path d="M6 4v16M6 8h-2v6h2M12 6v14M12 10h-2v4h2M18 3v18M18 7h-2v8h2"/>',
   screen: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>', opps: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6.5-6.5"/>',
   macro: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   lessons: '<path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/>',
+  news: '<path d="M4 5h13v14a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2zM17 9h3v10a2 2 0 0 1-2 2M7 9h7M7 13h7M7 17h4"/>',
   trades: '<path d="M4 6h16M4 12h16M4 18h10"/>', decisions: '<path d="M12 3a6 6 0 0 0-6 6c0 2.2 1.2 3.6 2.4 4.8.8.8 1.1 1.6 1.1 2.7V18h5v-1.5c0-1.1.3-1.9 1.1-2.7C16.8 12.6 18 11.2 18 9a6 6 0 0 0-6-6zM10 21h4"/>',
   notes: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>', bt: '<path d="M3 20h18M5 16l4-5 4 3 6-8"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/>'};
 const PAGES = [["home", "Komuta Merkezi"], ["chartp", "Grafik"], ["screen", "Piyasa Tarayıcı"], ["opps", "Radar (tüm piyasa)"], ["macro", "Borsa / Makro"],
-  ["trades", "İşlemler"], ["decisions", "Kararlar"], ["lessons", "Ders Defteri"], ["notes", "Karar Günlüğü"], ["bt", "ML Geçmiş Test", 1], ["chat", "Sohbet"], ["settings", "Ayarlar"]];
+  ["news", "Haberler"], ["trades", "İşlemler"], ["decisions", "Kararlar"], ["lessons", "Ders Defteri"], ["notes", "Karar Günlüğü"], ["bt", "ML Geçmiş Test", 1], ["chat", "Sohbet"], ["settings", "Ayarlar"]];
 const title = t => (PAGES.find(p => p[0] === t) || [, t])[1];
 const allowed = t => PAGES.some(p => p[0] === t && (!p[2] || ME?.role === "admin"));
 const visible = t => TAB === t || DOCK.includes(t);
@@ -610,7 +619,7 @@ function layout() {
 }
 function show(t) {
   ({home: () => loadPF().catch(() => {}), settings: loadSettings, chartp: () => { loadCandles(true); tvLoad(); }, screen: loadScreener, opps: loadOpps, macro: loadMacro, lessons: loadLessons, notes: loadNotes, trades: loadTrades,
-    decisions: loadDecisions, bt: renderBT, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
+    news: loadNews, decisions: loadDecisions, bt: renderBT, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
 }
 (() => { // sag panel genisligi: surukle
   const r = $("#resizer"); let x0 = 0, w0 = 0;
@@ -926,6 +935,28 @@ async function loadPF() {
       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">${yrs}</div>
       <div class="dim" style="font-size:12px;margin-top:6px">Geçmiş sonuç geleceği garanti etmez.</div></div></div>`;
 }
+const NKAR = {sat: ["SAT", "zarar"], al: ["AL", "kar"], reddedildi: ["Reddedildi", ""], bekliyor: ["Doğrulama bekliyor", "warn"], yeni: ["Puan bekliyor", ""],
+  izle: ["İzleniyor", ""], uyari: ["Fiyat uyarısı", "warn"], elendi: ["Elendi", ""], eski: ["Eski", ""]};
+async function loadNews() {
+  const h = await api("/api/news" + ($("#nall").checked ? "?hepsi=1" : ""));
+  const fs = Object.entries(h.feeds || {}), bad = fs.filter(([, v]) => !v.ok).map(([k]) => k);
+  $("#nst").innerHTML = (h.on ? '<span class="up">açık</span>' : '<span class="warn">kapalı</span>') + ` · ${fs.length - bad.length}/${fs.length} kaynak çalışıyor` +
+    (bad.length ? ` <span class="warn">(${esc(bad.join(", "))} okunamadı)</span>` : "") + (h.t ? ` · son kontrol ${ago(h.t)} önce` : "") +
+    ` · ${h.brain === "local" ? '<span class="warn">Claude bağlı değil: alım yapılmaz</span>' : "Claude puanlıyor"} · sanal işlem ${h.islem ? "açık" : "kapalı"} · gerçek hesap ${h.live ? '<span class="up">açık</span>' : "kapalı"}`;
+  const bl = Object.entries(h.block || {});
+  $("#nblock").innerHTML = bl.map(([k, v]) => `<div class="banner warn" style="display:flex;align-items:center;gap:10px"><div><b>🚨 ${k === "*" ? "Tüm alımlar engelli" : esc(k.split("/")[0]) + " engelli"}</b> · ${ago(2 * Date.now() / 1000 - v.until)} kaldı<br><span style="font-size:12.5px">${esc(v.neden)}</span></div><span class="grow"></span>${ME.role === "admin" ? '<button class="btn sm" onclick="newsUnblock()">Engeli kaldır</button>' : ""}</div>`).join("");
+  const K = h.card || {}, kk = (x, none) => x && x.n ? `%${Math.round(x.isabet * 100)} isabet` : none;
+  $("#nk").innerHTML = [["Acil satış karnesi", kk(K.sat, "—"), K.sat?.n ? `${K.sat.n} karar · 24 saat sonra ölçülür` : "henüz karar yok"], ["Alım karnesi", kk(K.al, "—"), K.al?.n ? `${K.al.n} karar` : "henüz karar yok"],
+    ["Reddedilen güçlü haberler", kk(K.ret, "—"), K.ret?.n ? `${K.ret.n} haber · yön tahmini` : "henüz ölçülmedi"], ["Haberle ek pay", Object.keys(h.boost || {}).map(s => s.split("/")[0]).join(", ") || "yok", "72 saatte kendiliğinden biter"]]
+    .map(([a, b, c]) => `<div class="kpi"><small>${a}</small><b>${esc(b)}</b><span>${esc(c)}</span></div>`).join("");
+  const safe = u => /^https?:\/\//.test(u || "") ? esc(u) : "";
+  $("#nlist").innerHTML = (h.items || []).length ? `<table class="ntb"><tr><th>Zaman</th><th>Kaynak</th><th>Haber</th><th class="r">Puan</th><th>Karar</th></tr>` + h.items.map(i => {
+    const sk = i.skor ?? null, [lab, cls] = NKAR[i.karar] || [i.karar, ""], acts = Object.entries(i.ac || {}).map(([m, r]) => `${m === "PAPER" ? "sanal" : "gerçek"}: ${r}`).join(" · ");
+    return `<tr><td class="dim" style="white-space:nowrap">${tm(i.t)}</td><td class="dim">${esc(i.src)}</td><td>${safe(i.url) ? `<a href="${safe(i.url)}" target="_blank" rel="noopener noreferrer" style="color:inherit">${esc(i.title)}</a>` : esc(i.title)}${i.ozet ? `<div class="dim" style="font-size:12px">${esc(i.ozet)}</div>` : ""}</td>
+      <td class="r"><b class="${sk == null ? "mute" : sk < 0 ? "down" : sk > 0 ? "up" : ""}">${sk == null ? "—" : sg(sk, 2, "")}</b></td><td><span class="tag ${cls}">${esc(lab)}</span>${i.neden ? `<div class="dim" style="font-size:11.5px;max-width:260px">${esc(i.neden)}</div>` : ""}${acts ? `<div style="font-size:11.5px">${esc(acts)}</div>` : ""}</td></tr>`; }).join("") + "</table>"
+    : '<div class="dim">Henüz önemli haber yok.</div>';
+}
+async function newsUnblock() { const r = await post("/api/news/unblock", {}); toast(r.msg, r.ok ? "up" : "down"); loadNews(); }
 async function runPF() { const r = await post("/api/portfoy/run", {}); toast(r.msg, r.ok ? "ok" : "warn"); setTimeout(() => loadPF().catch(() => {}), 60000); }
 function renderLessons() {
   const d = LES; if (!d) return;
@@ -1122,11 +1153,11 @@ const skippedHtml = d => d.skipped?.length ? `<details class="skp"><summary>Nede
 async function loadDecisions() {
   const ds = await api("/api/decisions"), admin = ME.role === "admin";
   $("#dinfo").textContent = ds.length ? `son ${ds.length} karar · her saat başı + önemli olaylarda` : "";
-  const KIND = {saatlik: "Saatlik", olay: "Olay", baslangic: "İlk karar", elle: "Elle", tarama: "Tarama", strateji: "Strateji incelemesi", balina: "Balina refleksi", gunluk: "Günlük trend kolu", portfoy: "Portföy stratejisi"};
+  const KIND = {saatlik: "Saatlik", olay: "Olay", baslangic: "İlk karar", elle: "Elle", tarama: "Tarama", strateji: "Strateji incelemesi", balina: "Balina refleksi", gunluk: "Günlük trend kolu", portfoy: "Portföy stratejisi", haber: "Haber kararı"};
   const html = ds.map(d => `<div class="dec"><div class="dh"><span class="tag karar">${KIND[d.kind] || d.kind}</span><b>${tm(d.t)}</b><span class="mute">${ago(d.t)} önce · ${d.sec} sn${admin && d.usd ? " · API " + fmt(d.usd, 3) + " $" : ""} · ${esc(d.model || "")}</span></div>
     <div class="view">${esc(d.view)}</div>${d.events?.length ? `<div class="dim" style="font-size:12px;margin-bottom:6px">Tetik: ${esc(d.events.join(" · "))}</div>` : ""}
     ${d.actions.map(a => { const ok = /emir verildi|kapatıldı|güncellendi/.test(a.result || ""), pl = a.plan, c = a.card;
-      return `<div class="act2 ${ok ? "ok" : "no"}"><b>${a.type === "buy" ? "AL" : a.type === "close" ? "KAPAT" : a.type === "rebalance" ? "YENİDEN DENGELE" : "GÜNCELLE"} ${a.type === "rebalance" ? "" : esc(base(a.sym || ""))}</b> ${c ? `<span class="tag">${esc(c.kind_tr || "-")}</span> <span class="tag ${c.verdict === "ONAY" ? "kar" : "zarar"}">${c.verdict === "ONAY" ? "✓ RİSK ONAYI" : c.verdict === "VETO" ? "✗ VETO" : "RED"}</span>` : ""} ${a.type === "buy" && a.conviction != null ? `<span class="conv" title="güven %${Math.round(a.conviction * 100)}"><i style="width:${a.conviction * 100}%"></i></span> <span class="mute">%${Math.round(a.conviction * 100)}</span>` : ""}
+      return `<div class="act2 ${ok ? "ok" : "no"}"><b>${a.type === "buy" ? "AL" : a.type === "close" ? "KAPAT" : a.type === "rebalance" ? "YENİDEN DENGELE" : a.type === "haber" ? "HABER" : "GÜNCELLE"} ${a.type === "rebalance" || a.type === "haber" ? "" : esc(base(a.sym || ""))}</b> ${c ? `<span class="tag">${esc(c.kind_tr || "-")}</span> <span class="tag ${c.verdict === "ONAY" ? "kar" : "zarar"}">${c.verdict === "ONAY" ? "✓ RİSK ONAYI" : c.verdict === "VETO" ? "✗ VETO" : "RED"}</span>` : ""} ${a.type === "buy" && a.conviction != null ? `<span class="conv" title="güven %${Math.round(a.conviction * 100)}"><i style="width:${a.conviction * 100}%"></i></span> <span class="mute">%${Math.round(a.conviction * 100)}</span>` : ""}
         ${pl ? `<div class="plan"><span class="tag">stop ${px(pl.stop)}</span>${pl.tp1 ? `<span class="tag">tp1 ${px(pl.tp1)}</span>` : ""}<span class="tag">tp2 ${px(pl.tp2)}</span><span class="tag">risk %${fmt(pl.risk_pct)}</span><span class="tag">en fazla ${pl.max_hours} sa</span><span class="tag">${pl.entry === "taker" ? "hemen" : "pasif limit"}</span></div>` : ""}
         ${c ? committeeHtml(c) : `${a.bull ? `<div class="bb"><span class="up">Boğa:</span> ${esc(a.bull)}</div>` : ""}${a.bear ? `<div class="bb"><span class="down">Ayı:</span> ${esc(a.bear)}</div>` : ""}`}
         <div style="margin:4px 0">${esc(a.reason)}</div><div class="${ok ? "up" : "warn"}" style="font-size:12px">→ ${esc(a.result || "")}</div></div>`; }).join("") || '<div class="dim">Bu kararda yeni işlem yok.</div>'}${skippedHtml(d)}</div>`).join("");
@@ -1221,6 +1252,10 @@ const GROUPS = {
     ["PORTFOY_CORE", "Çekirdek payı (0-1)", "number", "0,7 = kasanın %70'i BTC/ETH çekirdeği, %30'u ML sepeti. 1 = sadece çekirdek (en sade, en az düşüş)."],
     ["PORTFOY_LIVE", "Portföy stratejisi gerçek hesapta", "toggle", "Açık ve 'Gerçek hesapta otomatik işlem' de açıksa aynı dengeleme gerçek Binance hesabında yapılır. Sanal karne yeterli olunca açın."],
     ["OTO_SAATLIK", "Eski saatlik otomatik al-sat", "toggle", "Yerel kurulumlar + Claude saatlik kararı. 2 yıllık testte ve GÜÇLÜ AL 4s/1g uzun tutma testinde piyasayı yenemedi: kapalı önerilir. Radar, grafik, elle işlem ve sohbet kapalıyken de çalışır."],
+    ["HABER", "Haber akışı", "toggle", "Güvenilir kaynaklardaki kritik haberleri okur, Claude ile puanlar. Yorum ve tahmin yazıları elenir."],
+    ["HABER_ISLEM", "Haberle sanal işlem", "toggle", "Acil satış: kritik olumsuz haber + kaynak ve fiyat doğrulaması. Alım: puan 0,85 üstü + doğrulama, sadece BTC/ETH, en çok %10 ek pay."],
+    ["HABER_LIVE", "Haberle gerçek işlem", "toggle", "Bu kurallar geçmiş haber verisiyle test edilemedi. Sanal karne yeterli olmadan açmayın. 'Gerçek hesapta otomatik işlem' de açık olmalı."],
+    ["CRYPTOPANIC_KEY", "CryptoPanic API anahtarı (isteğe bağlı)", "secret", "Ek haber kaynağı. Boş bırakılabilir."],
     ["WHALE_ALERT_KEY", "Whale Alert API anahtarı (isteğe bağlı)", "secret", "whale-alert.io anahtarı girilirse 1M$+ zincir üstü transferlerden borsaya giriş/çıkış izlenir. Anahtarsız da Binance'teki büyük tekil işlemlerden (borsa balinaları) net balina akışı hesaplanır."],
     ["MAX_COST_R", "Maliyet sınırı (R)", "number", "Komisyon+kayma riskin en fazla bu kadarı olabilir (0,15 = stop en az ~%2). Dar stoplu işlemler maliyete yenir."]]],
   paper: ["Sanal kasa (PAPER)", [["PAPER_BALANCE", "Başlangıç sanal kasası (USDT)", "number", "Sıfırlama yapınca bu tutarla başlar."]]],
@@ -1409,6 +1444,7 @@ every(1000, () => visible("chartp") && cmode === "bot" && loadCandles(false));
 every(5000, () => visible("notes") && loadNotes());
 every(1000, () => visible("trades") && loadTrades());
 every(5000, () => visible("decisions") && loadDecisions());
+every(20000, () => visible("news") && loadNews());
 every(15000, () => visible("opps") && loadOpps());
 every(30000, () => visible("macro") && loadMacro());
 every(15000, () => visible("lessons") && loadLessons());

@@ -66,7 +66,7 @@ Sonra tarayıcıda `http://127.0.0.1:8765` → ilk açılışta admin hesabını
 Arayüzde: Ayarlar → Güncelleme → **Tek tıkla güncelle** (admin). Sunucu GitHub'dan yeni kodu çeker ve kendini yeniden başlatır; hesaplar, oturumlar, kasa ve Telegram bağlantısı korunur. Elle:
 
 ```bash
-cd /opt/crypto_bot/aurumquantbot && git pull && systemctl restart kriptoquantbot
+cd /opt/crypto_bot/aurumquantbot && git pull && ../venv/bin/pip install -q -r requirements-sunucu.txt && systemctl restart kriptoquantbot kriptoquantbot-fatih
 ```
 
 Veriler (`/opt/crypto_bot/veri`: kasa, ayarlar, anahtarlar, günlükler) güncellemede korunur ve depoya girmez.

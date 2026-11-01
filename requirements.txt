@@ -9,3 +9,4 @@ pywebview
 pystray
 pillow
 anthropic
+feedparser

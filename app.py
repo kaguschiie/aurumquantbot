@@ -553,6 +553,7 @@ class Handler(BaseHTTPRequestHandler):
                                              for n in (b.notes if b else []) if admin or n.get("acct") in (None, "LIVE")],
                       "/api/candles": lambda: candles(q.get("sym", C.BTC), q.get("tf", "1h"), mode),
                       "/api/macro": macro, "/api/whale": lambda: __import__("zincir").Zincir.shared().snapshot(), "/api/lessons": lambda: lessons(sess), "/api/portfoy": portfoy,
+                      "/api/news": lambda: __import__("haberler").view(admin, hidden=q.get("hepsi") == "1"),
                       "/api/telegram": lambda: __import__("telegram_bot").status(sess["user"]),
                       "/api/mc": lambda: montecarlo(q, mode)}
             if admin:
@@ -753,6 +754,9 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=G.run, args=(say,), name="gecmis", daemon=True).start()
             return self._send(200, {"ok": True, "msg": "Geçmiş Okulu başladı: veri güncelleniyor, tüm coinler test "
                                                        "ediliyor (15-40 dk). Sonuç Ders Defteri sayfasında."})
+        if p == "/api/news/unblock":  # acil durum engelini elle kaldir (yanlis alarm)
+            __import__("haberler").unblock()
+            return self._send(200, {"ok": True, "msg": "Engel kaldırıldı; hedefler sonraki dengelemede geri alınır."})
         if p == "/api/portfoy/run":  # portfoy stratejisi: hedef agirliklari simdi hesapla + yeniden dengele
             started = b and b.run_portfolio()
             return self._send(200, {"ok": bool(started), "msg": "Portföy yeniden dengeleniyor (1 dk sürebilir)..."

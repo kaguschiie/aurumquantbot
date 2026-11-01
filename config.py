@@ -50,6 +50,11 @@ PORTFOY_CORE = 0.7           # kasanin cekirdege ayrilan payi (kalani ML sepeti)
 # Eski saatlik otomatik al-sat (yerel kurulumlar + Claude saatlik karari): 2 yillik testte ve GUCLU AL 4s/1g uzun
 # tutma testinde piyasayi yenemedi -> kapali. Radar, grafik, elle islem ve sohbet calisir.
 OTO_SAATLIK = False
+# Canli haber akisi (haberler.py): kurallar gecmis haber verisiyle test edilemedi -> gercek hesap ayri izinle
+HABER = True                 # haberleri oku + puanla
+HABER_ISLEM = True           # sanal hesapta haberle islem yap
+HABER_LIVE = False           # gercek hesapta haberle islem yap (LIVE_ALLOWED da gerekir)
+CRYPTOPANIC_KEY = ""         # istege bagli ek haber kaynagi
 GUNLUK_TREND = False         # Gunluk Trend Kolu (Donchian-20, top-30): 2022-26 testinde Sharpe 0.14 -> kapali (kod duruyor)
 MAX_COST_R = 0.15           # komisyon+kayma (2*FEE+2*SLIPPAGE) riskin en fazla bu kadari: dar stoplu islem maliyete yenir
 MIN_HISTORY_DAYS = 365      # yeni listelenen (pompa-dump agirlikli) coinler evrene girmez
@@ -140,9 +145,10 @@ EDITABLE = ["LIVE_ALLOWED", "API_KEY", "API_SECRET", "TELEGRAM_TOKEN", "TELEGRAM
             "KILL_DD_PCT", "COOLDOWN_MIN", "FEE", "PAPER_BALANCE", "BE_TRIGGER_R", "TRAIL_ATR", "RADAR_MIN_VOL",
             "QUOTA_SAVER", "REVIEW_HOURS", "REVIEW_MODEL", "LOCAL_EVERY_MIN", "WHALE_ALERT_KEY", "CLAUDE_CLI_PATH",
             "MAX_COST_R", "PORTFOY", "PORTFOY_LIVE", "PORTFOY_CORE", "OTO_SAATLIK",
+            "HABER", "HABER_ISLEM", "HABER_LIVE", "CRYPTOPANIC_KEY",
             "UPDATE_REPO", "UPDATE_TOKEN", "AUTO_UPDATE_CHECK", "SERVER_MODE"]
 USER_EDITABLE = {"API_KEY", "API_SECRET"}
-SECRETS = {"API_KEY", "API_SECRET", "TELEGRAM_TOKEN", "CLAUDE_API_KEY", "WHALE_ALERT_KEY", "UPDATE_TOKEN"}
+SECRETS = {"API_KEY", "API_SECRET", "TELEGRAM_TOKEN", "CLAUDE_API_KEY", "WHALE_ALERT_KEY", "UPDATE_TOKEN", "CRYPTOPANIC_KEY"}
 
 
 def pause_flag(mode):

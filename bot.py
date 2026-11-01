@@ -21,6 +21,7 @@ import data as D
 import dersler as L
 import gecmis as G
 import gunluk as GT
+import haberler as HB
 import hafiza as HF
 import komite as K
 import kontrolor as KT
@@ -890,6 +891,7 @@ class Bot:
         except Exception as e:
             log.warning("monte carlo kalibrasyon: %s", e)
         threading.Thread(target=L.loop, args=(self.stop, lambda t: self.say(t, kind="oz")), name="ders", daemon=True).start()
+        threading.Thread(target=HB.loop, args=(self,), name="haber", daemon=True).start()
         self.refresh_prices()
         for a in self.accounts.values():
             if a.live:
@@ -1346,7 +1348,8 @@ class Bot:
                    "usd": round(usd, 4), "model": model, "sec": round(time.time() - t0, 2), "skipped": list(skipped)}
             self.ag["decisions"] = (self.ag["decisions"] + [rec])[-200:]
         head = {"saatlik": "Saatlik karar", "olay": "Olay kararı", "baslangic": "İlk karar", "elle": "Elle istenen karar",
-                "tarama": "Tarama kararı", "strateji": "Strateji incelemesi", "portfoy": "Portföy stratejisi"}.get(kind, "Karar")
+                "tarama": "Tarama kararı", "strateji": "Strateji incelemesi", "portfoy": "Portföy stratejisi",
+                "haber": "Haber kararı"}.get(kind, "Karar")
         txt = f"{head} ({model}, {rec['sec']:.1f} sn): {view}"
         if events:
             txt += "\nTetik: " + "; ".join(events)
@@ -1457,7 +1460,8 @@ class Bot:
         pf = self.ag.setdefault("pf", {})
         week = time.strftime("%G-%V", time.gmtime())
         ml_day = force_ml or pf.get("ml_week") != week  # haftada bir (Pazartesi ya da hafta icindeki ilk calisma)
-        tg, info = PF.targets(self.ex, pf, ml_day)
+        raw, info = PF.targets(self.ex, pf, ml_day)
+        tg, hnote = HB.adjust(raw)  # acil durum engeli / haber alimi gecici payi (izinli hesaplara)
         if ml_day:
             pf["ml_week"] = week
         for s in tg:  # stream'de olmayan coin: anlik fiyat REST ile
@@ -1481,12 +1485,13 @@ class Bot:
                 model = "Claude kontrolör"
                 cur = {s: c for s, _, c, _, _ in buys}
                 for s, k in objs.items():
-                    tg[s] = cur[s] if k == "ertele" else cur[s] + (tg[s] - cur[s]) / 2
+                    for d in (tg, raw):
+                        d[s] = cur[s] if k == "ertele" else cur[s] + (d.get(s, 0.0) - cur[s]) / 2
             except A.AgentError as e:
                 cnote = f"Claude'a ulaşılamadı ({e}); plan kuralla uygulandı."
         for a in accts:
             try:
-                res[a.mode] = a.rebalance(tg, ml_day)
+                res[a.mode] = a.rebalance(tg if (C.HABER_LIVE if a.live else C.HABER_ISLEM) else raw, ml_day)
             except ccxt.BaseError as e:
                 res[a.mode] = [f"borsa hatası: {str(e)[:120]}"]
         ml = info["ml"]
@@ -1500,6 +1505,8 @@ class Bot:
             lines.insert(0, ozet)
         if cnote:
             lines.append("Kontrolör: " + cnote)
+        if hnote:
+            lines.append("Haber: " + hnote)
         pf.update(last=time.time(), targets=tg, info={"core": info["core"]}, result=res, ozet=ozet, kontrol=cnote)
         results = [{"type": "rebalance", "sym": "PORTFÖY", "label": "Yeniden dengeleme", "reason": "hedef ağırlıklar",
                     "result": "; ".join(f"{'sanal' if m == 'PAPER' else 'gerçek'}: " + " / ".join(r) for m, r in res.items())}]

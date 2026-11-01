@@ -32,7 +32,7 @@ CONTEXT = {"rejim_dusus", "rejim_trend", "makro_riskoff", "altin"}  # tek basina
 REG_TR = {"trend": "yükseliş trendi", "yatay": "yatay", "dusus": "sert düşüş"}
 REASON_TR = {"HEDEF": "hedef", "STOP": "stop", "IZ_STOP": "iz süren stop", "BASABAS": "başabaş stopu",
              "SURE_DOLDU": "süre doldu", "CLAUDE_KAPATTI": "karar beyni kapattı", "ELLE_KAPATILDI": "elle kapatıldı",
-             "ZAMAN_STOPU": "zaman stopu (ilerlemedi)", "BALINA_SATIS": "balina satışı refleksi", "PORTFOY_CIKIS": "portföy dengeleme",
+             "ZAMAN_STOPU": "zaman stopu (ilerlemedi)", "BALINA_SATIS": "balina satışı refleksi", "PORTFOY_CIKIS": "portföy dengeleme", "HABER_ACIL": "haber: acil satış",
              "GUNLUK_CIKIS": "10 günlük dip kapanışı (trend bitti)"}
 _LOCK = threading.RLock()
 STATE = {"weights": {}, "traps": [], "golden": [], "real": [], "n": 0, "base": 0.0, "t": 0.0, "dirty": True,
