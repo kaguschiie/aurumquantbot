@@ -27,9 +27,16 @@ mkdir -p $DIR/secim && cp $REPO/secim.html $DIR/secim/index.html
     echo "$NAME.$HOST {"
     echo "    encode gzip"
     echo "    reverse_proxy 127.0.0.1:$PORT"
+    echo "    handle_errors {"   # bot yeniden baslarken hata sayfasi yerine kendini yenileyen bilgi
+    echo "        header Content-Type \"text/plain; charset=utf-8\""
+    echo "        header Refresh \"5\""
+    echo "        respond \"Bot yeniden basliyor, bu sayfa kendiliginden yenilenecek...\" 503"
+    echo "    }"
     echo "}"
   done
-} > /etc/caddy/Caddyfile
+} > /tmp/kqb.Caddyfile
+caddy validate --adapter caddyfile --config /tmp/kqb.Caddyfile   # gecersizse calisan yapilandirmaya dokunulmaz
+mv /tmp/kqb.Caddyfile /etc/caddy/Caddyfile
 systemctl enable caddy >/dev/null 2>&1 || true
 systemctl restart caddy
 
@@ -52,7 +59,7 @@ Environment=KQB_UNIT=$UNIT.service
 Environment=PYTHONIOENCODING=utf-8
 ExecStart=$DIR/venv/bin/python app.py --sunucu
 Restart=always
-RestartSec=10
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target

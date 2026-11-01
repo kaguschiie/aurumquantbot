@@ -1329,9 +1329,19 @@ async function loadUpdate(fresh) {
 async function applyUpdate() {
   if (!confirm("Yeni sürüm indirilip kurulsun mu? Uygulama birkaç saniye kapanıp yeniden açılacak; açık pozisyonlar borsadaki stop emirleriyle korunur.")) return;
   const r = await api("/api/update/apply", {}); toast(r.msg, r.ok ? "up" : "down");
-  if (r.ok) { const iv = setInterval(() => loadUpdate().catch(() => { clearInterval(iv); setTimeout(() => location.reload(), 12000); }), 1500); }
+  if (r.ok) waitRestart("Güncelleniyor...");
 }
-async function appRestart() { if (!confirm("Uygulama yeniden başlatılsın mı?")) return; const r = await api("/api/app/restart", {}); toast(r.msg); setTimeout(() => location.reload(), 9000); }
+function waitRestart(msg) {  // bot kapanip acilana kadar bekle; hazir olmadan sayfayi yenileme (hata sayfasi kalmasin)
+  document.body.insertAdjacentHTML("beforeend", `<div class="wn" id="restarting"><div class="wc"><h2>${esc(msg)}</h2><div class="sub" style="margin:0">En fazla 1-2 dakika sürer. Hesaplar ve kasa korunuyor, sayfa kendiliğinden açılacak.</div></div></div>`);
+  let down = false; const t0 = Date.now();
+  const iv = setInterval(async () => {
+    let up = false;
+    try { up = (await fetch("/api/app", {cache: "no-store"})).ok; } catch (e) {}
+    if (!up) down = true;
+    if (up && (down || Date.now() - t0 > 180000)) { clearInterval(iv); location.reload(); }
+  }, 2000);
+}
+async function appRestart() { if (!confirm("Uygulama yeniden başlatılsın mı?")) return; const r = await api("/api/app/restart", {}); toast(r.msg); waitRestart("Yeniden başlatılıyor..."); }
 async function loadServer() {
   const s = await api("/api/server"), T = s.tunnel, TS = s.tailscale;
   const link = u => `<div class="tgrow" style="margin:4px 0;padding:6px 10px"><code style="user-select:all">${esc(u)}</code><span class="grow"></span><button class="btn sm" onclick="navigator.clipboard.writeText('${esc(u)}');toast('Kopyalandı')">Kopyala</button></div>`;
