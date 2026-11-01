@@ -502,7 +502,8 @@ class Handler(BaseHTTPRequestHandler):
         # (hepsinde giris zorunlu). POST'larda ozel baslik zorunlu: baska siteler istek atamaz.
         import sunucu
         host = self.headers.get("Host") or ""
-        ok = host in HOSTS or C.SERVER_MODE or host == sunucu.tunnel_host()
+        loop = re.fullmatch(r"(127\.0\.0\.1|localhost)(:\d+)?", host)  # SSH tuneli farkli yerel porttan gelebilir
+        ok = host in HOSTS or bool(loop) or C.SERVER_MODE or host == sunucu.tunnel_host()
         return ok and (not post or self.headers.get("X-KQB") == "1")
 
     def _local(self):
