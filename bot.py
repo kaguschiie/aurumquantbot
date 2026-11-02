@@ -119,6 +119,12 @@ class Account:
         d = self.st["day"]
         return (self.equity() / d["eq"] - 1) * 100 if d.get("eq") else 0.0
 
+    def roll_pct(self):
+        """Son 24 saatte kasa degisimi: dengeleme gece yarisindan hemen sonra calistigi icin gunluk taban (day_pct) sifira yakindir."""
+        cut = time.time() - 86400
+        old = next((c[1] for c in self.st["curve"] if c[0] >= cut), None)
+        return (self.equity() / old - 1) * 100 if old else 0.0
+
     def risk_mult(self):
         """Kartopu kasa: risk her zaman guncel kasanin yuzdesidir (kar buyudukce pozisyon buyur). Zirveden dususte,
         anaparanin altinda ve ust uste kayiplarda risk kuculur; kar tamponu varken en fazla 1,2 kat. Donus: (carpan, sebep)."""
@@ -158,6 +164,8 @@ class Account:
             return f"koruma molası ({int((st['pause_until'] - time.time()) / 60)} dk)"
         if self.day_pct() <= -C.DAILY_LOSS_PCT:
             return f"günlük zarar limiti %{C.DAILY_LOSS_PCT:g} doldu (yarın UTC sıfırlanır)"
+        if portfolio and self.roll_pct() <= -C.DAILY_LOSS_PCT:
+            return f"kasa son 24 saatte %{-self.roll_pct():.1f} düştü (limit %{C.DAILY_LOSS_PCT:g}), alımlar bekliyor"
         if not portfolio and len([p for p in st["positions"].values() if p.get("kind") != PF.KIND]) + \
                 len(st["pending"]) >= C.MAX_POSITIONS:
             return "pozisyon limiti dolu"
@@ -561,8 +569,9 @@ class Account:
         self.say(f"{s} portföy AZALTILDI -{qty:g} @ {px:g} ({qty * px:.2f} USDT) | {why}", True)
         return None
 
-    def rebalance(self, tg, ml_day):
-        """Hedef agirliklar {sym: 0..1} (portfoy tabani = nakit + strateji pozisyonlari). Once satislar, sonra alislar."""
+    def rebalance(self, tg, ml_day, objs=None):
+        """Hedef agirliklar {sym: 0..1} (portfoy tabani = nakit + strateji pozisyonlari). Once satislar, sonra alislar.
+        objs: Claude kontrolor itirazlari {sym: ertele/yari}; bu hesabin alimina uygulanir, satisa donusmez."""
         with self.b.lock:
             held = {s: p for s, p in self.st["positions"].items() if p.get("kind") == PF.KIND}
             px = self.bid
@@ -575,9 +584,14 @@ class Account:
             if not px.get(s):
                 continue
             cur = held[s]["qty"] * px[s] / base if s in held else 0.0
-            t = tg.get(s, 0.0)
+            t0 = tg.get(s, 0.0)
+            t = t0
+            if objs and s in objs and t0 > cur:
+                if objs[s] == "ertele":
+                    continue
+                t = cur + (t0 - cur) / 2
             d = t - cur
-            if s in held and t < 0.005:
+            if s in held and t0 < 0.005:
                 sells.append((s, None, f"hedef ağırlık 0 (şu an %{cur * 100:.1f})"))
             elif abs(d) >= band or (s not in held and t >= 0.01):
                 (buys if d > 0 else sells).append((s, abs(d) * base, f"ağırlık %{cur * 100:.1f} → %{t * 100:.1f}"))
@@ -1477,7 +1491,7 @@ class Bot:
             pf["ml_card"] = PF.ml_card(self.ex, pf)
         except Exception as e:
             log.warning("karne: %s", e)
-        buys = self._pf_buys(tg, info, ml_day)
+        buys, objs, shown = self._pf_buys(tg, info, ml_day), {}, dict(tg)  # shown: ekrandaki hedef (sanal hesaba gore)
         if buys and A.brain() != "local":  # dusunerek alim: Claude kontrolor (sadece ertele / yariya indir)
             try:
                 ozet, objs, cnote, usd = KT.review(A.ask_json, buys, self._pf_context(info))
@@ -1485,13 +1499,12 @@ class Bot:
                 model = "Claude kontrolör"
                 cur = {s: c for s, _, c, _, _ in buys}
                 for s, k in objs.items():
-                    for d in (tg, raw):
-                        d[s] = cur[s] if k == "ertele" else cur[s] + (d.get(s, 0.0) - cur[s]) / 2
+                    shown[s] = cur[s] if k == "ertele" else cur[s] + (tg[s] - cur[s]) / 2
             except A.AgentError as e:
                 cnote = f"Claude'a ulaşılamadı ({e}); plan kuralla uygulandı."
         for a in accts:
             try:
-                res[a.mode] = a.rebalance(tg if (C.HABER_LIVE if a.live else C.HABER_ISLEM) else raw, ml_day)
+                res[a.mode] = a.rebalance(tg if (C.HABER_LIVE if a.live else C.HABER_ISLEM) else raw, ml_day, objs)
             except ccxt.BaseError as e:
                 res[a.mode] = [f"borsa hatası: {str(e)[:120]}"]
         ml = info["ml"]
@@ -1500,14 +1513,14 @@ class Bot:
         picks = ", ".join(s.split("/")[0] for s, _ in ml["picks"]) or "-"
         lines.append("Haftalık sepet: " + ("dinlenmede (model son 6 ayda isabet kaybetti, pay nakitte)" if ml.get("rest") else
                                           f"{picks}" if ml["reg"] else "piyasa zayıf, sepet nakitte"))
-        lines.append(f"Nakitte bekleyen: %{max(0.0, 1 - sum(tg.values())) * 100:.0f}")
+        lines.append(f"Nakitte bekleyen: %{max(0.0, 1 - sum(shown.values())) * 100:.0f}")
         if ozet:
             lines.insert(0, ozet)
         if cnote:
             lines.append("Kontrolör: " + cnote)
         if hnote:
             lines.append("Haber: " + hnote)
-        pf.update(last=time.time(), targets=tg, info={"core": info["core"]}, result=res, ozet=ozet, kontrol=cnote)
+        pf.update(last=time.time(), targets=shown, info={"core": info["core"]}, result=res, ozet=ozet, kontrol=cnote)
         results = [{"type": "rebalance", "sym": "PORTFÖY", "label": "Yeniden dengeleme", "reason": "hedef ağırlıklar",
                     "result": "; ".join(f"{'sanal' if m == 'PAPER' else 'gerçek'}: " + " / ".join(r) for m, r in res.items())}]
         self._publish("portfoy", [], " | ".join(lines), results, usd, model, t0)

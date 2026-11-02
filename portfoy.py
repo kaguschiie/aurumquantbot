@@ -100,10 +100,11 @@ def raw_feats(c, qv, tbq, age):
 
 
 def ranked(F, U, btc):
+    """btc, U'dan uzun olabilir: ortalamalar tam seride hesaplanir, sonra U gunlerine hizalanir."""
     Fr = {k: v.where(U).rank(axis=1, pct=True) for k, v in F.items()}
-    Fr["btc_r30"] = pd.DataFrame(np.repeat((btc / btc.shift(30) - 1).values[:, None], U.shape[1], 1), U.index, U.columns)
-    Fr["btc_sma200"] = pd.DataFrame(np.repeat((btc / btc.rolling(200).mean() - 1).values[:, None], U.shape[1], 1),
-                                    U.index, U.columns)
+    macro = lambda s: pd.DataFrame(np.repeat(s.reindex(U.index).values[:, None], U.shape[1], 1), U.index, U.columns)
+    Fr["btc_r30"] = macro(btc / btc.shift(30) - 1)
+    Fr["btc_sma200"] = macro(btc / btc.rolling(200).mean() - 1)
     return Fr
 
 
@@ -139,13 +140,16 @@ def ml_pick(ex, cache, say=lambda t: None):
     age = pd.DataFrame({s: (c.index - pd.to_datetime(day0[s], unit="ms")).days + 1 for s in c.columns}, index=c.index)
     F, U = raw_feats(c, qv, tbq, age)
     btc = klines(ex, "BTC/USDT", 260)["c"]
-    Fr = ranked(F, U, btc.reindex(c.index))
+    Fr = ranked(F, U, btc)
     last = c.index[-1]
     u = U.loc[last]
     cols = u.index[u.values]
     if len(cols) < 10:
         return [], False, "evren çok küçük"
     X = pd.DataFrame({k: Fr[k].loc[last, cols] for k in m["feats"]})
+    empty = [k for k in m["feats"] if X[k].isna().all()]
+    if empty:  # egitimdeki ozellik canlida bos: model test edilen model olmaz, onceki secim korunur
+        raise ValueError(f"boş özellik: {', '.join(empty)}")
     sc = pd.Series(m["model"].predict(X[m["feats"]]), index=cols).sort_values(ascending=False)
     reg = bool(btc.iloc[-1] > btc.rolling(100).mean().iloc[-1])
     return [(s, round(float(v), 4)) for s, v in sc.head(K).items()], reg, f"evren {len(cols)} coin, model {time.strftime('%Y-%m-%d', time.gmtime(m.get('t', 0)))}"
@@ -170,7 +174,7 @@ def targets(ex, st, ml_day, core_frac=None):
                 st["ml_hist"] = (st.get("ml_hist", []) + [{"t": time.time(), "px": px, "picks": [s for s, _ in picks]}])[-60:]
         except Exception as e:  # ML hatasi cekirdegi durdurmasin; onceki secim korunur
             log.warning("ML sepeti: %s", e)
-            st.setdefault("ml", {"picks": [], "reg": False, "note": f"hata: {e}", "t": time.time()})
+            st.setdefault("ml", {"picks": [], "reg": False, "t": time.time()})["note"] = f"hata: {e}"
     ml = st["ml"]
     ic = (_M or {}).get("ic")
     ml["rest"] = ic is not None and ic < MIN_IC  # saglik kontrolu: tahmin gucu kaybolduysa sepet nakitte
