@@ -1,0 +1,22 @@
+﻿ornek 19066 ozellik 17 161s
+2019 egitim 334 IC nan
+2020 egitim 1572 IC 0.056
+2021 egitim 3860 IC 0.089
+2022 egitim 6459 IC 0.137
+2023 egitim 9055 IC 0.113
+2024 egitim 11654 IC 0.142
+2025 egitim 14302 IC 0.256
+2026 egitim 16896 IC 0.252
+IC ML  {2019: nan, 2020: np.float64(0.056), 2021: np.float64(0.089), 2022: np.float64(0.137), 2023: np.float64(0.113), 2024: np.float64(0.142), 2025: np.float64(0.256), 2026: np.float64(0.252)} 
+IC r30 {2019: np.float64(0.005), 2020: np.float64(0.012), 2021: np.float64(-0.057), 2022: np.float64(-0.038), 2023: np.float64(-0.05), 2024: np.float64(-0.043), 2025: np.float64(0.034), 2026: np.float64(-0.085)}
+ML_K3_rgyok egitim(2019-21) {'cagr': np.float64(90.2), 'mdd': np.float64(-72.5), 'sharpe': np.float64(1.18), 'calmar': np.float64(1.24), 'tot': np.float64(589.1)} | test {'cagr': np.float64(-2.3), 'mdd': np.float64(-73.1), 'sharpe': np.float64(0.3), 'calmar': np.float64(-0.03), 'tot': np.float64(-10.8)} | devir 51.1
+ML_K3_rgsma100 egitim(2019-21) {'cagr': np.float64(129.6), 'mdd': np.float64(-39.2), 'sharpe': np.float64(1.52), 'calmar': np.float64(3.31), 'tot': np.float64(1113.6)} | test {'cagr': np.float64(27.6), 'mdd': np.float64(-40.1), 'sharpe': np.float64(0.82), 'calmar': np.float64(0.69), 'tot': np.float64(223.8)} | devir 29.6
+ML_K3_rgsma200 egitim(2019-21) {'cagr': np.float64(77.9), 'mdd': np.float64(-62.4), 'sharpe': np.float64(1.15), 'calmar': np.float64(1.25), 'tot': np.float64(463.5)} | test {'cagr': np.float64(15.3), 'mdd': np.float64(-59.9), 'sharpe': np.float64(0.55), 'calmar': np.float64(0.26), 'tot': np.float64(98.9)} | devir 29.5
+ML_K5_rgyok egitim(2019-21) {'cagr': np.float64(115.8), 'mdd': np.float64(-72.9), 'sharpe': np.float64(1.35), 'calmar': np.float64(1.59), 'tot': np.float64(907.7)} | test {'cagr': np.float64(11.0), 'mdd': np.float64(-75.5), 'sharpe': np.float64(0.49), 'calmar': np.float64(0.15), 'tot': np.float64(65.5)} | devir 51.3
+ML_K5_rgsma100 egitim(2019-21) {'cagr': np.float64(146.8), 'mdd': np.float64(-40.5), 'sharpe': np.float64(1.71), 'calmar': np.float64(3.62), 'tot': np.float64(1407.8)} | test {'cagr': np.float64(43.4), 'mdd': np.float64(-41.1), 'sharpe': np.float64(1.08), 'calmar': np.float64(1.06), 'tot': np.float64(467.9)} | devir 30.8
+ML_K5_rgsma200 egitim(2019-21) {'cagr': np.float64(92.3), 'mdd': np.float64(-59.3), 'sharpe': np.float64(1.29), 'calmar': np.float64(1.56), 'tot': np.float64(611.9)} | test {'cagr': np.float64(30.0), 'mdd': np.float64(-44.4), 'sharpe': np.float64(0.83), 'calmar': np.float64(0.68), 'tot': np.float64(254.2)} | devir 30.3
+ML_K10_rgyok egitim(2019-21) {'cagr': np.float64(162.2), 'mdd': np.float64(-69.8), 'sharpe': np.float64(1.52), 'calmar': np.float64(2.32), 'tot': np.float64(1706.4)} | test {'cagr': np.float64(-10.8), 'mdd': np.float64(-80.6), 'sharpe': np.float64(0.16), 'calmar': np.float64(-0.13), 'tot': np.float64(-42.3)} | devir 49.0
+ML_K10_rgsma100 egitim(2019-21) {'cagr': np.float64(248.5), 'mdd': np.float64(-43.3), 'sharpe': np.float64(2.15), 'calmar': np.float64(5.74), 'tot': np.float64(4147.6)} | test {'cagr': np.float64(20.5), 'mdd': np.float64(-45.3), 'sharpe': np.float64(0.66), 'calmar': np.float64(0.45), 'tot': np.float64(145.6)} | devir 30.6
+ML_K10_rgsma200 egitim(2019-21) {'cagr': np.float64(87.1), 'mdd': np.float64(-55.7), 'sharpe': np.float64(1.23), 'calmar': np.float64(1.56), 'tot': np.float64(556.6)} | test {'cagr': np.float64(9.2), 'mdd': np.float64(-58.7), 'sharpe': np.float64(0.42), 'calmar': np.float64(0.16), 'tot': np.float64(52.9)} | devir 30.7
+BTC {'cagr': np.float64(132.3), 'mdd': np.float64(-63.3), 'sharpe': np.float64(1.51), 'calmar': np.float64(2.09), 'tot': np.float64(1156.8)} {'cagr': np.float64(11.4), 'mdd': np.float64(-66.9), 'sharpe': np.float64(0.47), 'calmar': np.float64(0.17), 'tot': np.float64(68.0)}
+sure 203s

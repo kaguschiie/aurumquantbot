@@ -1,0 +1,33 @@
+﻿ornek 19066 ozellik 17 47s
+ozellik onemi (2023+ test, permutasyon):
+vol30         21.52
+age           11.92
+r1             2.82
+dhi90          2.41
+vol7           1.92
+btc_r30        1.86
+r60            1.75
+vsp7           1.63
+r14            0.79
+r3             0.64
+r7             0.49
+btc_sma200     0.45
+adv            0.33
+akis7          0.21
+sma50         -0.15
+r90           -0.85
+r30           -0.92
+
+Test IC (2022+): ML 0.176 | -r7 (haftalik donus) 0.014 | -r1 0.005 | adv (buyukluk) 0.066 | -vol30 (dusuk oynaklik) 0.184 | age 0.148 | r30 -0.034
+
+ML K5 sma100                 test CAGR   43.4 DD  -41.1 Sh 1.08 | yillar {2019: np.float64(0.0), 2020: np.float64(138.0), 2021: np.float64(497.0), 2022: np.float64(-26.0), 2023: np.float64(61.0), 2024: np.float64(146.0), 2025: np.float64(47.0), 2026: np.float64(21.0)}
+ML K5 1 gun gecikme          test CAGR   37.2 DD  -36.2 Sh 0.99 | yillar {2019: np.float64(0.0), 2020: np.float64(138.0), 2021: np.float64(422.0), 2022: np.float64(-21.0), 2023: np.float64(48.0), 2024: np.float64(118.0), 2025: np.float64(42.0), 2026: np.float64(17.0)}
+ML K5 2x maliyet             test CAGR   38.0 DD  -43.3 Sh 0.99 | yillar {2019: np.float64(0.0), 2020: np.float64(118.0), 2021: np.float64(444.0), 2022: np.float64(-27.0), 2023: np.float64(50.0), 2024: np.float64(134.0), 2025: np.float64(42.0), 2026: np.float64(19.0)}
+ML K5 maliyet %0.5           test CAGR   31.1 DD  -47.4 Sh 0.86 | yillar {2019: np.float64(0.0), 2020: np.float64(95.0), 2021: np.float64(381.0), 2022: np.float64(-28.0), 2023: np.float64(36.0), 2024: np.float64(120.0), 2025: np.float64(35.0), 2026: np.float64(16.0)}
+ML K3                        test CAGR   27.6 DD  -40.1 Sh 0.82 | yillar {2019: np.float64(0.0), 2020: np.float64(130.0), 2021: np.float64(381.0), 2022: np.float64(-26.0), 2023: np.float64(112.0), 2024: np.float64(36.0), 2025: np.float64(38.0), 2026: np.float64(5.0)}
+ML K8                        test CAGR   26.7 DD  -44.6 Sh 0.78 | yillar {2019: np.float64(0.0), 2020: np.float64(102.0), 2021: np.float64(1026.0), 2022: np.float64(-27.0), 2023: np.float64(64.0), 2024: np.float64(74.0), 2025: np.float64(18.0), 2026: np.float64(16.0)}
+ML K15                       test CAGR   12.6 DD  -53.8 Sh 0.49 | yillar {2019: np.float64(0.0), 2020: np.float64(175.0), 2021: np.float64(877.0), 2022: np.float64(-24.0), 2023: np.float64(58.0), 2024: np.float64(36.0), 2025: np.float64(-9.0), 2026: np.float64(8.0)}
+tek faktor -r7               test CAGR  -52.7 DD  -97.5 Sh -0.84 | yillar {2019: np.float64(9.0), 2020: np.float64(61.0), 2021: np.float64(125.0), 2022: np.float64(-28.0), 2023: np.float64(-20.0), 2024: np.float64(-72.0), 2025: np.float64(-78.0), 2026: np.float64(-29.0)}
+tek faktor buyukluk          test CAGR   16.2 DD  -42.9 Sh 0.56 | yillar {2019: np.float64(76.0), 2020: np.float64(131.0), 2021: np.float64(327.0), 2022: np.float64(-26.0), 2023: np.float64(42.0), 2024: np.float64(54.0), 2025: np.float64(21.0), 2026: np.float64(-4.0)}
+tek faktor dusuk oynaklik    test CAGR   20.8 DD  -39.6 Sh 0.72 | yillar {2019: np.float64(19.0), 2020: np.float64(186.0), 2021: np.float64(250.0), 2022: np.float64(-20.0), 2023: np.float64(52.0), 2024: np.float64(72.0), 2025: np.float64(20.0), 2026: np.float64(-5.0)}
+buyukluk+dusuk oynaklik      test CAGR   21.9 DD  -42.3 Sh 0.74 | yillar {2019: np.float64(67.0), 2020: np.float64(170.0), 2021: np.float64(335.0), 2022: np.float64(-24.0), 2023: np.float64(47.0), 2024: np.float64(53.0), 2025: np.float64(49.0), 2026: np.float64(-2.0)}

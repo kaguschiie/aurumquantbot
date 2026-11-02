@@ -1,0 +1,4 @@
+# 2026-11-02, veri 2026-10 sonuna kadar. Limit: kasa bir gunde bu kadar dustuyse o gun alim yok, satis serbest.
+limit yok  TEST yillik   25.2% dusus  -24.1% Sharpe 0.97 | EGITIM yillik   67.4% dusus  -24.3% | test gunu engel 0/1759 | {2022: -23, 2023: 55, 2024: 77, 2025: 17, 2026: 14}
+%3         TEST yillik   24.8% dusus  -24.1% Sharpe 0.96 | EGITIM yillik   68.1% dusus  -24.2% | test gunu engel 44/1759 | {2022: -23, 2023: 52, 2024: 77, 2025: 17, 2026: 14}
+%5         TEST yillik   25.3% dusus  -24.1% Sharpe 0.97 | EGITIM yillik   67.8% dusus  -24.3% | test gunu engel 8/1759 | {2022: -23, 2023: 55, 2024: 77, 2025: 17, 2026: 14}

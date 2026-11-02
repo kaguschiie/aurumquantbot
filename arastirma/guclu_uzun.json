@@ -1,0 +1,426 @@
+{
+ "1g": {
+  "egitim|hepsi|h1": {
+   "n": 8501,
+   "ort_kirp": 0.12,
+   "medyan": -1.16,
+   "kazanma": 0.43,
+   "fazla_kirp": -0.03,
+   "fazla_medyan": -1.45,
+   "t": 1.91
+  },
+  "egitim|hepsi|h3": {
+   "n": 8500,
+   "ort_kirp": 1.53,
+   "medyan": -0.85,
+   "kazanma": 0.47,
+   "fazla_kirp": 0.02,
+   "fazla_medyan": -2.43,
+   "t": 0.57
+  },
+  "egitim|hepsi|h7": {
+   "n": 8501,
+   "ort_kirp": 4.23,
+   "medyan": -0.98,
+   "kazanma": 0.48,
+   "fazla_kirp": -1.17,
+   "fazla_medyan": -4.52,
+   "t": 0.37
+  },
+  "egitim|hepsi|h14": {
+   "n": 8498,
+   "ort_kirp": 9.42,
+   "medyan": 0.56,
+   "kazanma": 0.51,
+   "fazla_kirp": -2.22,
+   "fazla_medyan": -6.77,
+   "t": 0.57
+  },
+  "egitim|hepsi|h30": {
+   "n": 8488,
+   "ort_kirp": 20.05,
+   "medyan": -0.16,
+   "kazanma": 0.5,
+   "fazla_kirp": -6.9,
+   "fazla_medyan": -11.28,
+   "t": 0.58
+  },
+  "egitim|hepsi|ozet_cikis": {
+   "n": 8496,
+   "ort_kirp": 10.27,
+   "medyan": -6.47,
+   "kazanma": 0.33
+  },
+  "egitim|hepsi|trend_cikis": {
+   "n": 8496,
+   "ort_kirp": 10.43,
+   "medyan": -6.43,
+   "kazanma": 0.34
+  },
+  "egitim|BTC>SMA200|h1": {
+   "n": 7645,
+   "ort_kirp": 0.13,
+   "medyan": -1.19,
+   "kazanma": 0.43,
+   "fazla_kirp": -0.02,
+   "fazla_medyan": -1.51,
+   "t": 1.23
+  },
+  "egitim|BTC>SMA200|h3": {
+   "n": 7644,
+   "ort_kirp": 1.51,
+   "medyan": -0.96,
+   "kazanma": 0.47,
+   "fazla_kirp": 0.08,
+   "fazla_medyan": -2.5,
+   "t": 0.38
+  },
+  "egitim|BTC>SMA200|h7": {
+   "n": 7645,
+   "ort_kirp": 4.19,
+   "medyan": -1.3,
+   "kazanma": 0.47,
+   "fazla_kirp": -1.32,
+   "fazla_medyan": -4.63,
+   "t": 0.26
+  },
+  "egitim|BTC>SMA200|h14": {
+   "n": 7643,
+   "ort_kirp": 9.58,
+   "medyan": -0.11,
+   "kazanma": 0.5,
+   "fazla_kirp": -6.67,
+   "fazla_medyan": -7.02,
+   "t": 0.46
+  },
+  "egitim|BTC>SMA200|h30": {
+   "n": 7634,
+   "ort_kirp": 20.51,
+   "medyan": -1.21,
+   "kazanma": 0.49,
+   "fazla_kirp": -16.99,
+   "fazla_medyan": -11.56,
+   "t": 0.57
+  },
+  "egitim|BTC>SMA200|ozet_cikis": {
+   "n": 7640,
+   "ort_kirp": 10.68,
+   "medyan": -6.77,
+   "kazanma": 0.32
+  },
+  "egitim|BTC>SMA200|trend_cikis": {
+   "n": 7640,
+   "ort_kirp": 10.97,
+   "medyan": -6.79,
+   "kazanma": 0.33
+  },
+  "test|hepsi|h1": {
+   "n": 18356,
+   "ort_kirp": -0.73,
+   "medyan": -1.15,
+   "kazanma": 0.41,
+   "fazla_kirp": -0.37,
+   "fazla_medyan": -1.09,
+   "t": -2.51
+  },
+  "test|hepsi|h3": {
+   "n": 18340,
+   "ort_kirp": -0.85,
+   "medyan": -1.71,
+   "kazanma": 0.42,
+   "fazla_kirp": -0.52,
+   "fazla_medyan": -1.86,
+   "t": -3.73
+  },
+  "test|hepsi|h7": {
+   "n": 18312,
+   "ort_kirp": -0.61,
+   "medyan": -2.98,
+   "kazanma": 0.42,
+   "fazla_kirp": -0.53,
+   "fazla_medyan": -2.76,
+   "t": -2.86
+  },
+  "test|hepsi|h14": {
+   "n": 18248,
+   "ort_kirp": -0.16,
+   "medyan": -4.91,
+   "kazanma": 0.4,
+   "fazla_kirp": -0.6,
+   "fazla_medyan": -4.12,
+   "t": -2.93
+  },
+  "test|hepsi|h30": {
+   "n": 17995,
+   "ort_kirp": -2.56,
+   "medyan": -9.47,
+   "kazanma": 0.37,
+   "fazla_kirp": -1.28,
+   "fazla_medyan": -5.67,
+   "t": -1.15
+  },
+  "test|hepsi|ozet_cikis": {
+   "n": 18331,
+   "ort_kirp": -1.01,
+   "medyan": -6.76,
+   "kazanma": 0.26
+  },
+  "test|hepsi|trend_cikis": {
+   "n": 18325,
+   "ort_kirp": -0.77,
+   "medyan": -6.98,
+   "kazanma": 0.28
+  },
+  "test|BTC>SMA200|h1": {
+   "n": 14924,
+   "ort_kirp": -0.57,
+   "medyan": -1.02,
+   "kazanma": 0.42,
+   "fazla_kirp": -0.27,
+   "fazla_medyan": -1.01,
+   "t": -3.97
+  },
+  "test|BTC>SMA200|h3": {
+   "n": 14912,
+   "ort_kirp": -0.46,
+   "medyan": -1.36,
+   "kazanma": 0.44,
+   "fazla_kirp": -0.31,
+   "fazla_medyan": -1.75,
+   "t": -3.12
+  },
+  "test|BTC>SMA200|h7": {
+   "n": 14885,
+   "ort_kirp": 0.27,
+   "medyan": -2.38,
+   "kazanma": 0.43,
+   "fazla_kirp": -0.26,
+   "fazla_medyan": -2.62,
+   "t": -2.49
+  },
+  "test|BTC>SMA200|h14": {
+   "n": 14826,
+   "ort_kirp": 1.41,
+   "medyan": -3.57,
+   "kazanma": 0.43,
+   "fazla_kirp": -0.26,
+   "fazla_medyan": -3.93,
+   "t": -1.27
+  },
+  "test|BTC>SMA200|h30": {
+   "n": 14580,
+   "ort_kirp": -0.42,
+   "medyan": -7.7,
+   "kazanma": 0.39,
+   "fazla_kirp": -0.72,
+   "fazla_medyan": -5.37,
+   "t": -0.97
+  },
+  "test|BTC>SMA200|ozet_cikis": {
+   "n": 14901,
+   "ort_kirp": -0.05,
+   "medyan": -6.37,
+   "kazanma": 0.28
+  },
+  "test|BTC>SMA200|trend_cikis": {
+   "n": 14896,
+   "ort_kirp": 0.43,
+   "medyan": -6.44,
+   "kazanma": 0.29
+  }
+ },
+ "4s": {
+  "egitim|hepsi|h1": {
+   "n": 9484,
+   "ort_kirp": -0.12,
+   "medyan": -0.59,
+   "kazanma": 0.43,
+   "fazla_kirp": -0.05,
+   "fazla_medyan": -0.59,
+   "t": 0.56
+  },
+  "egitim|hepsi|h3": {
+   "n": 9484,
+   "ort_kirp": 0.33,
+   "medyan": -0.64,
+   "kazanma": 0.46,
+   "fazla_kirp": -0.17,
+   "fazla_medyan": -1.16,
+   "t": -0.97
+  },
+  "egitim|hepsi|h7": {
+   "n": 9484,
+   "ort_kirp": 0.98,
+   "medyan": -1.07,
+   "kazanma": 0.46,
+   "fazla_kirp": -0.32,
+   "fazla_medyan": -2.18,
+   "t": -2.7
+  },
+  "egitim|hepsi|h14": {
+   "n": 9483,
+   "ort_kirp": 1.71,
+   "medyan": -1.79,
+   "kazanma": 0.45,
+   "fazla_kirp": -0.58,
+   "fazla_medyan": -3.06,
+   "t": -1.56
+  },
+  "egitim|hepsi|ozet_cikis": {
+   "n": 9484,
+   "ort_kirp": -0.29,
+   "medyan": -1.99,
+   "kazanma": 0.27
+  },
+  "egitim|hepsi|trend_cikis": {
+   "n": 9484,
+   "ort_kirp": -0.19,
+   "medyan": -2.0,
+   "kazanma": 0.28
+  },
+  "egitim|BTC>SMA200|h1": {
+   "n": 5729,
+   "ort_kirp": -0.05,
+   "medyan": -0.65,
+   "kazanma": 0.42,
+   "fazla_kirp": -0.0,
+   "fazla_medyan": -0.63,
+   "t": 0.71
+  },
+  "egitim|BTC>SMA200|h3": {
+   "n": 5729,
+   "ort_kirp": 0.74,
+   "medyan": -0.46,
+   "kazanma": 0.47,
+   "fazla_kirp": -0.08,
+   "fazla_medyan": -1.21,
+   "t": -0.81
+  },
+  "egitim|BTC>SMA200|h7": {
+   "n": 5729,
+   "ort_kirp": 1.62,
+   "medyan": -0.97,
+   "kazanma": 0.46,
+   "fazla_kirp": -0.36,
+   "fazla_medyan": -2.43,
+   "t": -2.3
+  },
+  "egitim|BTC>SMA200|h14": {
+   "n": 5729,
+   "ort_kirp": 3.14,
+   "medyan": -0.95,
+   "kazanma": 0.48,
+   "fazla_kirp": -0.63,
+   "fazla_medyan": -3.58,
+   "t": -0.27
+  },
+  "egitim|BTC>SMA200|ozet_cikis": {
+   "n": 5729,
+   "ort_kirp": -0.15,
+   "medyan": -2.04,
+   "kazanma": 0.28
+  },
+  "egitim|BTC>SMA200|trend_cikis": {
+   "n": 5729,
+   "ort_kirp": -0.11,
+   "medyan": -2.05,
+   "kazanma": 0.28
+  },
+  "test|hepsi|h1": {
+   "n": 10953,
+   "ort_kirp": 0.14,
+   "medyan": -0.5,
+   "kazanma": 0.45,
+   "fazla_kirp": -0.01,
+   "fazla_medyan": -0.77,
+   "t": 0.19
+  },
+  "test|hepsi|h3": {
+   "n": 10930,
+   "ort_kirp": 0.95,
+   "medyan": -0.33,
+   "kazanma": 0.48,
+   "fazla_kirp": -0.08,
+   "fazla_medyan": -1.57,
+   "t": -0.49
+  },
+  "test|hepsi|h7": {
+   "n": 10865,
+   "ort_kirp": 2.39,
+   "medyan": -0.35,
+   "kazanma": 0.49,
+   "fazla_kirp": -0.21,
+   "fazla_medyan": -2.6,
+   "t": -0.28
+  },
+  "test|hepsi|h14": {
+   "n": 10804,
+   "ort_kirp": 5.31,
+   "medyan": -1.0,
+   "kazanma": 0.48,
+   "fazla_kirp": -0.41,
+   "fazla_medyan": -3.82,
+   "t": -0.37
+  },
+  "test|hepsi|ozet_cikis": {
+   "n": 10959,
+   "ort_kirp": 0.47,
+   "medyan": -2.19,
+   "kazanma": 0.29
+  },
+  "test|hepsi|trend_cikis": {
+   "n": 10959,
+   "ort_kirp": 0.53,
+   "medyan": -2.15,
+   "kazanma": 0.3
+  },
+  "test|BTC>SMA200|h1": {
+   "n": 9610,
+   "ort_kirp": 0.15,
+   "medyan": -0.55,
+   "kazanma": 0.45,
+   "fazla_kirp": 0.01,
+   "fazla_medyan": -0.79,
+   "t": 0.16
+  },
+  "test|BTC>SMA200|h3": {
+   "n": 9587,
+   "ort_kirp": 0.9,
+   "medyan": -0.62,
+   "kazanma": 0.47,
+   "fazla_kirp": 0.02,
+   "fazla_medyan": -1.55,
+   "t": 0.16
+  },
+  "test|BTC>SMA200|h7": {
+   "n": 9522,
+   "ort_kirp": 2.1,
+   "medyan": -1.17,
+   "kazanma": 0.47,
+   "fazla_kirp": -0.04,
+   "fazla_medyan": -2.53,
+   "t": 0.48
+  },
+  "test|BTC>SMA200|h14": {
+   "n": 9461,
+   "ort_kirp": 5.39,
+   "medyan": -1.52,
+   "kazanma": 0.48,
+   "fazla_kirp": -0.36,
+   "fazla_medyan": -3.9,
+   "t": -0.13
+  },
+  "test|BTC>SMA200|ozet_cikis": {
+   "n": 9616,
+   "ort_kirp": 0.49,
+   "medyan": -2.26,
+   "kazanma": 0.28
+  },
+  "test|BTC>SMA200|trend_cikis": {
+   "n": 9616,
+   "ort_kirp": 0.48,
+   "medyan": -2.25,
+   "kazanma": 0.29
+  }
+ }
+}

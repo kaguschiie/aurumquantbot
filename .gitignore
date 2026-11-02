@@ -11,3 +11,6 @@ guncelleme_ayar.txt
 veri/
 KriptoQuantBot/
 venv/
+# arastirma verisi: indir_1d.py ile indirilir
+arastirma/d1/
+arastirma/veri4h/

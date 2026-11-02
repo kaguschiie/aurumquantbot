@@ -1,0 +1,9 @@
+﻿tahmin hazir
+ML haftalik (mevcut)         sadece ML      TEST yillik   43.4% dusus  -41.1% Sharpe 1.08 | son 6 ay   18.8% | devir/yil 25.6
+ML haftalik (mevcut)         70/30 portfoy  TEST yillik   25.2% dusus  -24.1% Sharpe 0.97 | son 6 ay   12.5% | devir/yil 19.7
+ML gunluk saf                sadece ML      TEST yillik    8.0% dusus  -49.7% Sharpe 0.39 | son 6 ay   -1.3% | devir/yil 125.6
+ML gunluk saf                70/30 portfoy  TEST yillik   15.0% dusus  -30.7% Sharpe 0.66 | son 6 ay    6.3% | devir/yil 49.4
+ML gunluk histerezis 5/10    sadece ML      TEST yillik   22.0% dusus  -43.7% Sharpe 0.70 | son 6 ay   14.4% | devir/yil 55.8
+ML gunluk histerezis 5/10    70/30 portfoy  TEST yillik   19.1% dusus  -27.5% Sharpe 0.79 | son 6 ay   11.1% | devir/yil 28.8
+ML gunluk histerezis 5/15    sadece ML      TEST yillik   16.0% dusus  -47.9% Sharpe 0.57 | son 6 ay    4.3% | devir/yil 34.2
+ML gunluk histerezis 5/15    70/30 portfoy  TEST yillik   17.4% dusus  -30.1% Sharpe 0.73 | son 6 ay    8.1% | devir/yil 22.3
