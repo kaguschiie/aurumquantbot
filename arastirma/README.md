@@ -8,10 +8,10 @@
 cd arastirma
 pip install numpy pandas scikit-learn requests
 python indir_1d.py
-python limit_test.py
+python canli_kopya.py
 ```
 
-`indir_1d.py` yaklaşık 52 MB günlük veriyi `d1/` klasörüne indirir (depoya girmez). `limit_test.py` çıktısındaki "limit yok" satırı ana sonuçtur: 2026-10 sonuna kadarki veriyle yıllık %25,2, en derin düşüş -%24,1, Sharpe 0,97. Veri uzadıkça sayılar değişir.
+`indir_1d.py` yaklaşık 52 MB günlük veriyi `d1/` klasörüne indirir (depoya girmez). `canli_kopya.py` canlı yapıyı (30 günde bir eğitim, canlı bantlar) kopyalar. 2026-10 sonuna kadarki veriyle test: yıllık %22,9, en derin düşüş -%23,8, Sharpe 0,92. Sepet günü seçilirken test görüldü; 7 günün ortalaması %17,7. Eski %25,2 (`limit_test.py`, `ml.py`) yıllık eğitim ve Pazartesi mumu kullanır, canlıyla aynı değildir. Veri uzadıkça sayılar değişir.
 
 Bu sayılar geçmiş testtir, gerçek para sonucu değildir. Test canlı sistemin korumalarını (kill switch, molalar, %35 stop, IC kapısı, Claude kontrolör) simüle etmez ve denenen varyant sayısına göre düzeltilmemiştir.
 
@@ -28,6 +28,7 @@ Bu sayılar geçmiş testtir, gerçek para sonucu değildir. Test canlı sistemi
 | `koruma.py` | Düşüşte zararı azaltma fikirleri |
 | `hiz.py`, `hiz_saat.py` | Daha sık işlem varyantları |
 | `guclu_uzun.py` | GÜÇLÜ AL sinyalini uzun tutma testi |
+| `canli_kopya.py` | Canlı yapının kopyası, 7 gün karşılaştırması, rastgele sepet sıfır testi (`BACKTEST` buradan) |
 | `limit_test.py` | Dengelemede 24 saatlik zarar limiti |
 | `hack_replay.py` | Haber kurallarının 29 Ekim Binance hack'inde geri oynatılması (çıkan haberleri ve Binance'i canlı okur) |
 

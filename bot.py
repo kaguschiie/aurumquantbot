@@ -1468,16 +1468,18 @@ class Bot:
         return True
 
     def portfolio(self, force_ml=False):
-        """Portfoy stratejisi (portfoy.py): gun kapanisinda cekirdek agirliklari, Pazartesi (veya ilk calisma) ML sepeti.
+        """Portfoy stratejisi (portfoy.py): gun kapanisinda cekirdek agirliklari, Persembe 00:05 UTC (veya o haftaki ilk calisma) ML sepeti.
         Sanal hesap her zaman; gercek hesap sadece admin 'PORTFOY_LIVE' + gercek islem izni verdiyse."""
         t0 = time.time()
         pf = self.ag.setdefault("pf", {})
-        week = time.strftime("%G-%V", time.gmtime())
-        ml_day = force_ml or pf.get("ml_week") != week  # haftada bir (Pazartesi ya da hafta icindeki ilk calisma)
+        week = time.strftime("%G-%V", time.gmtime(time.time() - (PF.ML_DOW + 1) * 86400))  # hafta Persembe 00:00 UTC'de doner
+        if "ml_hafta" not in pf and "ml_week" in pf:  # eski kayit: mevcut sepet ilk Persembeye kadar korunur
+            pf["ml_hafta"] = week
+        ml_day = force_ml or pf.get("ml_hafta") != week
         raw, info = PF.targets(self.ex, pf, ml_day)
         tg, hnote = HB.adjust(raw)  # acil durum engeli / haber alimi gecici payi (izinli hesaplara)
         if ml_day:
-            pf["ml_week"] = week
+            pf["ml_hafta"] = week
         for s in tg:  # stream'de olmayan coin: anlik fiyat REST ile
             if not self.bid.get(s) or not self.ask.get(s):
                 t = self.ex.fetch_ticker(s)

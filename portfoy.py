@@ -1,9 +1,9 @@
 """Portfoy Stratejisi (2017-2026 arastirmasi, delist edilen coinler dahil, maliyetli, egitim 2018-21 / test 2022-26):
 1) Cekirdek (%70): BTC ve ETH yari yariya. Her biri icin SMA20/50/100/200 ustunde kalma orani x oynaklik hedefi
    (%40 yillik / 30 gunluk gerceklesen oynaklik, en fazla 1). Gunluk kapanista (00:05 UTC) hesaplanir.
-2) ML sepeti (%30): haftalik (Pazartesi) en likit 50 coin icinde gelecek 7 gun getiri SIRASI tahmini (HistGradientBoosting,
+2) ML sepeti (%30): haftalik (Carsamba kapanisi, islem Persembe 00:05 UTC) en likit 50 coin icinde gelecek 7 gun getiri SIRASI tahmini (HistGradientBoosting,
    ozellikler evren icinde yuzdelik sira). En iyi 5 coin esit agirlik; BTC 100 gunluk ortalamanin altindaysa sepet nakit.
-Test 2022-2026: yillik %25, en derin dusus %-24 (BTC al-tut %11 / %-67). Saatlik islem yok; kararlar gun kapanisinda."""
+Test 2022-2026, canli yapinin kopyasi: yillik %23, en derin dusus %-24 (BTC al-tut %11 / %-67). Gun secimi test goruldukten sonra yapildi, 7 gun ortalamasi %17. Saatlik islem yok; kararlar gun kapanisinda."""
 import io
 import logging
 import os
@@ -29,14 +29,16 @@ K, TOP = 5, 50      # ML sepeti: en iyi K coin, en likit TOP coin icinde
 BAND, BAND_ML = 0.03, 0.01   # agirlik farki bu kadardan kucukse islem yok (gunluk / haftalik yeniden dengeleme)
 STOP_FRAC = 0.65    # felaket stopu: ortalama girisin %35 alti (strateji kendi gunluk kuraliyla cikar)
 RETRAIN_DAYS = 30  # her ay yeni veriyle yeniden egitim + saglik kontrolu
+ML_DOW = 2         # ML sepeti gunu (mum etiketi 0=Pzt): Carsamba kapanisi. Test 7 gunde 14-23: arastirma/canli_kopya.py
+MODEL_V = 2        # model yapisi degisince eski model beklemeden yeniden egitilir
 MIN_IC = 0.02      # son 6 ay tahmin isabeti (sira korelasyonu) bunun altindaysa ML sepeti dinlenmede (nakit)
 MODEL_FILE = os.path.join(C.APP_DIR, "portfoy_model.joblib")
 DATA = os.path.join(C.APP_DIR, "gunluk_veri")
 BUNDLED = os.path.join(C.BASE_DIR, "portfoy_model.joblib")
-BACKTEST = {"donem": "2022-01 → 2026-10 (test, eğitimde görülmedi)", "strateji": {"cagr": 25.2, "dd": -24.1, "sharpe": 0.97},
-            "btc": {"cagr": 11.4, "dd": -66.9, "sharpe": 0.47}, "cekirdek": {"cagr": 16.7, "dd": -22.1},
-            "ml": {"cagr": 43.4, "dd": -41.1},
-            "yillar": {2022: (-23, -65), 2023: (55, 154), 2024: (77, 112), 2025: (17, -7), 2026: (14, -10)}}
+BACKTEST = {"donem": "2022-01 → 2026-10 (canlı yapının kopyası, arastirma/canli_kopya.py)", "strateji": {"cagr": 22.9, "dd": -23.8, "sharpe": 0.92},
+            "btc": {"cagr": 11.4, "dd": -66.9, "sharpe": 0.47}, "cekirdek": {"cagr": 17.1, "dd": -22.3},
+            "ml": {"cagr": 33.8, "dd": -33.1},
+            "yillar": {2022: (-19, -65), 2023: (62, 154), 2024: (61, 112), 2025: (14, -7), 2026: (7, -10)}}
 STABLE = {"USDCUSDT", "BUSDUSDT", "TUSDUSDT", "USDPUSDT", "PAXUSDT", "USDSUSDT", "USDSBUSDT", "DAIUSDT", "FDUSDUSDT",
           "EURUSDT", "GBPUSDT", "AUDUSDT", "EURIUSDT", "AEURUSDT", "USTUSDT", "SUSDUSDT", "USD1USDT", "XUSDUSDT",
           "BFUSDUSDT", "RLUSDUSDT", "USDEUSDT", "TRYUSDT", "BRLUSDT", "UAHUSDT"}
@@ -264,7 +266,7 @@ def train(say=lambda t: None):
     F, U = raw_feats(c, qv, tbq, age)
     Fr = ranked(F, U, c["BTCUSDT"])
     y = (c.shift(-7) / c - 1).where(U).rank(axis=1, pct=True)
-    days = c.index[(c.index.dayofweek == 0) & (c.index >= "2018-03-01") & (c.index < c.index[-1] - pd.Timedelta(days=8))]
+    days = c.index[(c.index.dayofweek == ML_DOW) & (c.index >= "2018-03-01") & (c.index < c.index[-1] - pd.Timedelta(days=8))]
     rows = []
     for d in days:
         cols = U.columns[U.loc[d].values]
@@ -275,15 +277,15 @@ def train(say=lambda t: None):
         m["d"] = d
         rows.append(m)
     Dd = pd.concat(rows).dropna(subset=["y"])
-    mk = lambda: HistGradientBoostingRegressor(max_iter=200, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=200,
-                                               l2_regularization=1.0, random_state=0)
+    mk = lambda: HistGradientBoostingRegressor(max_iter=100, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=200,
+                                               l2_regularization=1.0, random_state=0, early_stopping=False)  # tohum sansi yok
     # saglik kontrolu: son 26 haftayi gormeden egit, o haftalarda tahmin isabetini (sira korelasyonu) olc
     cut = Dd.d.max() - pd.Timedelta(weeks=26)
     old, new = Dd[Dd.d < cut - pd.Timedelta(days=8)], Dd[Dd.d >= cut].copy()
     new["p"] = mk().fit(old[FEATS], old.y).predict(new[FEATS])
     ic = float(new.groupby("d").apply(lambda g: g.p.corr(g.y, method="spearman")).mean())
     model = mk().fit(Dd[FEATS], Dd.y)
-    out = {"model": model, "feats": FEATS, "t": time.time(), "n": len(Dd), "end": str(c.index[-1].date()),
+    out = {"model": model, "feats": FEATS, "v": MODEL_V, "t": time.time(), "n": len(Dd), "end": str(c.index[-1].date()),
            "ic": round(ic, 3)}
     joblib.dump(out, MODEL_FILE)
     _M.clear()
@@ -298,7 +300,7 @@ def train(say=lambda t: None):
 def maybe_train(say):
     """Model yoksa veya 90 gunden eskiyse arka planda veri guncelle + egit (ilk sefer ~25 dk)."""
     m = _M or load_model()
-    if STATE["training"] or (m and time.time() - m.get("t", 0) < RETRAIN_DAYS * 86400):
+    if STATE["training"] or (m and m.get("v") == MODEL_V and time.time() - m.get("t", 0) < RETRAIN_DAYS * 86400):
         return
 
     def run():
