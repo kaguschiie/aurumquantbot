@@ -769,7 +769,7 @@ const COLS = [["sym", "Coin"], ["price", "Fiyat", 1], ["chg24", "24s", 1], ["qvo
   ["flow24", "Alıcı akışı", 1, 1], ["oi24", "OI 24s", 1, 1], ["ob", "Defter (ilk 20)", 1, 1], ["p", "ML p", 1, 1], ["state", "Durum"]];
 async function loadScreener() {
   SCR = await api("/api/screener");
-  const opts = SCR.map(r => r.sym); if (!opts.includes(csym) && opts.length) csym = opts[0];
+  const opts = SCR.map(r => r.sym); if (!opts.includes(csym)) opts.unshift(csym);  // radardan acilan coin derin izleme listesinde olmayabilir
   if ($("#csym").dataset.v !== opts.join()) { $("#csym").innerHTML = opts.map(o => `<option>${o}</option>`).join(""); $("#csym").dataset.v = opts.join(); }
   $("#csym").value = csym;
   if (visible("screen")) renderScreener(); if (visible("chartp")) renderCoinDetail();

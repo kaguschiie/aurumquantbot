@@ -161,7 +161,7 @@ def load_model():
         if os.path.exists(f):
             try:
                 m = joblib.load(f)
-                m["model"].predict(np.zeros((1, len(m["feats"]))))
+                m["model"].predict(pd.DataFrame(np.zeros((1, len(m["feats"]))), columns=m["feats"]))
                 if best is None or (m.get("v", 0), m.get("t", 0)) > (best.get("v", 0), best.get("t", 0)):
                     best = m
             except Exception as e:
