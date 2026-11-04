@@ -111,8 +111,11 @@ def login(name, pw):
         if time.time() < until:
             return None, None, f"Çok fazla hatalı deneme. {int(until - time.time())} sn sonra tekrar deneyin."
         FAILS[key] = [n + 1, time.time() + min(30 * 2 ** (n - 4), 3600) if n + 1 >= 5 else 0]  # 30 sn, 1, 2 dk... en cok 1 sa
-        if len(FAILS) > 1000:
-            FAILS.clear()
+        if len(FAILS) > 1000:  # sahte adlarla tasirip kilit silinmesin: gercek hesabin sayaci hic atilmaz, olmayan adlardan en az denemeli, en eski atilir
+            with _lock, _db() as con:
+                real = {r[0].lower() for r in con.execute("SELECT name FROM users")}
+            for k in sorted((x for x in FAILS if x not in real), key=lambda x: FAILS[x][0])[:len(FAILS) - 800]:
+                del FAILS[k]
     with _lock, _db() as con:
         row = con.execute("SELECT name, role, salt, hash FROM users WHERE name=?", (name or "",)).fetchone()
     h = _hash(pw or "", row[2] if row else b"\0" * 16)  # olmayan kullanicida da ayni sure (ad tahmini zorlasir)

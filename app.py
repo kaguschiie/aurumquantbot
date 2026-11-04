@@ -533,7 +533,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(403, {"ok": False})
                 b = ENGINE.bot
                 age = round(time.time() - b.updated) if b else None
-                return self._send(200, {"ok": bool(b) and age < 180, "age": age, "status": b.status if b else "baslatiliyor"})
+                return self._send(200, {"ok": bool(b) and age < 180, "age": age, "status": b.status if b else "baslatiliyor",
+                                        **(b.health() if b else {})})  # dengeleme ve USDT durumu ok'u etkilemez: bekci motorun durdugunu sormaya devam eder
             if u.path == "/api/avatar":  # giris ekraninda da gosterilir (sadece bu bilgisayar)
                 f = avatar_file(q.get("u"))
                 if not f:

@@ -2,8 +2,9 @@
 1) Cekirdek (%70): BTC ve ETH yari yariya. Her biri icin SMA20/50/100/200 ustunde kalma orani x oynaklik hedefi
    (%40 yillik / 30 gunluk gerceklesen oynaklik, en fazla 1). Gunluk kapanista (00:05 UTC) hesaplanir.
 2) ML sepeti (%30): haftalik (Carsamba kapanisi, islem Persembe 00:05 UTC) en likit 50 coin icinde gelecek 7 gun getiri SIRASI tahmini (HistGradientBoosting,
-   ozellikler evren icinde yuzdelik sira). En iyi 5 coin esit agirlik; BTC 100 gunluk ortalamanin altindaysa sepet nakit.
-Test 2022-2026, canli yapinin kopyasi: yillik %23, en derin dusus %-24 (BTC al-tut %11 / %-67). Gun secimi test goruldukten sonra yapildi, 7 gun ortalamasi %17. Saatlik islem yok; kararlar gun kapanisinda."""
+   ozellikler evren icinde yuzdelik sira). En iyi 5 coin esit agirlik; BTC 100 gunluk ortalamanin altindaysa sepet nakit
+   (hafta icinde 3 kapanis ust uste altinda kalirsa da cikar; geri donus sadece sepet gunu).
+Test 2022-2026, canli yapinin kopyasi: yillik %24, en derin dusus %-22 (BTC al-tut %11 / %-67). Gun secimi test goruldukten sonra yapildi, 7 gun ortalamasi %19. Saatlik islem yok; kararlar gun kapanisinda."""
 import io
 import logging
 import os
@@ -29,23 +30,39 @@ K, TOP = 5, 50      # ML sepeti: en iyi K coin, en likit TOP coin icinde
 BAND, BAND_ML = 0.03, 0.01   # agirlik farki bu kadardan kucukse islem yok (gunluk / haftalik yeniden dengeleme)
 STOP_FRAC = 0.65    # felaket stopu: ortalama girisin %35 alti (strateji kendi gunluk kuraliyla cikar)
 RETRAIN_DAYS = 30  # her ay yeni veriyle yeniden egitim + saglik kontrolu
+ML_EXIT_DAYS = 3   # hafta icinde BTC bu kadar kapanis ust uste 100 gunluk ortalamanin altindaysa sepet nakde
 ML_DOW = 2         # ML sepeti gunu (mum etiketi 0=Pzt): Carsamba kapanisi. Test 7 gunde 14-23: arastirma/canli_kopya.py
 MODEL_V = 2        # model yapisi degisince eski model beklemeden yeniden egitilir
 MIN_IC = 0.02      # son 6 ay tahmin isabeti (sira korelasyonu) bunun altindaysa ML sepeti dinlenmede (nakit)
+MODEL_MAX_DAYS = 90  # bundan eski model kullanilmaz: ML sepeti nakitte (egitim aylardir basarisizsa)
+UNI_NEAR = 0.7     # evren onceki gozlemin bu oraninin altina duserse onceki secim korunur
+RETRY_SEC = 600    # cekirdek verisi guvenilmezse o coin bu kadar sonra yeniden denenir
+ML_KEEP_DAYS = 21  # yenilenemeyen haftalik secim en fazla bu kadar korunur, sonra nakit
 MODEL_FILE = os.path.join(C.APP_DIR, "portfoy_model.joblib")
+TRAIN_MARK = os.path.join(C.APP_DIR, "portfoy_egitim_deneme")  # son basarisiz/yarim egitim zamani
+TRAIN_LOCK = os.path.join(os.path.expanduser("~"), ".kqb_egitim.lock")
 DATA = os.path.join(C.APP_DIR, "gunluk_veri")
 BUNDLED = os.path.join(C.BASE_DIR, "portfoy_model.joblib")
-BACKTEST = {"donem": "2022-01 → 2026-10 (canlı yapının kopyası, arastirma/canli_kopya.py)", "strateji": {"cagr": 22.9, "dd": -23.8, "sharpe": 0.92},
+BACKTEST = {"donem": "2022-01 → 2026-10 (canlı yapının kopyası, arastirma/canli_kopya.py). Sepet günü test görüldükten sonra seçildi: 7 günün ortalaması yıllık %18,8, gerçekçi beklenti budur", "strateji": {"cagr": 23.7, "dd": -22.5, "sharpe": 0.95},
             "btc": {"cagr": 11.4, "dd": -66.9, "sharpe": 0.47}, "cekirdek": {"cagr": 17.1, "dd": -22.3},
-            "ml": {"cagr": 33.8, "dd": -33.1},
-            "yillar": {2022: (-19, -65), 2023: (62, 154), 2024: (61, 112), 2025: (14, -7), 2026: (7, -10)}}
+            "ml": {"cagr": 37.0, "dd": -28.8},
+            "yillar": {2022: (-19, -65), 2023: (62, 154), 2024: (64, 112), 2025: (15, -7), 2026: (7, -10)}}
 STABLE = {"USDCUSDT", "BUSDUSDT", "TUSDUSDT", "USDPUSDT", "PAXUSDT", "USDSUSDT", "USDSBUSDT", "DAIUSDT", "FDUSDUSDT",
           "EURUSDT", "GBPUSDT", "AUDUSDT", "EURIUSDT", "AEURUSDT", "USTUSDT", "SUSDUSDT", "USD1USDT", "XUSDUSDT",
           "BFUSDUSDT", "RLUSDUSDT", "USDEUSDT", "TRYUSDT", "BRLUSDT", "UAHUSDT"}
 LEVER = ("UPUSDT", "DOWNUSDT", "BULLUSDT", "BEARUSDT")
 STOCK = ("BNCB", "CRCLB", "INTCB", "KORUB", "MSTRB", "MUB", "NBISB", "NVDAB", "SKHYB", "SNDKB", "SOXLB", "SPCXB")
+TOKEN_T = pd.Timestamp("2026-06-01")  # bu tarihten sonra listelenen, adi B ile biten: tokenize hisse/ETF (AAPLB, TQQQB). Eski coinler (BNB, ARB, SHIB) takilmaz
 STATE = {"training": False, "msg": "", "model_t": 0}
+ML_MSG = {"eski": f"model {MODEL_MAX_DAYS} günden eski, yeniden eğitim bekleniyor, pay nakitte",
+          "dinlenme": "model son 6 ayda isabet kaybetti, pay nakitte",
+          "saglik_yok": "modelin sağlık kontrolü ölçülmemiş, tahmin isabeti bilinmiyor; sepet çalışıyor, yeni eğitimde ölçülecek",
+          "yok": f"ML modeli yok veya okunamadı, önceki seçim en çok {ML_KEEP_DAYS} gün korunur"}
 _M = {}
+
+
+class VeriBekle(Exception):
+    """Coinin gunluk verisi guvenilmez: o coine dokunulmaz (alim da satim da yok), gerisi islenir, sonra yeniden denenir."""
 
 
 def ok_sym(s):
@@ -56,10 +73,26 @@ def ok_sym(s):
 def klines(ex, sym, limit=260):
     """Kapanmis gunluk mumlar (ham Binance: alici agresif hacmi dahil). sym: 'BTC/USDT'."""
     k = ex.publicGetKlines({"symbol": sym.replace("/", ""), "interval": "1d", "limit": limit})
-    a = np.array([[float(x[0]), *(float(x[i]) for i in (1, 2, 3, 4, 7, 10))] for x in k])
+    a = np.array([[float(x[0]), *(float(x[i]) for i in (1, 2, 3, 4, 7, 10))] for x in k], dtype=float).reshape(-1, 7)
     if len(a) and a[-1, 0] + 86_400_000 > time.time() * 1000:  # olusan gun mumu kullanilmaz
         a = a[:-1]
     return pd.DataFrame(a[:, 1:], columns=["o", "h", "l", "c", "qv", "tbq"], index=pd.to_datetime(a[:, 0], unit="ms"))
+
+
+def yesterday():
+    return pd.Timestamp(time.time() // 86400 * 86400 - 86400, unit="s")
+
+
+def fresh_close(ex, sym):
+    """Gunluk kapanislar; son kapanmis mum dun (UTC) degilse, seri eksik veya donuksa VeriBekle.
+    Eksik seride ortalamalar bos kalir, agirlik sifira duser: kotu veri satisa donmesin."""
+    c = klines(ex, sym, 260)["c"]
+    n = SMAS[-1]
+    if not len(c) or c.index[-1] != yesterday():
+        raise VeriBekle(f"{sym} son kapanmış mumu {c.index[-1].date() if len(c) else 'yok'}, dün değil")
+    if len(c) < n or not (c.iloc[-n:] > 0).all() or c.iloc[-31:].nunique() < 2:
+        raise VeriBekle(f"{sym} günlük verisi eksik veya donuk ({len(c)} gün)")
+    return c
 
 
 def first_day(ex, sym, cache):
@@ -76,6 +109,16 @@ def core_weight(c):
     on = float(np.mean([c.iloc[-1] > c.rolling(n).mean().iloc[-1] for n in SMAS]))
     vol = float(c.pct_change().iloc[-30:].std() * np.sqrt(365))
     return on * min(1.0, VT / vol) if vol > 0 else 0.0, on, vol
+
+
+def ml_reg(btc):
+    """ML sepeti rejimi: BTC 100 gunluk ortalamanin ustunde mi."""
+    return bool(btc.iloc[-1] > btc.rolling(100).mean().iloc[-1])
+
+
+def ml_exit(btc):
+    """Hafta ici cikis: son ML_EXIT_DAYS kapanisin hepsi 100 gunluk ortalamanin altinda (ustunde degil)."""
+    return not (btc > btc.rolling(100).mean()).iloc[-ML_EXIT_DAYS:].any()
 
 
 # ---------------- 2) ML sepeti: ozellikler (egitim ve canli ayni tanim) ----------------
@@ -111,26 +154,46 @@ def ranked(F, U, btc):
 
 
 def load_model():
+    """Calisan modellerden yapisi en yeni olan (kurulumdaki eski model, pakettekinin onune gecmez). Baska scikit-learn
+    surumunde tahmin edemeyen model okunamadi sayilir."""
+    best = None
     for f in (MODEL_FILE, BUNDLED):
         if os.path.exists(f):
             try:
                 m = joblib.load(f)
-                _M.update(m)
-                STATE["model_t"] = m.get("t", 0)
-                return m
+                m["model"].predict(np.zeros((1, len(m["feats"]))))
+                if best is None or (m.get("v", 0), m.get("t", 0)) > (best.get("v", 0), best.get("t", 0)):
+                    best = m
             except Exception as e:
                 log.warning("portfoy modeli okunamadi %s: %s", f, e)
-    return None
+    if best:
+        _M.update(best)
+        STATE["model_t"] = best.get("t", 0)
+    return best
 
 
-def ml_pick(ex, cache, say=lambda t: None):
-    """Haftalik ML sepeti: [(sym, skor)] en iyi K + rejim. Model yoksa bos."""
+def ml_state(m):
+    """Model durumu: yok / eski, dinlenme (ikisi de nakit) / saglik_yok (IC olculmemis: calisir, bildirilir) / calisiyor."""
+    if not m:
+        return "yok"
+    if time.time() - m.get("t", 0) > MODEL_MAX_DAYS * 86400:
+        return "eski"
+    ic = m.get("ic")
+    if ic is None or ic != ic:
+        return "saglik_yok"
+    return "dinlenme" if ic < MIN_IC else "calisiyor"
+
+
+def ml_pick(ex, cache, say=lambda t: None, st=None):
+    """Haftalik ML sepeti: [(sym, skor)] en iyi K + rejim. Guvenilmez veride hata: cagiran onceki secimi korur.
+    st: kalici durum (evren buyuklugu karsilastirmasi)."""
     m = _M or load_model()
     if not m:
-        return [], False, "ML modeli yok (ilk eğitim bekleniyor)"
+        raise ValueError("ML modeli yok (ilk eğitim bekleniyor)")
     tk = ex.fetch_tickers()
     cand = sorted([(s, t.get("quoteVolume") or 0) for s, t in tk.items()
-                   if s.endswith("/USDT") and ok_sym(s.replace("/", "")) and ":" not in s], key=lambda x: -x[1])[:120]
+                   if s.endswith("/USDT") and ok_sym(s.replace("/", "")) and ":" not in s], key=lambda x: -x[1])
+    cand = [x for x in cand if not (x[0][:-5].endswith("B") and pd.Timestamp(first_day(ex, x[0], cache), unit="ms") >= TOKEN_T)][:120]
     syms = [s for s, _ in cand]
     with ThreadPoolExecutor(6) as pool:
         frames = dict(zip(syms, pool.map(lambda s: klines(ex, s, 160), syms)))
@@ -141,45 +204,83 @@ def ml_pick(ex, cache, say=lambda t: None):
     day0 = pd.Series({s: first_day(ex, s, cache) for s in c.columns})
     age = pd.DataFrame({s: (c.index - pd.to_datetime(day0[s], unit="ms")).days + 1 for s in c.columns}, index=c.index)
     F, U = raw_feats(c, qv, tbq, age)
-    btc = klines(ex, "BTC/USDT", 260)["c"]
+    btc = fresh_close(ex, "BTC/USDT")
     Fr = ranked(F, U, btc)
     last = c.index[-1]
+    if last != yesterday():
+        raise ValueError(f"coin verileri bayat (son gün {last.date()})")
     u = U.loc[last]
     cols = u.index[u.values]
-    if len(cols) < 10:
-        return [], False, "evren çok küçük"
+    st = {} if st is None else st
+    n0 = st.get("ml_n") or (TOP if st.get("ml", {}).get("picks") else 0)
+    if len(cols) < 10 or len(cols) < n0 * UNI_NEAR:  # dusus 6 gun surerse kalici sayilir, sepet sonsuza dek takilmaz
+        if len(cols) < 10 or time.time() - st.setdefault("ml_n_t", time.time()) < 6 * 86400:
+            raise ValueError(f"evren {len(cols)} coin, önceki {n0}")
+    st["ml_n"] = len(cols)
+    st.pop("ml_n_t", None)
     X = pd.DataFrame({k: Fr[k].loc[last, cols] for k in m["feats"]})
     empty = [k for k in m["feats"] if X[k].isna().all()]
     if empty:  # egitimdeki ozellik canlida bos: model test edilen model olmaz, onceki secim korunur
         raise ValueError(f"boş özellik: {', '.join(empty)}")
     sc = pd.Series(m["model"].predict(X[m["feats"]]), index=cols).sort_values(ascending=False)
-    reg = bool(btc.iloc[-1] > btc.rolling(100).mean().iloc[-1])
-    return [(s, round(float(v), 4)) for s, v in sc.head(K).items()], reg, f"evren {len(cols)} coin, model {time.strftime('%Y-%m-%d', time.gmtime(m.get('t', 0)))}"
+    dl = st.get("delist") or []  # delist duyurusu: siradaki coin girer, evren ve puanlar degismez
+    out = [s for s in sc.head(K).index if s in dl]
+    sc = sc.drop(dl, errors="ignore")
+    reg = ml_reg(btc)
+    return [(s, round(float(v), 4)) for s, v in sc.head(K).items()], reg, f"evren {len(cols)} coin, model {time.strftime('%Y-%m-%d', time.gmtime(m.get('t', 0)))}" + (
+        f", delist nedeniyle çıkarıldı: {', '.join(s.split('/')[0] for s in out)}" if out else "")
 
 
 # ---------------- hedef agirliklar ----------------
 def targets(ex, st, ml_day, core_frac=None):
     """st: kalici durum (ML secimi, yas onbellegi). Donus: ({sym: agirlik}, bilgi)."""
     cf = C.PORTFOY_CORE if core_frac is None else core_frac
-    w, info = {}, {"core": {}, "t": time.time()}
+    w, info, closes = {}, {"core": {}, "t": time.time(), "uyari": [], "bekle": {}}, {}
     for s in CORE_SYMS:
-        cw, on, vol = core_weight(klines(ex, s, 260)["c"])
+        try:
+            closes[s] = fresh_close(ex, s)
+        except VeriBekle as e:  # kotu veri satisa/alima donmesin: bu coin atlanir (bot elde tutar), gerisi calisir
+            info["bekle"][s] = str(e)
+            continue
+        cw, on, vol = core_weight(closes[s])
         w[s] = cf * 0.5 * cw
         info["core"][s] = {"w": round(w[s], 4), "trend": on, "vol": round(vol, 3)}
-    if ml_day or "ml" not in st:
+    btc = closes.get("BTC/USDT")
+    if btc is None and (ml_day or "ml" not in st):  # rejim olculemiyor: secim ertelenir, hafta harcanmaz, yeni alim yok
+        info["ml_bekle"] = True
+        st.setdefault("ml", {"picks": [], "reg": False, "t": time.time()})["kept"] = True
+    elif ml_day or "ml" not in st:
         try:
-            picks, reg, note = ml_pick(ex, st.setdefault("age", {}))
-            st["ml"] = {"picks": picks, "reg": reg, "note": note, "t": time.time()}
+            picks, reg, note = ml_pick(ex, st.setdefault("age", {}), st=st)
             if picks:  # karne: secim anindaki fiyatlar (7 gun sonra BTC ile karsilastirilir)
                 px = {s: float(klines(ex, s, 2)["c"].iloc[-1]) for s, _ in picks}
                 px["BTC/USDT"] = px.get("BTC/USDT") or float(klines(ex, "BTC/USDT", 2)["c"].iloc[-1])
                 st["ml_hist"] = (st.get("ml_hist", []) + [{"t": time.time(), "px": px, "picks": [s for s, _ in picks]}])[-60:]
+            st["ml"] = {"picks": picks, "reg": reg, "note": note, "t": time.time()}
         except Exception as e:  # ML hatasi cekirdegi durdurmasin; onceki secim korunur
             log.warning("ML sepeti: %s", e)
-            st.setdefault("ml", {"picks": [], "reg": False, "t": time.time()})["note"] = f"hata: {e}"
+            old = st.setdefault("ml", {"picks": [], "reg": False, "t": time.time()})
+            old["reg"] = (old["reg"] and not ml_exit(btc)) if old.get("kept") else ml_reg(btc)  # ilk hata sepet gunu; tekrarlarda hafta ici kurali
+            old["note"], old["kept"] = f"hata: {e}", True
+            info["ml_hata"] = True
+            info["uyari"].append(f"Haftalık ML sepeti yenilenemedi ({str(e)[:160]}). " + (
+                "Seçim yok, o pay nakitte bekliyor." if not old["picks"] else
+                "Önceki seçim korunuyor, yeni alım yapılmıyor." if old["reg"] else
+                "BTC 100 günlük ortalamanın altında, sepet nakde alınıyor."))
+    elif btc is not None and st["ml"].get("reg") and ml_exit(btc):  # hafta ici cikis; geri donus sadece sepet gunu
+        st["ml"]["reg"], info["ml_cikis"] = False, True
+        info["uyari"].append(f"BTC {ML_EXIT_DAYS} gündür 100 günlük ortalamanın altında kapanıyor, haftalık sepet nakde alınıyor.")
     ml = st["ml"]
-    ic = (_M or {}).get("ic")
-    ml["rest"] = ic is not None and ic < MIN_IC  # saglik kontrolu: tahmin gucu kaybolduysa sepet nakitte
+    if ml["picks"] and time.time() - ml.get("t", 0) > ML_KEEP_DAYS * 86400:  # yenilenemeyen secim sonsuza dek tutulmaz
+        ml["picks"] = []
+        info["uyari"].append(f"Haftalık ML seçimi {ML_KEEP_DAYS} gündür yenilenemedi, sepet nakde alınıyor.")
+    d = ml_state(_M or load_model())
+    ml["durum"], ml["durum_not"] = d, ML_MSG.get(d, "")
+    ml["rest"] = d in ("eski", "dinlenme")  # saglik kontrolu: tahmin gucu kaybolduysa veya model cok eskiyse sepet nakitte
+    if st.get("ml_uyari") != d:  # durum basina bir uyari (dinlenmeyi egitim zaten duyurur)
+        st["ml_uyari"] = d
+        if d in ("eski", "saglik_yok", "yok"):
+            info["uyari"].append("ML sepeti: " + ML_MSG[d] + ".")
     if ml["reg"] and not ml["rest"]:
         for s, _ in ml["picks"]:
             w[s] = w.get(s, 0.0) + (1 - cf) / K
@@ -187,7 +288,7 @@ def targets(ex, st, ml_day, core_frac=None):
     return {s: round(v, 4) for s, v in w.items()}, info
 
 
-# ---------------- egitim (90 gunde bir, arka planda) ----------------
+# ---------------- egitim (30 gunde bir, arka planda) ----------------
 U3 = "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision"
 F3 = "https://data.binance.vision/"
 
@@ -231,7 +332,9 @@ def _sync_one(sess, sym):
         if isinstance(k, list) and len(k) > 1:
             a = np.vstack([a, [[x[0], *(float(x[i]) for i in (1, 2, 3, 4, 7, 10))] for x in k[:-1]]])
         a = np.array(sorted({r[0]: r for r in a.tolist()}.values()))
-        np.savez(fn, **{k: a[:, i] for i, k in enumerate(("t", "o", "h", "l", "c", "qv", "tbq"))})
+        with open(fn + ".tmp", "wb") as fh:  # yarim dosya kalmasin
+            np.savez(fh, **{k: a[:, i] for i, k in enumerate(("t", "o", "h", "l", "c", "qv", "tbq"))})
+        os.replace(fn + ".tmp", fn)
 
 
 def sync_data(say):
@@ -249,6 +352,9 @@ def sync_data(say):
                 time.sleep(2 + 3 * i)
     with ThreadPoolExecutor(8) as pool:
         list(pool.map(safe, syms))
+    son = float(np.load(os.path.join(DATA, "BTCUSDT.npz"))["t"].max()) / 1000  # indirme sessizce bozulduysa eski veriyle "taze" model olmasin
+    if time.time() - son > 3 * 86400:
+        raise ValueError(f"günlük veri güncellenemedi (son BTC günü {time.strftime('%Y-%m-%d', time.gmtime(son))})")
 
 
 def train(say=lambda t: None):
@@ -256,9 +362,12 @@ def train(say=lambda t: None):
     from sklearn.ensemble import HistGradientBoostingRegressor
     fr = {}
     for f in os.listdir(DATA):
+        if not f.endswith(".npz"):
+            continue
         z = np.load(os.path.join(DATA, f))
         if len(z["t"]) >= 30:
             fr[f[:-4]] = pd.DataFrame({k: z[k] for k in ("c", "qv", "tbq")}, index=pd.to_datetime(z["t"], unit="ms"))
+    fr = {s: d for s, d in fr.items() if not (s[:-4].endswith("B") and d.index.min() >= TOKEN_T)}
     idx = pd.date_range("2017-08-17", max(d.index[-1] for d in fr.values()), freq="D")
     tab = lambda k: pd.DataFrame({s: d[k] for s, d in fr.items()}).reindex(idx)
     c, qv, tbq = tab("c"), tab("qv"), tab("tbq")
@@ -287,7 +396,8 @@ def train(say=lambda t: None):
     model = mk().fit(Dd[FEATS], Dd.y)
     out = {"model": model, "feats": FEATS, "v": MODEL_V, "t": time.time(), "n": len(Dd), "end": str(c.index[-1].date()),
            "ic": round(ic, 3)}
-    joblib.dump(out, MODEL_FILE)
+    joblib.dump(out, MODEL_FILE + ".tmp")  # yarim kalan yazma calisan modeli bozmasin
+    os.replace(MODEL_FILE + ".tmp", MODEL_FILE)
     _M.clear()
     _M.update(out)
     STATE["model_t"] = out["t"]
@@ -297,22 +407,62 @@ def train(say=lambda t: None):
     return out
 
 
+def last_try():
+    try:
+        with open(TRAIN_MARK, encoding="utf-8") as fh:
+            return float(fh.read())
+    except (OSError, ValueError):
+        return 0.0
+
+
+def train_lock():
+    """Ayni makinedeki iki bot ayni anda egitmesin (bellek ~1.5 GB). Kilit acilamiyorsa (ev dizini yazilamaz) engellemez."""
+    try:
+        if time.time() - os.path.getmtime(TRAIN_LOCK) > 2 * 3600:  # yarim kalmis egitimin kilidi
+            os.remove(TRAIN_LOCK)
+    except OSError:
+        pass
+    try:
+        os.close(os.open(TRAIN_LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+    except FileExistsError:
+        return False
+    except OSError as e:
+        log.warning("egitim kilidi acilamadi: %s", e)
+    return True
+
+
 def maybe_train(say):
-    """Model yoksa veya 90 gunden eskiyse arka planda veri guncelle + egit (ilk sefer ~25 dk)."""
+    """Model yoksa, yapisi eskiyse veya 30 gunden eskiyse arka planda veri guncelle + egit (ilk sefer ~25 dk).
+    Basarisiz veya yarim kalan egitim (yeniden baslatma dahil) en fazla gunde bir denenir."""
     m = _M or load_model()
     if STATE["training"] or (m and m.get("v") == MODEL_V and time.time() - m.get("t", 0) < RETRAIN_DAYS * 86400):
         return
+    if 0 <= time.time() - last_try() < 86400 or not train_lock():
+        return
+    try:
+        with open(TRAIN_MARK, "w", encoding="utf-8") as fh:
+            fh.write(str(time.time()))
+    except OSError as e:
+        log.warning("egitim isareti yazilamadi: %s", e)
 
     def run():
         STATE["training"] = True
         try:
             sync_data(say)
             train(say)
+            try:
+                os.remove(TRAIN_MARK)
+            except OSError:
+                pass
         except Exception as e:
             log.exception("portfoy egitimi")
             say(f"Portföy ML eğitimi başarısız (eski model kullanılıyor): {e}")
         finally:
             STATE["training"] = False
+            try:
+                os.remove(TRAIN_LOCK)
+            except OSError:
+                pass
     threading.Thread(target=run, name="portfoy-egitim", daemon=True).start()
 
 
@@ -321,7 +471,7 @@ def ml_card(ex, st):
     for h in st.get("ml_hist", []):
         if "ret" not in h and time.time() - h["t"] >= 7 * 86400:
             try:
-                p = lambda s: ex.fetch_ohlcv(s, "1d", since=int((h["t"] + 7 * 86400) * 1000), limit=1)[0][4]
+                p = lambda s: ex.fetch_ohlcv(s, "1d", since=int(h["t"] // 86400 + 6) * 86400000, limit=1)[0][4]
                 rets = [p(s) / h["px"][s] - 1 for s in h["picks"]]
                 h["ret"], h["btc"] = round(sum(rets) / len(rets), 4), round(p("BTC/USDT") / h["px"]["BTC/USDT"] - 1, 4)
             except Exception:

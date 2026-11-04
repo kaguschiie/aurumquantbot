@@ -13,6 +13,9 @@ P = PN.load()
 STOCK = ("BNCB", "CRCLB", "INTCB", "KORUB", "MSTRB", "MUB", "NBISB", "NVDAB", "SKHYB", "SNDKB", "SOXLB", "SPCXB")
 for k in P:
     P[k] = P[k][[s for s in P[k].columns if not s.startswith(STOCK)]]
+_ilk = P["c"].apply(lambda v: v.first_valid_index())  # tokenize hisse/ETF: 2026-06'dan sonra listelenen, adi B ile biten
+for k in P:
+    P[k] = P[k][[s for s in P[k].columns if not (s[:-4].endswith("B") and _ilk[s] >= pd.Timestamp("2026-06-01"))]]
 X = PN.prep(P)
 c, ret = X["c"], X["ret"]
 BTC = "BTCUSDT"

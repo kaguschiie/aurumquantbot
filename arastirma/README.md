@@ -11,7 +11,7 @@ python indir_1d.py
 python canli_kopya.py
 ```
 
-`indir_1d.py` yaklaşık 52 MB günlük veriyi `d1/` klasörüne indirir (depoya girmez). `canli_kopya.py` canlı yapıyı (30 günde bir eğitim, canlı bantlar) kopyalar. 2026-10 sonuna kadarki veriyle test: yıllık %22,9, en derin düşüş -%23,8, Sharpe 0,92. Sepet günü seçilirken test görüldü; 7 günün ortalaması %17,7. Eski %25,2 (`limit_test.py`, `ml.py`) yıllık eğitim ve Pazartesi mumu kullanır, canlıyla aynı değildir. Veri uzadıkça sayılar değişir.
+`indir_1d.py` yaklaşık 52 MB günlük veriyi `d1/` klasörüne indirir (depoya girmez). `canli_kopya.py` canlı yapıyı (30 günde bir eğitim, canlı bantlar) kopyalar. 2026-10 sonuna kadarki veriyle test: yıllık %23,7, en derin düşüş -%22,5, Sharpe 0,95. Sepet günü seçilirken test görüldü; 7 günün ortalaması %18,8. Hafta içi 3 gün çıkış kuralı 8 model × 7 gün üzerinde ölçüldü: yolların %91'inde daha iyi, ortalama +1 puan, kazancın çoğu az sayıda düşüş haftasından. Eski %25,2 (`limit_test.py`, `ml.py`) yıllık eğitim ve Pazartesi mumu kullanır, canlıyla aynı değildir. Veri uzadıkça sayılar değişir.
 
 Bu sayılar geçmiş testtir, gerçek para sonucu değildir. Test canlı sistemin korumalarını (kill switch, molalar, %35 stop, IC kapısı, Claude kontrolör) simüle etmez ve denenen varyant sayısına göre düzeltilmemiştir.
 

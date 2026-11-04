@@ -3,15 +3,18 @@ Gunluk dengelemede alinacak coinleri Claude inceler; SADECE alimi ertele / yariy
 Her itiraz 7 gun sonra puanlanir: coin o 7 gunde dustuyse itiraz dogruydu. Son 20 itirazin isabeti %50'nin altina
 inerse itirazlar uygulanmaz, sadece kaydedilir (golge mod); tekrar ustune cikinca soz hakki geri gelir."""
 import json
+import logging
 import os
 import threading
 import time
 
 import config as C
 
+log = logging.getLogger("kontrolor")
 FILE = os.path.join(C.APP_DIR, "kontrolor.json")
 _LOCK = threading.Lock()
 MIN_N, WINDOW = 5, 20
+KARARLAR = ("ertele", "yarim")
 SYSTEM = ("Sen bir kripto portfoyunun kontrolorusun. Bot kanitlanmis bir kurala gore (trend + oynaklik, haftalik ML "
           "secimi) bugun bazi coinleri ALACAK. Gorevin: bu alimlardan biri bariz tehlikeliyse (dikey pompa sonrasi, "
           "cokus ortasinda, coinle ilgili cok kotu durum) ertele ya da yariya indir. Emin degilsen itiraz ETME; "
@@ -73,6 +76,26 @@ def score(ex):
             _save(cur)
 
 
+def _valid(dec, known):
+    """Claude ciktisi yerelde denetlenir: itirazlar liste, her kalem sozluk, sym bugunun aliminda, karar izinli; coin basina ilk kalem.
+    Bozuk kalem kaydedilir ve yok sayilir. Donus: (gecerli kalemler, bozuk sayisi)."""
+    raw = dec.get("itirazlar") if isinstance(dec, dict) else None
+    if not isinstance(raw, list):
+        if raw is not None or not isinstance(dec, dict):
+            log.warning("kontrolor: bozuk cevap yok sayildi: %.200r", dec)
+            return [], 1
+        return [], 0
+    out, seen = [], set()
+    for o in raw:
+        sym = o.get("sym") if isinstance(o, dict) else None
+        if isinstance(sym, str) and sym in known and sym not in seen and o.get("karar") in KARARLAR:
+            seen.add(sym)
+            out.append(o)
+        else:
+            log.warning("kontrolor: gecersiz itiraz yok sayildi: %.200r", o)
+    return out, len(raw) - len(out)
+
+
 def review(ask, buys, lines):
     """buys: [(sym, hedef_agirlik, simdiki_agirlik, fiyat, aciklama)]. ask: agent.ask_json.
     Donus: (ozet, {sym: 'ertele'|'yarim'} uygulanacaklar, kayit notu)."""
@@ -83,16 +106,18 @@ def review(ask, buys, lines):
         f"- {s}: kasadaki payi %{c * 100:.1f} -> %{t * 100:.1f}. {why}" for s, t, c, _, why in buys] + ["", hist])
     dec, usd, model = ask(SYSTEM, prompt, SCHEMA)
     known = {b[0]: b for b in buys}
-    objs = [o for o in dec.get("itirazlar") or [] if o.get("sym") in known]
+    objs, bad = _valid(dec, known)
     now = time.time()
     with _LOCK:
         d = _load()
-        d["items"] = (d["items"] + [{"t": now, "sym": o["sym"], "karar": o["karar"], "neden": str(o["neden"])[:300],
+        d["items"] = (d["items"] + [{"t": now, "sym": o["sym"], "karar": o["karar"], "neden": str(o.get("neden") or "")[:300],
                                      "px": known[o["sym"]][3], "uygulandi": kc["aktif"], "model": model}
                                     for o in objs])[-300:]
         _save(d)
     apply = {o["sym"]: o["karar"] for o in objs} if kc["aktif"] else {}
     note = ("Claude itiraz etmedi." if not objs else
-            ("; ".join(f"{o['sym'].split('/')[0]} {'ertelendi' if o['karar'] == 'ertele' else 'yarıya indi'}: {o['neden']}"
+            ("; ".join(f"{o['sym'].split('/')[0]} {'ertelendi' if o['karar'] == 'ertele' else 'yarıya indi'}: {str(o.get('neden') or '')[:300]}"
                        for o in objs) + ("" if kc["aktif"] else " (karnesi düşük: itiraz sadece kaydedildi, uygulanmadı)")))
-    return str(dec.get("ozet") or "")[:400], apply, note, usd
+    if bad:
+        note += f" {bad} geçersiz itiraz yok sayıldı."
+    return str((dec.get("ozet") if isinstance(dec, dict) else "") or "")[:400], apply, note, usd

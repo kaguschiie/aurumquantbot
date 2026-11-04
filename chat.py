@@ -36,7 +36,7 @@ def context(b, role):
                 px = b.bid.get(s, p["entry"])
                 L.append(f"- {s}: giris {p['entry']:g}, simdi {px:g} (%{(px / p['entry'] - 1) * 100:+.2f}), stop "
                          f"{p['sl']:.6g}, hedef {p['tp']:.6g}, kismi kar: {'alindi' if p.get('part') else 'yok'}, acilis "
-                         f"{time.strftime('%d.%m %H:%M', time.localtime(p['t']))}. Gerekce: {p.get('why', '')[:200]}")
+                         f"{time.strftime('%d.%m %H:%M', time.localtime(p['t']))}. Gerekce: {(p.get('why') or '')[:200]}")
             for t in st["trades"][-6:]:
                 L.append(f"  kapanan: {time.strftime('%d.%m %H:%M', time.localtime(t['t']))} {t['sym']} {t['reason']} "
                          f"{t['pnl']:+.2f} USDT (%{t['pct']:+.2f})")
@@ -192,7 +192,7 @@ def _account(a, b):
     for s, p in st["positions"].items():
         px = b.bid.get(s, p["entry"])
         L.append(f"- **{s}**: giriş {p['entry']:g}, şimdi {px:g} (%{(px / p['entry'] - 1) * 100:+.2f}), stop {p['sl']:.6g}, "
-                 f"hedef {p['tp']:.6g}{', kısmi kâr alındı' if p.get('part') else ''}. Gerekçe: {p.get('why', '')[:160]}")
+                 f"hedef {p['tp']:.6g}{', kısmi kâr alındı' if p.get('part') else ''}. Gerekçe: {(p.get('why') or '')[:160]}")
     if not st["positions"]:
         L.append("- Açık pozisyon yok.")
     return "\n".join(L)

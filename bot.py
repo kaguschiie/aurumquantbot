@@ -2,11 +2,14 @@
 Canli veri (Binance/Bybit WebSocket + TradingView) -> Claude karar verir -> yerel risk yoneticisi denetler ->
 iki hesap uygular: PAPER (sanal kasa) ve LIVE (gercek Binance Spot). Saniyelik pozisyon yonetimi yereldir."""
 import copy
+import errno
+import hashlib
 import json
 import logging
 import os
 import re
 import sys
+import tempfile
 import threading
 import time
 
@@ -37,6 +40,7 @@ from zincir import Zincir
 log = logging.getLogger("bot")
 ACCTS = ("PAPER", "LIVE")
 RADAR_KEYS = ("rs24", "rs4", "vspike", "r1h", "r4h", "breakout", "score", "full", "flow3")
+PF_LATE, PF_LATE_GRACE = 1800, 900  # dengeleme 00:30 UTC'ye kadar bitmediyse uyari; motor yeni basladiysa once ilk turu bitirsin
 
 
 def norm(sym):
@@ -49,6 +53,115 @@ def today():
     return time.strftime("%Y-%m-%d", time.gmtime())
 
 
+class FenceDeny(ccxt.InvalidOrder):
+    """Emir kapisi reddi: borsaya gitmedi. Borsa hatasi gibi yakalanir (coklu hesap / coin dongusu durmaz)."""
+
+
+class OrderUnknown(ccxt.NetworkError):
+    """Emrin sonucu bilinmiyor (borsaya ulasmis olabilir): kimligiyle sorgulanir, yeniden gonderilmez. O coinde sonuc netlesene kadar yeni emir yok."""
+
+
+ORDER_LOST_SEC, ORDER_CHECK_SEC, ORDER_RETRY_SEC = 120, 5, 1.0  # kimlikle sorgu bu kadar sure 'yok' derse emir gitmemis sayilir (borsa zaman penceresi 10 sn)
+ORDER_HOLD_SEC = 15  # belirsiz satis/stopun borsaya varabilecegi en gec an (zaman penceresi + pay): sonrasinda koruma emirleri beklemez
+MUT_SEC, MUT_N = 300, 3  # bakiye mutabakati: kac saniyede bir, kac kontrol ust uste tutmazsa tek uyari + o coinde alim yasagi
+MUT_CLEAR, MUT_RETRY = 0.8, (10, 60)  # yasak kalkarken toz siniri bu kat dar (fiyat esikte gezinince uyari/giderildi donmesin); dengelemede bakiye okunamazsa alimlardan once kac kez, kac sn arayla
+
+
+def order_cid(mode, seq, s, typ, side, qty, price, t):
+    """Emir kimligi: ayni girdi hep ayni kimlik (Binance: en fazla 36 karakter, harf/rakam/-/_). Zaman da ozette: durum dosyasi
+    yedekten donse bile ayni sira numarasi eski bir emirle karismaz."""
+    h = hashlib.sha256(f"{mode}|{seq}|{s}|{typ}|{side}|{qty}|{price}|{t}".encode()).hexdigest()[:20]
+    return f"kqb{mode[0]}{seq}-{h}"
+
+
+def order_fail(e):
+    """create_order hatasi ne demek: 'gitmedi' (borsa islemedi: tekrar denenir), 'red' (borsa reddetti: tekrar yok), 'belirsiz'
+    (zaman asimi vb.: borsaya ulasmis olabilir). Tanimadigimiz her hata belirsizdir, reddedildi sayilmaz."""
+    if "duplicate" in str(e).lower():  # bu kimlikle emir zaten borsada
+        return "belirsiz"
+    if isinstance(e, (ccxt.RateLimitExceeded, ccxt.DDoSProtection, ccxt.InvalidNonce)):  # istek kapida kaldi (429/418/-1021): islenmedi
+        return "gitmedi"
+    c = e.__cause__  # baglanti hic kurulamadi (DNS, baglanti reddi, baglanti zaman asimi): istek yola cikmadi
+    if isinstance(c, requests.exceptions.ConnectTimeout) or (
+            isinstance(c, requests.exceptions.ConnectionError) and re.search("NewConnectionError|NameResolutionError", str(c))):
+        return "gitmedi"
+    if isinstance(e, ccxt.OrderNotFound):
+        return "belirsiz"
+    if isinstance(e, (ccxt.InvalidOrder, ccxt.InsufficientFunds, ccxt.BadRequest, ccxt.AuthenticationError, ccxt.NotSupported,
+                      ccxt.OperationRejected)):
+        return "red"
+    return "belirsiz"
+
+
+_LOCKS, _LOCK_MX = {}, threading.Lock()  # bu surecin tuttugu hesap kilidi: {anahtar ozeti: {klasor: dosya tutamagi}}
+
+
+def _flock(fd):
+    if os.name == "nt":
+        import msvcrt
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def hold_lock(key):
+    """Bir Binance hesabinda tek motor. Veri klasorunde ve makinenin gecici klasorunde kilit dosyasi (ayri veri klasorlu iki
+    kopya da takilir); isletim sistemi kilidi surec olunce kendiliginden kalkar, bayat kilit kalmaz. Motor yeniden baslarken
+    ayni surec kilidi korur. Baska makinedeki kopyayi goremez. Kilit bos olsa da hesabi en son baska veri klasoru yonettiyse
+    alinmaz (bu kopyanin defteri eski: eldekinin ustune alir). Donus: None (kilit bizde) veya neden bizde degil. Dosya hatasi
+    'baska motor' demek degildir: tutulabilen kilitler saklanir, OSError firlatilir, sonraki denemede tamamlanir."""
+    h = hashlib.sha256(key.encode()).hexdigest()[:16]
+    held, err = _LOCKS.get(h, {}), None
+    for d in sorted({C.APP_DIR, tempfile.gettempdir()}):
+        if d in held:
+            continue
+        try:
+            fd = os.open(os.path.join(d, f"kqb_canli_{h}.kilit"), os.O_RDWR | os.O_CREAT, 0o600)
+        except OSError as e:
+            err = e
+            continue
+        try:
+            _flock(fd)
+            held[d] = fd
+        except OSError as e:
+            os.close(fd)
+            if e.errno not in (errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK, errno.EDEADLK):
+                err = e
+                continue
+            for x in held.values():
+                os.close(x)
+            _LOCKS.pop(h, None)
+            return "Bu Binance hesabında başka bir motor çalışıyor: bu kopya emir vermiyor, stoplara dokunmuyor, bu kopyadaki " \
+                   "pozisyonlar korunmuyor. Hesabı bu kopya yönetecekse diğer motoru kapatıp bunu yeniden başlatın."
+    if h not in _LOCKS:
+        sahip = os.path.join(os.path.expanduser("~"), f".kqb_canli_{h}.sahip")  # gecici klasor gibi yeniden baslatmada silinmez
+        try:
+            with open(sahip, encoding="utf-8") as fh:
+                last = fh.read().strip()
+        except OSError:
+            last = ""
+        if last and os.path.normcase(last) != os.path.normcase(C.APP_DIR) \
+                and os.path.exists(os.path.join(last, os.path.basename(C.STATE_FILE))):  # klasor tasindiysa eskisi yoktur: engel yok
+            for x in held.values():
+                os.close(x)
+            return f"Bu Binance hesabını en son başka bir veri klasörü yönetti ({last}): bu kopyanın defteri eski, emir vermiyor, " \
+                   f"stoplara dokunmuyor. Hesabı bu kopyaya geçirmek için o motoru kapatın, {sahip} dosyasını silin ve bu kopyayı " \
+                   f"yeniden başlatın."
+        for old in list(_LOCKS):  # anahtar degisti: eski hesabin kilidi birakilir
+            for x in _LOCKS.pop(old).values():
+                os.close(x)
+        _LOCKS[h] = held
+        try:
+            with open(sahip, "w", encoding="utf-8") as fh:
+                fh.write(C.APP_DIR)
+        except OSError as e:
+            log.warning("hesap sahibi kaydi: %s", e)
+    if err:
+        raise err
+    return None
+
+
 class Account:
     """Tek portfoy: emir verme, saniyelik pozisyon yonetimi ve hesap korumalari."""
 
@@ -57,10 +170,16 @@ class Account:
         self.st = {"cash": C.PAPER_BALANCE, "start_equity": None, "positions": {}, "pending": {}, "trades": [],
                    "pnl": 0.0, "wins": 0, "losses": 0, "eq_hist": [], "pause_until": 0, "curve": [],
                    "day": {"d": "", "eq": 0.0}, "cooldown": {}, "stops": [], "kill_reset": 0, "principal": None,
-                   "peak": 0.0}
+                   "peak": 0.0, "orders": {}, "oseq": 0, "mut": {}, "toz": {}, "dis": None}  # orders: sonucu henuz deftere islenmemis gercek emirler {kimlik: kayit}; mut/toz/dis: bakiye mutabakati
         self.st.update({k: v for k, v in saved.items() if k in self.st})
         self.ex = D.exchange(auth=True) if self.live else bot.ex  # sanal hesap ortak (anahtarsiz) baglantiyi kullanir
         self.usdt_total, self.usdt_free, self.synced, self.error = 0.0, 0.0, not self.live, ""
+        self.own, self.lock_why, self.lock_err = not self.live, "", ""  # LIVE: hesap kilidi bizde degilse emir de stop iptali de yok
+        self.key_ok, self.key_err, self.key_na, self.key_t, self._said, self._stat = None, "", False, 0.0, {}, {}
+        self._sending = set()  # su an create_order icinde olan kimlikler (reconcile dokunmaz)
+        self.pf_err = 0  # son dengelemede borsaya ulasmayan veya sonucu bilinmeyen is sayisi (0 degilse tur bitmis sayilmaz)
+        if self.live:
+            self.take_lock()
 
     @property
     def bid(self):
@@ -83,7 +202,7 @@ class Account:
         """LIVE: borsadaki USDT bakiyesi."""
         try:
             self.usdt_free, self.usdt_total = self.balance("USDT")
-            self.synced, self.error = True, ""
+            self.synced, self.error = True, self.guard()
         except ccxt.AuthenticationError as e:
             self.error = f"Binance anahtarı reddedildi: {str(e)[:120]}"
         except (ccxt.NetworkError, ccxt.ExchangeError) as e:
@@ -160,6 +279,8 @@ class Account:
             return self.error or "Binance bakiyesi bekleniyor"
         if os.path.exists(C.pause_flag(self.mode)):
             return "duraklatıldı"
+        if HB.peg_why():
+            return HB.peg_why()
         if time.time() < st["pause_until"]:
             return f"koruma molası ({int((st['pause_until'] - time.time()) / 60)} dk)"
         if self.day_pct() <= -C.DAILY_LOSS_PCT:
@@ -172,8 +293,10 @@ class Account:
         return None
 
     def locked(self, s):
-        """Coin bazli kilit: cikistan sonra bekleme + son 48 saatte 3+ islemde net zarar (24 saat kilit)."""
+        """Coin bazli kilit: bakiye uyusmazligi + cikistan sonra bekleme + son 48 saatte 3+ islemde net zarar (24 saat kilit)."""
         now = time.time()
+        if self.mut_why(s):
+            return self.mut_why(s)
         if now - self.st["cooldown"].get(s, 0) < C.COOLDOWN_MIN * 60:
             return f"çıkıştan sonra {C.COOLDOWN_MIN} dk bekleme"
         tr = [t for t in self.st["trades"][-50:] if t["sym"] == s and now - t["t"] < 48 * 3600]
@@ -199,9 +322,471 @@ class Account:
             self.say(f"ACİL DURDURMA: kasa 7 günlük zirvesinden %{(1 - eq / peak) * 100:.1f} düştü. Yeni işlemler "
                      f"durduruldu; açık pozisyonlar korunuyor. Devam için 'Devam et'e basın.", True, "uyari")
 
+    # ---------------- gercek emir kapisi ----------------
+    def note(self, key, msg):
+        """Tekrarlayan guvenlik uyarisi: ayni konuda saatte bir."""
+        if time.time() - self._said.get(key, 0) > 3600:
+            self._said[key] = time.time()
+            self.say(msg, True, "uyari")
+
+    def take_lock(self):
+        """Hesap kilidi sadece emir verebilecek kopyada alinir (izin acik veya defterde korunacak pozisyon/emir var): izni
+        kapali bos kopya gercek motoru pasif birakmasin. Kilit dosyasi hatasinda baska motor kaniti yok: koruma surer, alim durur."""
+        if not (C.LIVE_ALLOWED or self.st["positions"] or self.st["pending"] or self.st["orders"]):
+            return
+        with _LOCK_MX:  # bakiye okumasi birden cok is parcacigindan gelir: surec kendi kilidine carpmasin
+            try:
+                self.lock_why, self.lock_err = hold_lock(C.API_KEY) or "", ""
+                self.own = not self.lock_why
+            except OSError as e:
+                self.own, self.lock_err = True, f"Hesap kilidi alınamadı ({e}): tek motor garantisi yok, yeni alım yapılmıyor; satışlar " \
+                                                f"ve stoplar çalışıyor. Veri ve geçici klasörün yazılabilir olduğunu, diskte yer olduğunu kontrol edin."
+
+    def guard(self):
+        """LIVE, her bakiye okumasinda: hesap kilidi + anahtar izni. Yeni alimi engelleyen sebep veya bos metin. Pasif kopya kilit
+        bosalsa da kendiliginden devralmaz (defteri eski, eldekinin ustune alir): yeniden baslatinca defter dosyadan okunur."""
+        if not self.lock_why and (not self.own or self.lock_err):
+            self.take_lock()  # izin sonradan acildi veya kilit dosyasi hatasi gecti
+        if self.lock_why:
+            self.note("kilit", self.lock_why)
+            return self.lock_why
+        self.check_key()
+        if self.lock_err:
+            self.note("kilit_hata", self.lock_err)
+            return self.lock_err
+        if self.key_ok is None:
+            return "Binance API anahtarının izinleri okunamadı: yeniden denenecek, yeni alım bekliyor."
+        if self.key_err:
+            self.note("anahtar", self.key_err + " Açık pozisyonlar korunmaya devam ediyor.")
+        return self.key_err
+
+    def check_key(self):
+        """Anahtar izinleri (saatte bir; sorun varken dakikada bir). Cekim izni acik veya bilinmiyorsa yeni alim yok, koruma surer.
+        Gecici hata (ag, bozuk cevap, borsa ic hatasi) son sonucu degistirmez, ilk okumadaysa izin bilinmiyor kalir;
+        sadece uc bu hesapta yoksa uyarilir ve devam edilir (dakikada bir yeniden okunur)."""
+        if time.time() - self.key_t < (3600 if self.key_ok and not self.key_na else 60):
+            return
+        self.key_t = time.time()
+        try:
+            w = self.ex.sapi_get_account_apirestrictions()["enableWithdrawals"]
+        except ccxt.AuthenticationError as e:
+            self.key_ok, self.key_err = False, f"Binance anahtarının izinleri okunamadı: {str(e)[:120]}"
+            return
+        except (ccxt.BadRequest, ccxt.NotSupported, AttributeError, TypeError) as e:
+            log.warning("anahtar izinleri: %s", e)
+            if self.key_ok is None:
+                self.key_ok, self.key_na = True, True
+                self.note("anahtar_uc", "Binance anahtar izinleri bu hesapta okunamıyor: çekim izninin kapalı olduğunu "
+                                        "Binance API Yönetimi'nden kendiniz doğrulayın.")
+            return
+        except (ccxt.BaseError, KeyError) as e:
+            log.warning("anahtar izinleri: %s", e)
+            return
+        self.key_na, self.key_ok = False, w in (False, "false")
+        self.key_err = "" if self.key_ok else "Binance API anahtarında para çekme izni açık: yeni alım yapılmıyor, çekim iznini kapatın."
+
+    def _status(self, s):
+        """Parite durumu: Binance'ten taze (60 sn onbellek), okunamazsa yuklu pazar listesinden; o da yoksa None."""
+        c = self._stat.get(s)
+        if c and time.time() - c[0] < 60:
+            return c[1]
+        try:
+            st = self.ex.public_get_exchangeinfo({"symbol": s.replace("/", "")})["symbols"][0]["status"]
+            self._stat[s] = (time.time(), st)
+            return st
+        except (ccxt.BaseError, AttributeError, KeyError, IndexError, TypeError) as e:
+            log.warning("%s parite durumu: %s", s, e)
+        try:
+            return self.ex.markets[s]["info"]["status"]
+        except (AttributeError, KeyError, TypeError):
+            return None
+
+    def fence(self, s, side, qty, price=None, stop=None):
+        """Gercek emrin borsaya gitmeden son kontrolu. Red sebebi veya None. Eldeki pozisyonu azaltan satis ve stop tutar
+        sinirina takilmaz (kasa buyuyunce veya sinir dusurulunce pozisyon cikissiz kalmasin; spotta satis riski artirmaz),
+        piyasa satisi da fiyat bandina (dususte cikis engellenmesin), felaket stopu alt banda, ikisi de parite durumuna takilmaz
+        (bayat durum cikisi engellemesin; parite gercekten kapaliysa borsa reddeder)."""
+        if not self.own:
+            return self.lock_why or "admin gerçek işlem iznini açmadı"
+        if not qty > 0:
+            return "geçersiz miktar"
+        pos = self.st["positions"].get(s)
+        reduce = side == "sell" and pos and qty <= pos["qty"] * 1.0001
+        band = C.LIVE_COLLAR_PCT / 100
+        if reduce:
+            bid = self.bid.get(s)
+            if bid and stop and stop > bid * (1 + band):
+                return f"stop {stop:g} anlık fiyatın ({bid:g}) %{C.LIVE_COLLAR_PCT:g} üstünden fazla"
+            if bid and price and not stop and abs(price / bid - 1) > band:
+                return f"fiyat {price:g} son fiyattan ({bid:g}) %{C.LIVE_COLLAR_PCT:g} fazla uzak"
+            return None
+        if side == "buy" and self.mut_why(s):
+            return self.mut_why(s)
+        status = self._status(s)
+        if status != "TRADING":
+            return f"parite işleme kapalı ({status or 'durum bilinmiyor'})"
+        if side == "buy" and not C.LIVE_ALLOWED:
+            return "admin gerçek işlem iznini açmadı"
+        if side == "buy" and self.lock_err:
+            return self.lock_err
+        if side == "buy" and not self.key_ok:
+            return self.key_err or "API anahtarının izinleri henüz doğrulanmadı"
+        px = price or (self.ask if side == "buy" else self.bid).get(s)
+        try:
+            last = float(self.ex.fetch_ticker(s)["last"])
+        except (ccxt.BaseError, AttributeError, KeyError, TypeError, ValueError):
+            return "son fiyat okunamadı"
+        if not px or not last > 0:
+            return "fiyat yok"
+        if not abs(px / last - 1) <= band:
+            return f"fiyat {px:g} son fiyattan ({last:g}) %{C.LIVE_COLLAR_PCT:g} fazla uzak"
+        cost, eq = qty * px, self.equity()
+        if not cost <= C.LIVE_MAX_USDT < float("inf"):  # NaN / sonsuz ayar da reddedilir
+            return f"tutar {cost:.2f} USDT, tek emir sınırı {C.LIVE_MAX_USDT:g} USDT (Ayarlar → Gerçek işlem)"
+        if not cost <= eq * C.LIVE_MAX_EQUITY:
+            return f"tutar {cost:.2f} USDT, kasanın %{C.LIVE_MAX_EQUITY * 100:.0f} sınırını ({eq * C.LIVE_MAX_EQUITY:.2f}) aşıyor"
+        return None
+
+    def gate(self, s, side, qty, price=None, stop=None):
+        """Kapidan gecmeyen emirde kayit + uyari + FenceDeny. Stop iptalinden once de cagrilir: reddedilecek emir stopu sokmesin."""
+        why = self.fence(s, side, qty, price, stop)
+        if why:
+            why = f"{s} {'alış' if side == 'buy' else 'satış'} emri gönderilmedi: {why.rstrip('.')}."
+            log.warning(why)
+            if not (side == "buy" and self.mut_why(s)):  # uyusmazlik uyarisi zaten bir kez gitti
+                self.note((s, side), why)
+            raise FenceDeny(why)
+
+    def order(self, s, typ, side, qty, price=None, params=None, act=None):
+        """Tum gercek emirlerin tek yolu (ex.create_order baska yerde cagrilmaz). Kimlik diske yazilmadan alim gitmez; sonuc act'e gore
+        deftere islenir (_apply) ve durum hemen kaydedilir. Gitmediyse ayni kimlikle bir kez daha denenir, reddedildiyse tekrar yok,
+        belirsizse once kimlikle sorulur: asla korlemesine yeniden gonderilmez, reddedildi de sayilmaz (OrderUnknown)."""
+        self.gate(s, side, qty, price, (params or {}).get("stopPrice"))
+        self._no_unknown(s, typ, act)
+        st, t = self.st, time.time()
+        st["oseq"] = st.get("oseq", 0) + 1
+        cid = order_cid(self.mode, st["oseq"], s, typ, side, qty, price, t)
+        r = {"s": s, "typ": typ, "side": side, "qty": qty, "price": price, "t": t, "act": act}
+        if side == "sell":  # belirsiz kalirsa: dolup dolmadigini sorgu calismasa da bakiyeden anlamak icin (bkz. _maybe_sold)
+            try:
+                r["free"] = self.balance(s.split("/")[0])[0]
+            except (ccxt.BaseError, AttributeError, KeyError, TypeError) as e:  # okunamasa da satis gider
+                log.warning("%s satis oncesi bakiye: %s", s, e)
+        r = st["orders"][cid] = json.loads(json.dumps(r, default=lambda x: x.item() if hasattr(x, "item") else str(x)))
+        if not self._save() and side == "buy":  # satis ve stop diske takilmaz: cikis engellenmesin
+            del st["orders"][cid]
+            raise FenceDeny(f"{s} alış emri gönderilmedi: durum dosyası yazılamadı.")
+        o, err = None, None
+        self._sending.add(cid)
+        try:
+            for again in (True, False):
+                try:
+                    o = self.ex.create_order(s, typ, side, qty, price, {**(params or {}), "newClientOrderId": cid})
+                    break
+                except Exception as e:
+                    kind = order_fail(e)
+                    if kind == "gitmedi" and again:
+                        log.warning("%s emir gitmedi, ayni kimlikle yeniden: %s", s, e)
+                        time.sleep(ORDER_RETRY_SEC)
+                        continue
+                    if kind != "belirsiz":
+                        del st["orders"][cid]
+                        self._save()
+                        raise
+                    err = e
+                    break
+        finally:
+            self._sending.discard(cid)
+        if o is not None and (typ != "market" or o.get("filled")):
+            self._settle(cid, o)
+            return o
+        self.say(f"{s} {'alış' if side == 'buy' else 'satış'} emrinin sonucu bilinmiyor ({str(err or 'dolum bilgisi yok')[:100]}): borsadan "
+                 f"sorgulanıyor, yeniden gönderilmedi.", True, "uyari")
+        o = self._resolve(cid, r)
+        if cid in st["orders"] or o is None:
+            raise OrderUnknown(f"{s} emrinin sonucu henüz bilinmiyor: borsadan sorgulanıyor, yeniden gönderilmedi.") from err
+        if typ == "market" and not o.get("filled"):
+            raise ccxt.InvalidOrder(f"{s} emri dolmadı ({o.get('status')}).")
+        return o
+
+    def _no_unknown(self, s, typ=None, act=None):
+        """Bu coinde sonucu bilinmeyen emir varken yeni emir yok. Koruma bunun disinda (tam cikis: act.reason, koruma stopu): satis serbest
+        bakiyeyle ve _maybe_sold ile sinirli, kilit cikisi engellemez. Tek bekleme: yolda olabilecek satis (stop icin belirsiz stop da), ORDER_HOLD_SEC."""
+        exiting, stop = bool((act or {}).get("reason")), typ == "STOP_LOSS_LIMIT"
+        for r in self.st["orders"].values():
+            if r["s"] != s:
+                continue
+            if exiting or stop:
+                if r["side"] != "sell" or time.time() - r["t"] > ORDER_HOLD_SEC or (exiting and r["typ"] != "market"):
+                    continue
+            raise OrderUnknown(f"{s}: önceki emrin sonucu henüz bilinmiyor; borsadan sorgulanıyor, yeni emir gönderilmedi.")
+
+    def _maybe_sold(self, s):
+        """Sonucu bilinmeyen satis/stoplarin borsada aldigi olabilecek miktar: ilk gonderimdeki serbest bakiye - simdiki. Sorgu calismasa da
+        ikinci satis pozisyonun otesine (hesaptaki bot disi coine) gecmesin. Bilinmeyen satis yoksa borsaya sormaz."""
+        f0 = [r["free"] for r in self.st["orders"].values() if r["s"] == s and r["side"] == "sell" and r.get("free") is not None]
+        return max(0.0, max(f0) - self.balance(s.split("/")[0])[0]) if f0 else 0.0
+
+    def _save(self):
+        """Durum hemen diske. Yazilamazsa False + uyari."""
+        try:
+            self.b.save()
+            return True
+        except (OSError, TypeError, ValueError) as e:
+            log.warning("durum kaydi: %s", e)
+            self.note("kayit", f"Durum dosyası yazılamadı ({str(e)[:100]}): yeni alım yapılmıyor. Diskte yer olduğunu kontrol edin.")
+            return False
+
+    def _resolve(self, cid, r):
+        """Sonucu bilinmeyen emri istemci kimligiyle sorar. Bulunursa deftere islenir, emir doner. 'Yok' cevabi hemen reddedildi demek
+        degildir (emir yolda olabilir): ORDER_LOST_SEC sonunda hala yoksa gitmemis sayilir. Sorgu basarisizsa kayit kalir, yeni alim kilitli kalir."""
+        if time.time() - r.get("chk", 0) < ORDER_CHECK_SEC:
+            return None
+        r["chk"] = time.time()
+        try:
+            o = self.ex.fetch_order(None, r["s"], {"origClientOrderId": cid})
+        except ccxt.OrderNotFound:
+            if time.time() - r["t"] > ORDER_LOST_SEC:
+                del self.st["orders"][cid]
+                pos = self.st["positions"].get(r["s"])
+                if pos and (r.get("act") or {}).get("part"):
+                    pos["part"] = False  # kademeli satis gitmedi: yeniden denenebilsin
+                self._save()
+                self.say(f"{r['s']} emri {ORDER_LOST_SEC} sn boyunca borsada bulunamadı: gitmemiş sayıldı, coindeki kilit kalktı.", True, "uyari")
+            return None
+        except Exception as e:
+            log.warning("%s emir sorgusu: %s", r["s"], e)
+            if time.time() - r["t"] > ORDER_LOST_SEC:
+                self.note(("sorgu", r["s"]), f"{r['s']} emrinin sonucu borsadan okunamıyor ({str(e)[:100]}): o coinde yeni emir verilmiyor, yeniden deneniyor.")
+            return None
+        if r["typ"] == "market" and o.get("status") == "open":
+            return None
+        self._settle(cid, o)
+        return o
+
+    def _settle(self, cid, o):
+        """Emrin sonucu kesinlesti: deftere isle, kaydi sil, durumu hemen diske yaz (anlik ve sonradan bulunan emir ayni yoldan gecer)."""
+        r = self.st["orders"].pop(cid, None)
+        if r is None:
+            return
+        try:
+            self._apply(r, o)
+        except Exception as e:
+            self.st["orders"][cid] = r  # defter islenemedi: dolum kaybolmasin, sonraki dongu yeniden dener
+            self.note(("defter", r["s"]), f"{r['s']} emri borsada sonuçlandı ama deftere işlenemedi ({str(e)[:100]}): bu coinde yeni alım yapılmıyor, "
+                                          f"çıkış ve koruma stopu çalışıyor; yeniden deneniyor.")
+            raise OrderUnknown(f"{r['s']} emri borsada sonuçlandı ama deftere işlenemedi, yeniden denenecek: {str(e)[:120]}") from e
+        self._save()
+
+    def _apply(self, r, o):
+        """Sonuclanan emrin deftere etkisi. act.do: enter (yeni pozisyon), limit (bekleyen emir), add (portfoy artirma), sell (reason varsa
+        tam cikis, yoksa azaltma; eksik dolumda sadece dolan kisim dusulur), stop (borsa stopu)."""
+        s, act, pos = r["s"], r.get("act") or {}, self.st["positions"].get(r["s"])
+        do, filled = act.get("do"), o.get("filled") or 0.0
+        avg = o.get("average") or (self.ask if r["side"] == "buy" else self.bid).get(s)
+        if do == "limit":
+            act["p"]["id"] = o["id"]
+            self._pend(s, act["p"])
+        elif do == "stop":
+            if pos and not pos.get("stop_id"):
+                pos.update(stop_id=o["id"], stop_px=act["sp"])
+            elif o.get("status") == "open":  # pozisyon kapandi veya yerine yeni stop kuruldu: sahipsiz stop kalmasin
+                self.ex.cancel_order(o["id"], s)
+        elif not filled:
+            if do:
+                self.say(f"{s} emri dolmadı ({o.get('status')}).")
+        elif do == "enter":
+            self.open(s, act["p"], filled, avg, o)
+        elif do == "add":
+            base, fee = self._fees(s, o, filled, avg)
+            qty = self._prec(s, filled - base)
+            if pos:
+                self._toz(s, filled - base - qty)
+            if pos and qty > 0:
+                self._grow(s, pos, qty, avg, fee, act["why"])
+            elif pos:  # komisyondan sonra borsa adiminin altinda: toz, sadece ucret islenir
+                pos["fee"] += fee
+                self.say(f"{s} alımı doldu ama komisyondan sonra kalan miktar borsa adımının altında: pozisyon büyütülmedi.", True, "uyari")
+            else:  # felaket stopu bu arada doldu: alim yeni pozisyondur
+                self.open(s, {"kind": PF.KIND, "stop": avg * PF.STOP_FRAC, "tp2": avg * 1000, "tp1": 0, "max_hours": 1e6,
+                              "reason": act["why"]}, filled, avg, o)
+        elif do == "sell":
+            if not pos:
+                log.warning("%s satis sonuclandi ama pozisyon yok", s)
+                self.say(f"{s}: sonucu bilinmeyen satış, pozisyon kapandıktan sonra borsada dolu bulundu ({filled:g} @ {avg:g}). Bu dolum kâr/zarar "
+                         f"kaydında yok; Binance'teki {s.split('/')[0]} bakiyenizi kontrol edin.", True, "uyari")
+            elif act.get("reason") and filled >= r["qty"] * 0.999:
+                pos["exit_fee"] = self._fees(s, o, filled, avg)[1]
+                self.book(s, pos, avg, act["reason"])
+            else:
+                self._fill_part(s, pos, {**o, "average": avg})
+                if act.get("part"):  # kademeli kar: sonradan bulunan satis da ayni korumayi alsin (stop basabasa)
+                    pos["sl"], pos["be"] = max(pos["sl"], L.be_price(pos["entry"], pos.get("atr"))), True
+
+    def _fees(self, s, o, filled, px):
+        """Dolumun gercek komisyonu: (coinden kesilen miktar, USDT karsiligi). BNB ile odendiyse coinden kesinti yok. Emir cevabinda yoksa
+        (sonradan sorgulanan emir, stop) islem listesinden; o da okunamazsa eski tahmin (miktar x FEE)."""
+        ok = lambda f: f and f.get("currency") and f.get("cost") is not None
+        fees = [f for f in o.get("fees") or [o.get("fee")] if ok(f)]
+        if not fees and o.get("id"):
+            try:
+                fees = [t["fee"] for t in self.ex.fetch_my_trades(s, None, None, {"orderId": o["id"]}) if ok(t.get("fee"))]
+            except (ccxt.BaseError, AttributeError, KeyError, TypeError) as e:
+                log.warning("%s komisyon okunamadi: %s", s, e)
+        if not fees:
+            return filled * C.FEE, filled * px * C.FEE
+        coin, quote = s.split("/")
+        cut = usd = 0.0
+        for f in fees:
+            cur, cost = f["currency"], float(f["cost"])
+            if cur == coin:
+                cut, usd = cut + cost, usd + cost * px
+            elif cur == quote:
+                usd += cost
+            else:
+                try:
+                    usd += cost * (self.bid.get(f"{cur}/USDT") or float(self.ex.fetch_ticker(f"{cur}/USDT")["last"]))
+                except (ccxt.BaseError, AttributeError, KeyError, TypeError, ValueError) as e:
+                    log.warning("%s komisyon kuru: %s", cur, e)
+                    usd += filled * px * C.FEE
+        return cut, usd
+
+    def reconcile(self):
+        """LIVE, her dongu ve acilista: sonucu bilinmeyen emirler (yarim kalan gonderim, kapanmadan onceki emir) borsadan sorulur, deftere islenir."""
+        if not self.live or not self.own:
+            return
+        for cid, r in list(self.st["orders"].items()):
+            if cid in self._sending:
+                continue
+            try:
+                if self._resolve(cid, r) is not None:
+                    self.say(f"{r['s']} sonucu bilinmeyen emir borsada bulundu ve deftere işlendi.", True, "uyari")
+                    self.sync()
+                if cid not in self.st["orders"]:  # sonuclandi veya gitmemis sayildi
+                    pos = self.st["positions"].get(r["s"])
+                    if pos and not pos.get("stop_id"):
+                        pos["stop_chk"] = pos["stop_try"] = 0  # stop bir sonraki saniye kurulsun
+            except ccxt.BaseError as e:
+                log.warning("%s emir mutabakati: %s", r["s"], e)
+
+    # ---------------- bakiye mutabakati (gercek hesap): uyarir ve alimi durdurur, asla satmaz ----------------
+    def mut_why(self, s):
+        """Bu coinde bakiye uyusmazligi yuzunden alim yasagi varsa sebebi."""
+        r = self.st["mut"].get(s)
+        if r and r["n"] >= MUT_N:
+            return f"bakiye uyuşmazlığı (borsada {r['borsa']:g}, defterde {r['defter']:g}): Binance bakiyesi eşleşene kadar bu coinde alım yok"
+        return None
+
+    def _toz(self, s, x):
+        """Komisyondan sonra borsa adimina yuvarlanirken hesapta kalan artik: defterde yok, zamanla birikir, mutabakatta fazlalik sayilmaz."""
+        if x > 0:
+            self.st["toz"][s] = self.st["toz"].get(s, 0.0) + x
+
+    def _mut_tol(self, s, px, f=1.0):
+        """Izin verilen fark: borsa adimi veya toz (borsanin en kucuk emir tutarinin altinda, satilamayan miktar). f: toz payinin carpani."""
+        try:
+            m = self.ex.market(s)
+            return max(float((m.get("precision") or {}).get("amount") or 0), f * (m["limits"]["cost"]["min"] or 5) / px)
+        except (ccxt.BaseError, AttributeError, KeyError, TypeError, ValueError):
+            return f * 5 / px
+
+    def _bal_retry(self):
+        """Dengelemedeki tek okuma hatasi gunun alimlarini silmesin (pf_d bugun kalir, tur tekrarlanmaz). Sadece portfoy is parcaciginda, satislardan sonra."""
+        for _ in range(MUT_RETRY[0]):
+            if self.b.stop.wait(MUT_RETRY[1]):
+                return False
+            if self.balance_check():
+                return True
+        return False
+
+    def balance_check(self):
+        """LIVE: acilista, dengeleme oncesi ve MUT_SEC'te bir borsa bakiyesi (serbest + kilitli) defterdeki miktarla karsilastirilir: pozisyonlar
+        ve hesapta duran her USDT paritesi coini (defteri kaybolmus pozisyon da yakalansin). MUT_N kontrol ust uste tutmazsa tek uyari ve o
+        coinde alim yasagi; eslesince yasak kendiliginden kalkar. Sonucu bilinmeyen emri veya bekleyen alimi olan coin bu turda sayilmaz.
+        Ilk okumada defter + artigin ustundeki miktar bot disi kaydedilir (st['dis'], tek not): en cok o kadar fazlalik sayilmaz, satilan
+        kisim eksik de sayilmaz. Sonradan gelen fazlalik uyusmazliktir. Artik eksilirse (defter tam): tek uyari, artik duzeltilir, yasak yok.
+        Emir vermez, stoplara dokunmaz. Donus: bakiye okunduysa True (okunamazsa sayaclar degismez)."""
+        if not self.live or not self.own:
+            return True
+        with self.b.lock:  # emir yolu da bu kilitte: okuma ile karsilastirma arasinda defter degismesin
+            try:
+                b = self.ex.fetch_balance()
+                tot = {f"{k}/USDT": float(v.get("total") or (v.get("free") or 0) + (v.get("used") or 0))
+                       for k, v in b.items() if isinstance(v, dict) and k not in ("info", "free", "used", "total")}
+            except (ccxt.BaseError, AttributeError, TypeError, ValueError) as e:
+                log.warning("bakiye mutabakati: %s", e)
+                return False
+            st, pos, mk = self.st, self.st["positions"], self.ex.markets or {}
+            if st["dis"] is None and (st["orders"] or st["pending"]):  # taban temiz anda: yoldaki emrin coini bot disi sanilmasin
+                return True
+            held = {s for s, x in tot.items() if x > 0 and (mk.get(s) or {}).get("active", s in mk) and s.split("/")[0] not in D.STABLE}
+            syms = set(pos) | set(st["mut"]) | held | {s for s, v in st["toz"].items() if v > 0 and (mk.get(s) or {}).get("active", s in mk)}  # artigi biten coin de gorulsun
+            px = {s: self.bid.get(s) or (pos.get(s) or {}).get("entry") for s in syms}
+            need = [s for s, p in px.items() if not p]
+            if need:  # izlenmeyen coin: toz esigi icin fiyat. Okunamazsa o coin bu turda sayilmaz
+                try:
+                    t = self.ex.fetch_tickers(need)
+                    px.update({s: (t.get(s) or {}).get("last") for s in need})
+                except (ccxt.BaseError, AttributeError, TypeError) as e:
+                    log.warning("bakiye mutabakati fiyat: %s", e)
+            changed = False
+            if st["dis"] is None:
+                own = lambda s: (pos[s]["qty"] if s in pos else 0.0) + st["toz"].get(s, 0.0)
+                st["dis"] = {s: x - own(s) for s, x in tot.items() if x > own(s) and s != "USDT/USDT" and s.split("/")[0] not in D.STABLE}
+                changed = True
+                big = [f"{s.split('/')[0]} {st['dis'][s]:g}" for s in sorted(held & set(st["dis"])) if not px.get(s) or st["dis"][s] > self._mut_tol(s, px[s])]
+                if big:
+                    self.say(f"Hesapta bot dışında duran coinler kaydedildi: {', '.join(big)}. Bot bunları satmaz, stop koymaz, alımı da engellemez. "
+                             f"Bunlar size ait değilse (örneğin defteri kaybolmuş bir pozisyon) Binance hesabınızı kontrol edin.", True, "uyari")
+            for s in sorted(syms):
+                if not px.get(s) or s in st["pending"] or any(r["s"] == s for r in st["orders"].values()):
+                    continue
+                r = st["mut"].get(s)
+                qty, x, toz, dis = pos[s]["qty"] if s in pos else 0.0, tot.get(s, 0.0), st["toz"].get(s, 0.0), st["dis"].get(s, 0.0)
+                tol = self._mut_tol(s, px[s], MUT_CLEAR if r and r["n"] >= MUT_N else 1.0)
+                if qty + toz - tol <= x <= qty + toz + dis + tol:
+                    st["mut"].pop(s, None)
+                    changed = changed or bool(r)
+                    if r and r["n"] >= MUT_N:
+                        self.say(f"{s} bakiye uyuşmazlığı giderildi (borsada {x:g}, defterde {qty:g}): bu coinde alım yeniden serbest.", True, "uyari")
+                    continue
+                r = st["mut"].setdefault(s, {"n": 0})
+                r.update(n=r["n"] + 1, borsa=x, defter=qty)
+                changed = True
+                if r["n"] >= MUT_N and qty - tol <= x < qty + toz - tol:  # eksik artiktan: pozisyon tam, yasak geri donmez sekilde kalmasin
+                    st["toz"][s] = max(x - qty, 0.0)
+                    del st["mut"][s]
+                    self.say(f"{s}: hesaptaki artık beklenenden az (borsada {x:g}, defterde {qty:g}, beklenen artık {toz:g}). Defterdeki miktar tam, "
+                             f"bu coinde alım serbest. Bu coini siz satmadıysanız veya dönüştürmediyseniz Binance hesabınızı kontrol edin.", True, "uyari")
+                elif r["n"] == MUT_N:
+                    self.say(f"{s} bakiye uyuşmazlığı: borsada {x:g}, defterde {qty:g}{f', bot dışı kayıtlı {dis:g}' if dis else ''} ({MUT_N} kontrol üst üste). Bu coinde yeni alım durduruldu; "
+                             f"otomatik satış yapılmaz, açık pozisyon ve stop korunur. Binance bakiyenizi kontrol edin. Coin size aitse ve bot dışında "
+                             f"tutuluyorsa spot dışı bir cüzdana taşıyın. Bakiye eşleşince alım kendiliğinden açılır.", True, "uyari")
+            if changed:
+                self._save()
+        return True
+
+    def ledger(self, asama, **rec):
+        """Dengeleme defteri: gun basina (UTC) bir dosya, satir basina bir JSON, sadece sona eklenir. Anahtar yazilmaz. Yazilamazsa islem durmaz, uyarilir."""
+        try:
+            with self.b.lock:
+                row = {"t": int(time.time()), "hesap": self.mode, "asama": asama, **rec, "kasa": round(self.equity(), 2),
+                       "pozisyon": {s: p["qty"] for s, p in self.st["positions"].items()}, "uyusmazlik": sorted(self.st["mut"])}
+            os.makedirs(C.REBAL_DIR, exist_ok=True)
+            with open(os.path.join(C.REBAL_DIR, today() + ".jsonl"), "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+        except Exception as e:  # kayit hatasi dengelemeyi durdurmasin
+            log.warning("dengeleme defteri: %s", e)
+            self.note("dengeleme_defteri", f"Dengeleme defteri yazılamadı ({str(e)[:100]}): işlem sürüyor ama kayıt eksik. Diskte yer olduğunu kontrol edin.")
+
     # ---------------- emirler ----------------
     def enter(self, s, plan):
         """Dogrulanmis plani uygular. Hata metni veya None dondurur."""
+        why = HB.buy_block(s)  # elle alim dahil her yeni pozisyonun yolu
+        if why:
+            return why
         taker = plan["entry"] == "taker"
         price = float(self.ex.price_to_precision(s, self.ask[s] if taker else self.bid[s]))
         if price <= plan["stop"]:
@@ -221,20 +806,32 @@ class Account:
         if self.live:
             try:
                 if taker:
-                    o = self.ex.create_order(s, "market", "buy", qty)
-                    self.open(s, p, o["filled"] or qty, o["average"] or price)
-                    return None
-                p["id"] = self.ex.create_order(s, "limit", "buy", qty, price, {"postOnly": True})["id"]
+                    self.order(s, "market", "buy", qty, act={"do": "enter", "p": p})
+                else:
+                    self.order(s, "limit", "buy", qty, price, {"postOnly": True}, act={"do": "limit", "p": p})
+                return None
+            except FenceDeny as err:
+                return str(err)
+            except OrderUnknown as err:
+                self.pf_err += 1
+                return str(err)
             except ccxt.BaseError as err:
+                self.pf_err += 1
                 return f"borsa reddetti: {str(err)[:150]}"
         elif taker:
             self.open(s, p, qty, price * (1 + C.SLIPPAGE))
             return None
-        self.st["pending"][s] = p
-        self.say(f"{s} ALIŞ EMRİ (pasif limit) {qty:g} @ {price:g}", True)
+        self._pend(s, p)
         return None
 
+    def _pend(self, s, p):
+        self.st["pending"][s] = p
+        self.say(f"{s} ALIŞ EMRİ (pasif limit) {p['qty']:g} @ {p['price']:g}", True)
+
     def manage_pending(self):
+        if not self.own:
+            return
+        self.reconcile()
         for s, p in list(self.st["pending"].items()):
             expired = time.time() - p["t"] > C.ENTRY_TIMEOUT_MIN * 60
             if self.live:
@@ -253,6 +850,8 @@ class Account:
         if not self.live:
             self.st["pending"].pop(s, None)
             return
+        if not self.own:
+            raise FenceDeny(self.lock_why)
         o = self.ex.fetch_order(p["id"], s)
         if cancel and o["status"] == "open":
             try:
@@ -263,19 +862,25 @@ class Account:
         if o["status"] == "open":
             return
         if o["filled"] and o["filled"] * o["average"] >= (self.ex.market(s)["limits"]["cost"]["min"] or 5):
-            self.open(s, p, o["filled"], o["average"])
+            self.open(s, p, o["filled"], o["average"], o)
         else:
             self.say(f"{s} alış emri dolmadı, iptal.")
         self.st["pending"].pop(s, None)  # ancak pozisyon kaydedildikten sonra (dolan emir kaybolmasin)
+        self._save()
 
-    def open(self, s, p, qty, price):
+    def open(self, s, p, qty, price, o=None):
         fee = qty * price * C.FEE
         if self.live:
+            cut, fee = self._fees(s, o or {}, qty, price)
             try:
                 free = self.balance(s.split("/")[0])[0]
             except ccxt.BaseError:  # dolum oldu; bakiye okunamazsa komisyon dusulmus miktarla devam
-                free = qty * (1 - C.FEE)
-            qty = float(self.ex.amount_to_precision(s, min(qty * (1 - C.FEE), free)))
+                free = qty - cut
+            net = min(qty - cut, free)
+            qty = self._prec(s, net)
+            self._toz(s, net - qty)
+            if not qty > 0:  # elde satilacak bir sey yok (toz veya coin elle satilmis): dolum kapanir, coin kilitlenmez
+                return self.say(f"{s} alımı doldu ama kullanılabilir miktar borsa adımının altında: pozisyon açılmadı, Binance bakiyenizi kontrol edin.", True, "uyari")
         else:
             self.st["cash"] -= qty * price + fee
         stop = p.get("stop") or price * 0.98  # eski surumden kalan emirlerde plan alanlari olmayabilir
@@ -310,17 +915,26 @@ class Account:
                  + ("\n" + MC.line(pos["mc"]) if pos.get("mc") else ""), True)
 
     def manage_positions(self):
+        if not self.own:
+            return
         for s, pos in list(self.st["positions"].items()):
             try:  # bir coindeki borsa hatasi diger pozisyonlarin korunmasini durdurmasin
                 self._manage(s, pos)
             except ccxt.BaseError as e:
                 log.warning("%s pozisyon yonetimi: %s", s, e)
 
-    def _fill_part(self, pos, filled, avg):
-        """Borsa stopu kismen doldu: o kismi gerceklesmis kar/zarar olarak dus."""
+    def _fill_part(self, s, pos, o):
+        """Borsa emri kismen doldu: o kismi gerceklesmis kar/zarar olarak dus (gercek komisyonla)."""
+        filled, avg = o.get("filled"), o.get("average")
         if filled and avg:
-            pos["realized"] += filled * (avg - pos["entry"]) - filled * avg * C.FEE
+            pos["realized"] += filled * (avg - pos["entry"]) - self._fees(s, o, filled, avg)[1]
             pos["qty"] = max(pos["qty"] - filled, 0.0)
+            self._save()
+
+    def _stop_done(self, s, pos, o):
+        """Borsa stopu tamamen doldu: gercek komisyon book'a, dolum fiyati cagirana."""
+        pos["exit_fee"] = self._fees(s, o, o.get("filled") or pos["qty"], o["average"])[1]
+        return o["average"]
 
     def replay_gap(self, s, pos):
         """PAPER: uygulama kapaliyken gecen sureyi 1 dk mumlarla oynatir (stop/hedef/kismi/kalkan sirasiyla). Sanal
@@ -351,7 +965,8 @@ class Account:
                 if not pos["part"] and pos.get("partial_at") and h >= pos["partial_at"]:
                     self.bid[s] = pos["partial_at"]
                     self.partial(s, pos, pos["partial_at"])
-                self._shield(s, pos, c)
+                if pos.get("kind") != PF.KIND:  # portfoyde kalkan yok, sadece felaket stopu (_manage ile ayni)
+                    self._shield(s, pos, c)
                 if (t / 1000 - pos["t"]) / 3600 >= pos.get("max_hours", C.MAX_BARS):
                     self.book(s, pos, c, "SURE_DOLDU")
                     return True
@@ -371,10 +986,17 @@ class Account:
             elif pos.get("stop_id"):
                 o = self.ex.fetch_order(pos["stop_id"], s)
                 if o["status"] == "closed":
-                    return self.book(s, pos, o["average"], self._stop_reason(pos))
+                    return self.book(s, pos, self._stop_done(s, pos, o), self._stop_reason(pos))
                 if o["status"] in ("canceled", "expired", "rejected"):  # borsa stopu dustu: yeniden kur
-                    self._fill_part(pos, o.get("filled"), o.get("average"))
+                    self._fill_part(s, pos, o)
                     pos["stop_id"], pos["stop_try"] = None, 0
+        want = pos.get("exit_want")
+        if want and time.time() - pos.get("exit_try", 0) > ORDER_CHECK_SEC:  # tek seferlik cikis karari tamamlanmadi: satis yeniden denenir
+            try:
+                return self.exit(s, pos, want)
+            except ccxt.BaseError as e:
+                self.note(("cikis", s), f"{s} satışı ({want}) henüz tamamlanamadı, yeniden deneniyor: {str(e)[:100]}")
+                raise
         hours = (time.time() - pos["t"]) / 3600
         if bid > pos["sl"]:
             pos.pop("stop_wait", None)
@@ -434,12 +1056,16 @@ class Account:
         return "IZ_STOP" if pos["sl"] > L.be_price(pos["entry"], pos.get("atr")) * 1.001 else (
             "BASABAS" if pos["sl"] >= pos["entry"] else "STOP")
 
+    def _prec(self, s, qty):
+        """Borsa adimina yuvarlar; en kucuk miktarin altinda kalan 0."""
+        try:
+            return float(self.ex.amount_to_precision(s, qty))
+        except ccxt.InvalidOrder:
+            return 0.0
+
     def _sellable(self, s, qty):
         """LIVE: elde gercekten serbest olan miktar (stop kismen dolmus olabilir), borsa adimina yuvarlanmis."""
-        try:
-            return float(self.ex.amount_to_precision(s, min(qty, self.balance(s.split("/")[0])[0])))
-        except ccxt.InvalidOrder:  # en kucuk miktarin altinda: satilacak bir sey yok
-            return 0.0
+        return self._prec(s, min(qty, self.balance(s.split("/")[0])[0]))
 
     def partial(self, s, pos, bid):
         """Kademeli kar: pozisyonun bir kismini sat, stopu komisyon dahil basabasa cek."""
@@ -452,16 +1078,17 @@ class Account:
                 filled = self._cancel_stop(s, pos)
                 if filled:  # borsa stopu tam bu sirada doldu
                     return self.book(s, pos, filled, self._stop_reason(pos))
-                qty = self._sellable(s, qty)
+                qty = self._sellable(s, min(qty, pos["qty"]))  # stop kismen dolduysa kalan pozisyondan fazlasi kapidan gecmez
                 if qty <= 0:
                     return self.book(s, pos, bid, self._stop_reason(pos))
                 pos["part"] = True  # satis hata verip tekrar denenirse ikinci kez satilmasin
-                o = self.ex.create_order(s, "market", "sell", qty)
+                o = self.order(s, "market", "sell", qty, act={"do": "sell", "part": True})
                 bid = o["average"] or bid
+                pos["qty"] = float(self.ex.amount_to_precision(s, round(pos["qty"], 12)))
             else:
                 self.st["cash"] += qty * bid * (1 - C.FEE)
-            pos["realized"] += qty * (bid - pos["entry"]) - qty * bid * C.FEE
-            pos["qty"] = float(self.ex.amount_to_precision(s, round(pos["qty"] - qty, 12)))
+                pos["realized"] += qty * (bid - pos["entry"]) - qty * bid * C.FEE
+                pos["qty"] = float(self.ex.amount_to_precision(s, round(pos["qty"] - qty, 12)))
             pos["part"] = True
         pos["sl"], pos["be"] = max(pos["sl"], L.be_price(pos["entry"], pos.get("atr"))), True
         pos["hi"] = max(pos.get("hi") or bid, bid)
@@ -477,14 +1104,27 @@ class Account:
             if stop:  # gercek hesaptaki borsa STOP_LOSS_LIMIT emri (limit = stop x 0,995) ile ayni dolum mantigi:
                 bid = pos["sl"] if bid >= pos["sl"] * 0.995 else bid  # bant icinde stoptan dolar, bosluk buyukse fiyattan
             return self.book(s, pos, bid * (1 - C.SLIPPAGE) if stop else bid, reason)
-        filled = self._cancel_stop(s, pos)  # stop iptal edilemezse hata firlatir; sonraki saniye tekrar denenir
+        if not stop:  # tek seferlik karar (haber, elle, dengeleme): satis gitmezse _manage yeniden dener (stopu _manage zaten her saniye bakar)
+            pos["exit_want"] = reason
+        pos["exit_try"] = time.time()
+        for cid, r in list(self.st["orders"].items()):  # belirsiz satis/stop az once sonuclanmis olabilir: stop baglansin, satis islensin
+            if r["s"] == s and r["side"] == "sell" and cid not in self._sending:
+                try:
+                    self._resolve(cid, r)
+                except OrderUnknown as e:
+                    log.warning("%s cikis oncesi mutabakat: %s", s, e)
+        if s not in self.st["positions"]:
+            return None
+        act = {"do": "sell", "reason": reason}
+        filled = self._cancel_stop(s, pos, act)  # stop iptal edilemezse hata firlatir; sonraki saniye tekrar denenir
         if filled:
             return self.book(s, pos, filled, self._stop_reason(pos))
-        qty = self._sellable(s, pos["qty"])
+        qty = self._sellable(s, max(pos["qty"] - self._maybe_sold(s), 0.0))
         if qty * bid < (self.ex.market(s)["limits"]["cost"]["min"] or 5):  # satilamayacak kadar az kaldi
+            if any(r["s"] == s and r["side"] == "sell" for r in self.st["orders"].values()):  # coinler belirsiz emirde: satildi sayilmaz
+                raise OrderUnknown(f"{s}: coinler sonucu bilinmeyen satış emrinde; borsadan sorgulanıyor, sonuç gelince işlenecek.")
             return self.book(s, pos, bid, reason)
-        o = self.ex.create_order(s, "market", "sell", qty)
-        self.book(s, pos, o["average"] or bid, reason)
+        self.order(s, "market", "sell", qty, act=act)
 
     def close(self, s, reason):
         """Elle veya Claude karariyla kapat: bekleyen emir iptal, pozisyon piyasa fiyatindan satilir."""
@@ -498,6 +1138,8 @@ class Account:
         pos = self.st["positions"].get(s)
         if pos and self.bid.get(s):
             self.exit(s, pos, reason)
+            if s in self.st["positions"]:  # eksik doldu: satildi denmez, kalani _manage satar
+                raise OrderUnknown(f"{s} satışı eksik doldu: kalan {pos['qty']:g} yeniden satılacak.")
             return True
         return False
 
@@ -507,6 +1149,9 @@ class Account:
         pos, price = self.st["positions"].get(s), self.ask.get(s)
         if not price:
             return "fiyat yok"
+        block = HB.buy_block(s)
+        if block:
+            return block
         if not pos:
             if s in self.st["pending"]:
                 return "bekleyen emir var"
@@ -519,25 +1164,41 @@ class Account:
         if qty * price < (self.ex.market(s)["limits"]["cost"]["min"] or 5):
             return f"tutar borsa alt sınırının altında ({qty * price:.2f} USDT)"
         if self.live:
+            try:  # reddedilecek alim icin felaket stopu iptal edilmesin
+                self.gate(s, "buy", qty)
+            except FenceDeny as e:
+                return str(e)
             filled = self._cancel_stop(s, pos)
             if filled:
                 self.book(s, pos, filled, self._stop_reason(pos))
                 return "felaket stopu doldu"
-            o = self.ex.create_order(s, "market", "buy", qty)
-            price = o["average"] or price
-            qty = float(self.ex.amount_to_precision(s, (o["filled"] or qty) * (1 - C.FEE)))
-        else:
-            price *= 1 + C.SLIPPAGE
-            self.st["cash"] -= qty * price * (1 + C.FEE)
+            try:
+                self.order(s, "market", "buy", qty, act={"do": "add", "why": why})
+            except ccxt.BaseError as e:  # alim gitmedi veya sonucu belli degil: iptal edilen felaket stopu hemen geri kurulur
+                self.pf_err += not isinstance(e, FenceDeny)
+                pos["stop_id"] = self.place_stop(s, pos)
+                return str(e)[:200]
+            return None
+        price *= 1 + C.SLIPPAGE
+        self.st["cash"] -= qty * price * (1 + C.FEE)
+        self._grow(s, pos, qty, price, qty * price * C.FEE, why)
+        return None
+
+    def _grow(self, s, pos, qty, price, fee, why):
+        """Portfoy pozisyonuna alim: ortalama giris, felaket stopu yeni miktara."""
         tot = pos["qty"] + qty
-        pos.update(entry=(pos["qty"] * pos["entry"] + qty * price) / tot, qty=tot, qty0=pos["qty0"] + qty,
-                   fee=pos["fee"] + qty * price * C.FEE)
+        pos.update(entry=(pos["qty"] * pos["entry"] + qty * price) / tot, qty=tot, qty0=pos["qty0"] + qty, fee=pos["fee"] + fee)
         pos["sl"] = pos["sl0"] = pos["entry"] * PF.STOP_FRAC
         if self.live:
-            pos["stop_id"] = self.place_stop(s, pos)
+            try:
+                if pos.get("stop_id"):  # sonradan bulunan alim: borsadaki stop eski miktarda
+                    self._replace_stop(s, pos)
+                else:
+                    pos["stop_id"] = self.place_stop(s, pos)
+            except ccxt.BaseError as e:
+                log.warning("%s stop guncellenemedi: %s", s, e)
             self.sync()
         self.say(f"{s} portföy ARTIRILDI +{qty:g} @ {price:g} ({qty * price:.2f} USDT) | {why}", True)
-        return None
 
     def pf_sell(self, s, usdt, why):
         """Hedef agirligin ustundeki kismi sat; usdt None veya pozisyonun tamami: tam cikis."""
@@ -555,23 +1216,27 @@ class Account:
             if filled:
                 self.book(s, pos, filled, self._stop_reason(pos))
                 return None
-            qty = self._sellable(s, qty)
-            o = self.ex.create_order(s, "market", "sell", qty)
-            px = o["average"] or bid
+            qty = self._sellable(s, min(qty, pos["qty"]))  # stop kismen dolduysa kalan pozisyondan fazlasi kapidan gecmez
+            o = self.order(s, "market", "sell", qty, act={"do": "sell"})
+            px, qty = o["average"] or bid, o["filled"]
+            pos["qty"] = float(self.ex.amount_to_precision(s, round(pos["qty"], 12)))
         else:
             px = bid * (1 - C.SLIPPAGE)
             self.st["cash"] += qty * px * (1 - C.FEE)
-        pos["realized"] += qty * (px - pos["entry"]) - qty * px * C.FEE
-        pos["qty"] = float(self.ex.amount_to_precision(s, round(pos["qty"] - qty, 12)))
+            pos["realized"] += qty * (px - pos["entry"]) - qty * px * C.FEE
+            pos["qty"] = float(self.ex.amount_to_precision(s, round(pos["qty"] - qty, 12)))
         if self.live:
             pos["stop_id"] = self.place_stop(s, pos)
             self.sync()
         self.say(f"{s} portföy AZALTILDI -{qty:g} @ {px:g} ({qty * px:.2f} USDT) | {why}", True)
         return None
 
-    def rebalance(self, tg, ml_day, objs=None):
+    def rebalance(self, tg, ml_day, objs=None, skip=None):
         """Hedef agirliklar {sym: 0..1} (portfoy tabani = nakit + strateji pozisyonlari). Once satislar, sonra alislar.
-        objs: Claude kontrolor itirazlari {sym: ertele/yari}; bu hesabin alimina uygulanir, satisa donusmez."""
+        objs: Claude kontrolor itirazlari {sym: ertele/yari}; bu hesabin alimina uygulanir, satisa donusmez.
+        skip(sym): True ise o coine dokunulmaz (verisi guvenilmez: alim da satim da yok)."""
+        self.pf_err = 0
+        bal_ok = self.balance_check()  # LIVE: emirlerden once; okunamazsa satislar yine yapilir, alimdan once yeniden okunur
         with self.b.lock:
             held = {s: p for s, p in self.st["positions"].items() if p.get("kind") == PF.KIND}
             px = self.bid
@@ -581,7 +1246,7 @@ class Account:
             return ["kasa yok"]
         band, sells, buys, out = PF.BAND_ML if ml_day else PF.BAND, [], [], []
         for s in sorted(set(tg) | set(held)):
-            if not px.get(s):
+            if not px.get(s) or (skip and skip(s)):
                 continue
             cur = held[s]["qty"] * px[s] / base if s in held else 0.0
             t0 = tg.get(s, 0.0)
@@ -596,20 +1261,40 @@ class Account:
             elif abs(d) >= band or (s not in held and t >= 0.01):
                 (buys if d > 0 else sells).append((s, abs(d) * base, f"ağırlık %{cur * 100:.1f} → %{t * 100:.1f}"))
         for s, usd, why in sells:
+            if self.b.stop.is_set():  # motor duruyor: yeni Bot ayni defteri okuyacak, emir verilmez
+                self.pf_err += 1
+                break
             with self.b.lock:
-                r = self.pf_sell(s, usd, why)
+                try:
+                    r = self.pf_sell(s, usd, why)
+                except ccxt.BaseError as e:  # bu coin reddedildi: digerleri islenir
+                    self.pf_err += 1
+                    r = str(e)[:200]
             out.append(f"{s} sat: {r or why}")
-        stop = self.blocked(portfolio=True)
+        if buys and not bal_ok and not self.blocked(portfolio=True):
+            bal_ok = self._bal_retry()
+            if not bal_ok and not self.b.stop.is_set():
+                self.say(f"Dengeleme: borsa bakiyesi yaklaşık {MUT_RETRY[0] * MUT_RETRY[1] // 60} dakika okunamadı. Satışlar denendi, bugünkü alışlar yapılmadı; "
+                         f"bir sonraki dengelemede yeniden denenecek. Binance bağlantısını kontrol edin.", True, "uyari")
+        stop = self.blocked(portfolio=True) or (None if bal_ok else "borsa bakiyesi okunamadı, mutabakat yapılamadı")
+        self.pf_err += bool(buys and not bal_ok)
         if buys and stop:
             return out + [f"alışlar yapılmadı: {stop}"]
         for s, usd, why in buys:
             if self.b.stop.is_set():  # uygulama kapaniyor: yeni emir verme
+                self.pf_err += 1
                 break
             with self.b.lock:
                 if s in self.st["positions"] and self.st["positions"][s].get("kind") != PF.KIND:
                     r = "coinde elle/strateji dışı pozisyon var"
+                elif self.mut_why(s):
+                    r = self.mut_why(s)
                 else:
-                    r = self.pf_buy(s, usd, why)
+                    try:
+                        r = self.pf_buy(s, usd, why)
+                    except ccxt.BaseError as e:  # bu coin olmadi: gunun diger alimlari kaybolmasin
+                        self.pf_err += not isinstance(e, FenceDeny)
+                        r = str(e)[:200]
             out.append(f"{s} al: {r or why}")
         return out or ["değişiklik yok (ağırlıklar hedefe yakın)"]
 
@@ -672,20 +1357,28 @@ class Account:
         """LIVE: bot kapali olsa da koruyan borsa tarafi stop emri."""
         try:
             sp = float(self.ex.price_to_precision(s, pos["sl"]))
-            oid = self.ex.create_order(s, "STOP_LOSS_LIMIT", "sell", float(self.ex.amount_to_precision(s, pos["qty"])),
-                                       float(self.ex.price_to_precision(s, sp * 0.995)),
-                                       {"stopPrice": sp, "timeInForce": "GTC"})["id"]
+            qty = self._sellable(s, pos["qty"] - self._maybe_sold(s))  # BNB komisyonu defterden az serbest birakabilir
+            if qty <= 0:  # coinlerin tamami sonucu bilinmeyen emirde: stop kurulacak miktar yok
+                return None
+            oid = self.order(s, "STOP_LOSS_LIMIT", "sell", float(self.ex.amount_to_precision(s, qty)),
+                             float(self.ex.price_to_precision(s, sp * 0.995)),
+                             {"stopPrice": sp, "timeInForce": "GTC"}, act={"do": "stop", "sp": sp})["id"]
             pos["stop_px"] = sp
             return oid
         except ccxt.BaseError as e:
+            if isinstance(e, OrderUnknown):  # kilit bekliyor (en cok ORDER_HOLD_SEC): bu deneme ne dakikalik hakki ne 15 sn'lik kontrolu yesin
+                pos["stop_try"] = pos["stop_chk"] = 0
             if not quiet:
                 self.say(f"{s} borsa stop emri kurulamadı; bot saniyelik izliyor ve dakikada bir yeniden deniyor: {e}",
                          True, "uyari")
             return None
 
-    def _cancel_stop(self, s, pos):
+    def _cancel_stop(self, s, pos, act=None):
         """Borsa stopunu iptal eder. Tamamen dolduysa dolum fiyatini dondurur; kismen dolduysa o kismi duser.
         Iptal edilemiyor ve emir hala aciksa hata firlatir (coinler kilitli: satis denenmez)."""
+        if not self.own:
+            raise FenceDeny(self.lock_why)
+        self._no_unknown(s, None, act)  # arkasindan gelecek emir gitmeyecekse stop bosuna sokulmesin
         sid = pos.get("stop_id")
         if not sid:
             return None
@@ -697,11 +1390,12 @@ class Account:
                 raise
         pos["stop_id"] = None
         if o.get("status") == "closed":
-            return o["average"]
-        self._fill_part(pos, o.get("filled"), o.get("average"))
+            return self._stop_done(s, pos, o)
+        self._fill_part(s, pos, o)
         return None
 
     def _replace_stop(self, s, pos):
+        self.gate(s, "sell", pos["qty"], stop=pos["sl"])  # yeni stop kurulamayacaksa eskisi kalsin
         filled = self._cancel_stop(s, pos)
         if filled:
             return self.book(s, pos, filled, self._stop_reason(pos))
@@ -709,7 +1403,7 @@ class Account:
 
     def book(self, s, pos, price, reason):
         st, now = self.st, time.time()
-        exit_fee = pos["qty"] * price * C.FEE
+        exit_fee = pos["qty"] * price * C.FEE if pos.get("exit_fee") is None else pos["exit_fee"]  # gercek hesap: dolumun gercek komisyonu
         pnl = pos["realized"] + pos["qty"] * (price - pos["entry"]) - pos["fee"] - exit_fee
         pct = pnl / (pos["qty0"] * pos["entry"]) * 100
         if not self.live:
@@ -747,6 +1441,8 @@ class Account:
             if len(st["stops"]) >= n:
                 st["pause_until"], st["stops"] = max(st["pause_until"], now + rest * 3600), []
                 self.say(f"{hrs} saatte {n} stop oldu: {rest} saat yeni işlem açılmayacak.", True, "uyari")
+        if self.live:
+            self._save()  # dolum hemen diske
 
 
 class Bot:
@@ -758,7 +1454,7 @@ class Bot:
         self.market, self.regime, self.last_scan, self.extra = {}, "yatay", {}, set()
         self.stream, self.tech, self.macro, self._last_rest = Stream.shared(), Teknik.shared(), Makro.shared(), 0.0
         self._tv_prev, self._ref_px, self._btc_hist, self._brief_px, self.updated = {}, {}, [], {}, time.time()
-        self._radar_prev, self.chain = set(), Zincir.shared()
+        self._radar_prev, self.chain, self.t_start = set(), Zincir.shared(), time.time()
         self.file = {}
         if os.path.exists(C.STATE_FILE):
             with open(C.STATE_FILE, encoding="utf-8") as fh:
@@ -795,10 +1491,10 @@ class Bot:
             self.file.update({m: a.st for m, a in self.accounts.items()})
             self.file.update(notes=self.notes, agent=self.ag)
             data = json.dumps(self.file)
-        tmp = C.STATE_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            fh.write(data)
-        os.replace(tmp, C.STATE_FILE)
+            tmp = C.STATE_FILE + ".tmp"  # yazim da kilit icinde: emir kaydi baska is parcacigindaki eski durumla ezilmesin
+            with open(tmp, "w", encoding="utf-8") as fh:
+                fh.write(data)
+            os.replace(tmp, C.STATE_FILE)
 
     def add_cost(self, usd, chat=False):
         """Sohbet dahil her Claude cagrisinin maliyeti gunluk butceye yazilir."""
@@ -808,6 +1504,15 @@ class Bot:
             self.ag.update(spent=self.ag["spent"] + usd, total=self.ag.get("total", 0) + usd)
             if chat:
                 self.ag["chat_spent"] = self.ag.get("chat_spent", 0) + usd
+
+    def budget_full(self):
+        """Gunluk Claude API butcesi doldu mu (CLI aboneligi ucretsiz: sayilmaz). Yeni gunde harcama sifirlanir: saatlik karar kapaliyken
+        baska yer sifirlamaz, dolu kalan butce sonraki gunleri de kapatirdi."""
+        with self.lock:
+            if self.ag["day"] != today():
+                self.ag.update(day=today(), spent=0.0, calls=0, chat_spent=0.0)
+            full = self.ag["spent"] >= C.CLAUDE_DAILY_BUDGET
+        return full and A.brain() == "api"
 
     def ref(self):
         """Claude'un karar verirken baktigi hesap: gercek islem acikken LIVE, degilse PAPER."""
@@ -898,7 +1603,7 @@ class Bot:
         self.chain.start(lambda: [C.BTC, "ETH/USDT"] + [s for a in self.accounts.values() for s in a.st["positions"]]
                          + [o["sym"] for o in self.tech.opps[:10]])  # balina akisi: ana coinler + pozisyonlar + radar
         G.load()  # Gecmis Okulu dersleri (2 yillik test sonucu)
-        PF.load_model()  # portfoy stratejisi ML sepeti (yoksa / 90 gunden eskiyse arka planda egitilir)
+        PF.load_model()  # portfoy stratejisi ML sepeti (yoksa / 30 gunden eskiyse arka planda egitilir)
         PF.maybe_train(lambda t: self.say(t, kind="oz"))
         try:
             MC.calibrate()  # Monte Carlo: gecmis tahmin/gerceklesen karnesinden duzeltme carpani
@@ -906,11 +1611,16 @@ class Bot:
             log.warning("monte carlo kalibrasyon: %s", e)
         threading.Thread(target=L.loop, args=(self.stop, lambda t: self.say(t, kind="oz")), name="ders", daemon=True).start()
         threading.Thread(target=HB.loop, args=(self,), name="haber", daemon=True).start()
+        threading.Thread(target=HB.peg_loop, args=(self,), name="usdt", daemon=True).start()
         self.refresh_prices()
         for a in self.accounts.values():
             if a.live:
                 a.sync()
             with self.lock:
+                try:
+                    a.reconcile()  # onceki oturumda sonucu belli olmayan emirler: her seyden once
+                except Exception as e:
+                    log.warning("baslangic emir mutabakati: %s", e)
                 for s, pos in list(a.st["positions"].items()):  # kapaliyken gecen sure (sanal hesap)
                     try:
                         a.replay_gap(s, pos)
@@ -922,6 +1632,10 @@ class Bot:
                     except Exception as e:  # dongude tekrar denenir; motor baslangicta cokmesin
                         log.warning("%s baslangic emir kontrolu: %s", s, e)
                 a.mark()
+            try:
+                a.balance_check()
+            except Exception as e:
+                log.warning("baslangic bakiye mutabakati: %s", e)
         lv = self.accounts.get("LIVE")
         self.say("Bot başladı.")
         self.say(f"Sanal kasa {self.accounts['PAPER'].equity():.2f} USDT.", acct="PAPER")
@@ -932,7 +1646,7 @@ class Bot:
         self._background("Baslangic", lambda: (self.ensure_brain(), self.scan(startup=True),
                                                first and self.decide("baslangic")))
         last_hour = last_rep = int(time.time() // 3600)
-        last_save, last_acc, last_trig = 0, time.time(), time.time()
+        last_save, last_acc, last_trig, last_mut = 0, time.time(), time.time(), time.time()
         while not self.stop.is_set():
             try:
                 if time.time() - last_acc > 30:
@@ -940,6 +1654,10 @@ class Bot:
                     for a in self.accounts.values():
                         if a.live:
                             a.sync()
+                if time.time() - last_mut > MUT_SEC:
+                    last_mut = time.time()
+                    for a in self.accounts.values():
+                        a.balance_check()
                 self.refresh_prices()
                 with self.lock:
                     for a in self.accounts.values():
@@ -960,8 +1678,8 @@ class Bot:
                         log.warning("gozlem gunlugu: %s", e)
                 idle = not (self.busy and self.busy.is_alive())
                 day = time.strftime("%Y-%m-%d", time.gmtime())
-                if C.PORTFOY and self.ag.get("pf_d") != day and time.time() % 86400 > 300 and self.run_portfolio():
-                    self.ag["pf_d"] = day  # gun kapanisindan 5 dk sonra (UTC), gunde bir; hata olsa da tekrar denemez
+                self.pf_tick()
+                self.pf_watch()
                 if ((hour != last_hour and time.time() % 3600 > 15) or self.force_retrain) and idle:
                     last_hour = hour
                     self._background("Saatlik analiz", self.hourly)
@@ -990,6 +1708,8 @@ class Bot:
             self.stop.wait(C.TICK_SEC)
         if self.busy and self.busy.is_alive():  # suren karar bitsin; durduktan sonra emir verilmesin
             self.busy.join(120)
+        if getattr(self, "_pf_thread", None) and self._pf_thread.is_alive():  # yeni Bot acilmadan eski dengeleme bitsin
+            self._pf_thread.join(120)
         with self.lock:
             for a in self.accounts.values():
                 for s, p in list(a.st["pending"].items()):
@@ -1215,7 +1935,7 @@ class Bot:
             out.append(f"- {s}: giris {p['entry']:.6g}, simdi {bid:.6g} (%{(bid / p['entry'] - 1) * 100:+.2f}), "
                        f"stop {p['sl']:.6g} (kalkan: {shield}), tp1 {tp1}, tp2 {p['tp']:.6g}, "
                        f"{(time.time() - p['t']) / 3600:.1f}/{p.get('max_hours', C.MAX_BARS):g} sa. "
-                       f"Gerekce: {p.get('why', '')[:160]}")
+                       f"Gerekce: {(p.get('why') or '')[:160]}")
         for s, p in st["pending"].items():
             out.append(f"- {s}: bekleyen pasif alis {p['price']:.6g} ({(time.time() - p['t']) / 60:.0f} dk)")
         cd = [s for s in rows if acct.locked(s)]
@@ -1286,7 +2006,7 @@ class Bot:
             for t in tr[-8:]:
                 out.append(f"- {t['sym']} %{t['pct']:+.2f}" + (f" {t['R']:+.2f}R" if t.get("R") is not None else "")
                            + f" ({t['reason']}, {(t['t'] - t['t_open']) / 3600:.1f} sa, "
-                           f"guven {f(t.get('conviction'))}). Giris gerekcesi: {t.get('why', '')[:140]}")
+                           f"guven {f(t.get('conviction'))}). Giris gerekcesi: {(t.get('why') or '')[:140]}")
             cs = self.conviction_stats(tr[-100:])
             if cs:
                 out.append(f"GUVEN KALIBRASYONUN (son 100 islem): {cs}")
@@ -1449,36 +2169,119 @@ class Bot:
                             "zirve", "zirveden_dusus_%", "gun_%", "engel", "son_dengeleme", "pozisyonlar", "uyarilar"])
             w.writerows(rows)
 
-    def run_portfolio(self):
-        """Portfoy dengelemesi kendi is parcaciginda: ML egitimi / uzun karar islerini beklemez. Basladiysa True."""
+    def pf_tick(self):
+        """Dongu kapisi: gun kapanisindan 5 dk sonra (UTC), gunde bir; hata olsa da tekrar denemez, kotu veride bekleme suresine uyar."""
+        day = time.strftime("%Y-%m-%d", time.gmtime())
+        if not C.PORTFOY or self.ag.get("pf_d") == day or time.time() % 86400 <= 300 or time.time() < self.ag.get("pf_wait", 0):
+            return False
+        old, self.ag["pf_d"] = self.ag.get("pf_d"), day  # is parcacigi baslamadan: onun yeniden deneme isareti (pf_d="") ezilmesin
+        if self.run_portfolio((self.ag.get("pf_bekle") or {}).get("d") == day):
+            return True
+        self.ag["pf_d"] = old
+        return False
+
+    def pf_son(self, m):
+        """Hesabin son biten dengelemesi (eski kayitta ortak 'last')."""
+        pf = self.ag.get("pf") or {}
+        return pf["son"].get(m, 0) if "son" in pf else pf.get("last", 0)
+
+    def pf_late(self, now=None):
+        """00:30 UTC gecti, bugunku dengelemesi bitmeyen hesaplar. Izinli gercek hesap senkron olmasa da beklenir (atlanmasi tam uyarilacak durum);
+        hesap kilidi baska motordaysa emri o verir."""
+        now = now or time.time()
+        if not C.PORTFOY or now % 86400 < PF_LATE:
+            return []
+        return [m for m, a in self.accounts.items() if (m == "PAPER" or (C.PORTFOY_LIVE and C.LIVE_ALLOWED and a.own)) and self.pf_son(m) < now - now % 86400]
+
+    def pf_watch(self, now=None):
+        """Gec kalan dengeleme: gunde bir uyari. Ana dongude: dongu takilirsa zaten sunucu bekcisi /api/health'ten yakalar."""
+        now = now or time.time()
+        day = time.strftime("%Y-%m-%d", time.gmtime(now))
+        late = self.pf_late(now)
+        if late and self.ag.get("pf_gec") != day and now - self.t_start >= PF_LATE_GRACE:
+            self.ag["pf_gec"] = day
+            last = min(self.pf_son(m) for m in late)
+            self.say(f"⚠️ Dengeleme gecikti: saat 00:30 UTC'yi geçti, {' ve '.join('gerçek' if m == 'LIVE' else 'sanal' for m in late)} hesabın bugünkü yeniden dengelemesi bitmedi. Son biten: "
+                     + (time.strftime("%d.%m %H:%M UTC", time.gmtime(last)) if last else "yok")
+                     + ". Motor çalışıyor; kayıtlara bakın, gerekirse Portföy sayfasından \"Şimdi dengele\"ye basın.", True, "uyari")
+
+    def health(self):
+        """/api/health eki: gizli bilgi yok, sadece zaman ve durum."""
+        late = self.pf_late()
+        return {"dengeleme": {"son": (self.ag.get("pf") or {}).get("last"), "gec": bool(late), "geciken": late}, **HB.health()}
+
+    def run_portfolio(self, retry=False):
+        """Portfoy dengelemesi kendi is parcaciginda: ML egitimi / uzun karar islerini beklemez. Basladiysa True.
+        retry: bugunku tur yapildi, sadece verisi duzelen coinler islenir."""
         if getattr(self, "_pf_thread", None) and self._pf_thread.is_alive():
             return False
 
         def run():
             try:
-                self.portfolio()
+                self.portfolio(retry=retry)
             except (ccxt.NetworkError, requests.RequestException) as e:
                 log.warning("portfoy ag hatasi: %s", e)
                 self.ag["pf_d"] = ""  # ag hatasi: dongu tekrar dener
             except Exception as e:
                 log.exception("portfoy")
-                self.say(f"Portföy stratejisi hatası: {e}", kind="uyari")
+                self.say(f"Portföy stratejisi hatası, bugünkü dengeleme yapılmadı (yarın yeniden denenir): {str(e)[:200]}", True, "uyari")
         self._pf_thread = threading.Thread(target=run, name="portfoy", daemon=True)
         self._pf_thread.start()
         return True
 
-    def portfolio(self, force_ml=False):
+    def _pf_after(self, day, prev, kalan, stale):
+        """Verisi bozuk coin kaldiysa yeniden deneme + gunde bir uyari; kalmadiysa bugunku tur bitti."""
+        self.ag["pf"]["bekle"] = dict(stale)
+        if not kalan:
+            self.ag.pop("pf_bekle", None)
+            if prev:
+                self.ag["pf_d"] = day
+            return
+        self.ag["pf_bekle"] = {"d": day, "syms": sorted(kalan)}
+        self.ag["pf_d"], self.ag["pf_wait"] = "", time.time() + PF.RETRY_SEC
+        if self.ag.get("pf_uyari") != day:
+            self.ag["pf_uyari"] = day
+            why = "; ".join(stale[s] for s in sorted(kalan))
+            self.say(f"Portföy: {why}. Bu coinde alım da satım da yapılmadı, diğerleri işlendi. "
+                     f"{PF.RETRY_SEC // 60} dakikada bir yeniden denenecek.", True, "uyari")
+
+    def portfolio(self, force_ml=False, retry=False):
         """Portfoy stratejisi (portfoy.py): gun kapanisinda cekirdek agirliklari, Persembe 00:05 UTC (veya o haftaki ilk calisma) ML sepeti.
         Sanal hesap her zaman; gercek hesap sadece admin 'PORTFOY_LIVE' + gercek islem izni verdiyse."""
         t0 = time.time()
         pf = self.ag.setdefault("pf", {})
         week = time.strftime("%G-%V", time.gmtime(time.time() - (PF.ML_DOW + 1) * 86400))  # hafta Persembe 00:00 UTC'de doner
         if "ml_hafta" not in pf and "ml_week" in pf:  # eski kayit: mevcut sepet ilk Persembeye kadar korunur
-            pf["ml_hafta"] = week
-        ml_day = force_ml or pf.get("ml_hafta") != week
+            pf["ml_hafta"] = time.strftime("%G-%V", time.gmtime(time.time() - (PF.ML_DOW + 2) * 86400))  # dunun etiketi: ilk tur Persembeyse secim yapilir
+        ml_day = force_ml or (pf.get("ml_hafta") != week and time.time() - pf.get("ml_dene", 0) > 3600)  # dusen secim saatte birden sik denenmez
+        dl = set(HB.delisting())  # delist duyurusu: secime girmez, alinmaz; hedefi duserse normal dengelemeyle satilir
+        pf["delist"] = sorted(dl)
+        gun = time.strftime("%Y-%m-%d", time.gmtime())
+        if ml_day and not HB.delist_fresh() and self.ag.get("pf_dl_uyari") != gun:  # ag hatasinda tur tekrar eder: gunde bir uyari
+            self.ag["pf_dl_uyari"] = gun
+            self.say(("Haber akışı kapalı" if not C.HABER else "Binance duyuruları son saatte okunamadı") + ": haftalık seçimde delist listesi eksik olabilir.", True, "uyari")
         raw, info = PF.targets(self.ex, pf, ml_day)
+        if info.get("ml_hata"):  # secim dustu: hafta harcanmaz, sonraki gunluk turda yeniden denenir; bugun normal gun
+            pf["ml_dene"], ml_day = time.time(), False
+        for t in info.get("uyari", ()):  # haftalik ML hatasi, eski model, olculmemis saglik: kullanici gorsun
+            self.say(t, True, "uyari")
+        stale, today = info.get("bekle") or {}, time.strftime("%Y-%m-%d", time.gmtime())
+        w8 = self.ag.get("pf_bekle") or {}
+        prev = set(w8.get("syms", ())) if w8.get("d") == today else set()
+        kalan, only = set(stale), None
+        if retry and prev:  # bugunku tur yapildi: sadece duzelenler (BTC yuzunden ertelenen ML gunu ise tam tur)
+            kalan = prev & set(stale)
+            if not ml_day or "BTC/USDT" in stale:
+                only = prev - set(stale)
+                if info.get("ml_cikis"):  # bu turda tetiklenen hafta ici cikis: sepet de islenir
+                    only |= {s for s, _ in info["ml"]["picks"]} - set(PF.CORE_SYMS)
+                if not only:
+                    return self._pf_after(today, prev, kalan, stale)
+        skip = lambda s: s in stale or (only is not None and s not in only)
+        kept = {s for s, _ in info["ml"]["picks"]} - set(PF.CORE_SYMS) if info["ml"].get("kept") else set()  # yenilenemeyen secim: elde tutulur, eklenmez (cekirdek haric)
+        hold = kept | dl
         tg, hnote = HB.adjust(raw)  # acil durum engeli / haber alimi gecici payi (izinli hesaplara)
-        if ml_day:
+        if ml_day and not info.get("ml_bekle"):
             pf["ml_hafta"] = week
         for s in tg:  # stream'de olmayan coin: anlik fiyat REST ile
             if not self.bid.get(s) or not self.ask.get(s):
@@ -1493,8 +2296,11 @@ class Bot:
             pf["ml_card"] = PF.ml_card(self.ex, pf)
         except Exception as e:
             log.warning("karne: %s", e)
-        buys, objs, shown = self._pf_buys(tg, info, ml_day), {}, dict(tg)  # shown: ekrandaki hedef (sanal hesaba gore)
-        if buys and A.brain() != "local":  # dusunerek alim: Claude kontrolor (sadece ertele / yariya indir)
+        buys = [x for x in self._pf_buys(tg, info, ml_day) if not skip(x[0]) and x[0] not in hold]
+        objs, shown = {}, dict(tg)  # shown: ekrandaki hedef (sanal hesaba gore)
+        if buys and self.budget_full():  # butce doldu: yeni Claude karari yok
+            cnote = f"Günlük Claude bütçesi ({C.CLAUDE_DAILY_BUDGET:g} $) doldu; plan kuralla uygulandı."
+        elif buys and A.brain() != "local":  # dusunerek alim: Claude kontrolor (sadece ertele / yariya indir)
             try:
                 ozet, objs, cnote, usd = KT.review(A.ask_json, buys, self._pf_context(info))
                 self.add_cost(usd)
@@ -1503,18 +2309,42 @@ class Bot:
                 for s, k in objs.items():
                     shown[s] = cur[s] if k == "ertele" else cur[s] + (tg[s] - cur[s]) / 2
             except A.AgentError as e:
+                objs, shown, model = {}, dict(tg), "yerel"
                 cnote = f"Claude'a ulaşılamadı ({e}); plan kuralla uygulandı."
+            except Exception:  # kontrolor hatasi dengelemeyi (satislar dahil) durdurmaz
+                log.exception("kontrolor")
+                objs, shown, model = {}, dict(tg), "yerel"
+                cnote = "Kontrolör cevabı işlenemedi; plan kuralla uygulandı."
+        now = self._pf_now()
+        for s in stale:
+            shown[s] = now.get(s, 0.0)
+        for s in hold & set(shown):
+            shown[s] = min(shown[s], now.get(s, 0.0))
+        objs = {**objs, **{s: "ertele" for s in hold}}
+        biten = []
+        if self.stop.is_set():  # motor duruyor: dengeleme yeni Bot'a kalir
+            return
         for a in accts:
+            hedef = tg if (C.HABER_LIVE if a.live else C.HABER_ISLEM) else raw
+            a.ledger("karar", ml_gunu=ml_day, hedef=hedef, itiraz=objs, atlanan=sorted(s for s in set(hedef) | set(a.st["positions"]) if skip(s)))
             try:
-                res[a.mode] = a.rebalance(tg if (C.HABER_LIVE if a.live else C.HABER_ISLEM) else raw, ml_day, objs)
+                res[a.mode] = a.rebalance(hedef, ml_day, objs, skip)
+                if not a.pf_err:
+                    biten.append(a.mode)
             except ccxt.BaseError as e:
                 res[a.mode] = [f"borsa hatası: {str(e)[:120]}"]
+            finally:  # sonuc yoksa (None) dengeleme motor hatasiyla yarim kaldi
+                a.ledger("sonuc", sonuc=res.get(a.mode))
         ml = info["ml"]
         for s, v in info["core"].items():
             lines.append(f"{s.split('/')[0]}: yükseliş gücü {word(v['trend'])} → kasadaki payı %{v['w'] * 100:.0f}")
+        for s, e in stale.items():
+            lines.append(f"{s.split('/')[0]}: dokunulmadı ({e})")
         picks = ", ".join(s.split("/")[0] for s, _ in ml["picks"]) or "-"
-        lines.append("Haftalık sepet: " + ("dinlenmede (model son 6 ayda isabet kaybetti, pay nakitte)" if ml.get("rest") else
-                                          f"{picks}" if ml["reg"] else "piyasa zayıf, sepet nakitte"))
+        lines.append("Haftalık sepet: " + (f"dinlenmede ({ml.get('durum_not')})" if ml.get("rest") else
+                                          f"{picks}" if ml["reg"] else "piyasa zayıf, sepet nakitte")
+                     + (f" | {ml['durum_not']}" if ml.get("durum_not") and not ml.get("rest") else "")
+                     + (" | seçim yenilenemedi, yeni alım yok" if kept else ""))
         lines.append(f"Nakitte bekleyen: %{max(0.0, 1 - sum(shown.values())) * 100:.0f}")
         if ozet:
             lines.insert(0, ozet)
@@ -1522,22 +2352,32 @@ class Bot:
             lines.append("Kontrolör: " + cnote)
         if hnote:
             lines.append("Haber: " + hnote)
-        pf.update(last=time.time(), targets=shown, info={"core": info["core"]}, result=res, ozet=ozet, kontrol=cnote)
+        if dl & set(tg):
+            lines.append("Delist duyurusu, yeni alım yok: " + ", ".join(sorted(s.split("/")[0] for s in dl & set(tg))))
+        old_core = (pf.get("info") or {}).get("core") or {}  # bozuk veride son bilinen trend: haber alimi kapisi acik kalmasin
+        pf.update(last=time.time(), son={**(pf.get("son") or {}), **{m: time.time() for m in biten}}, targets=shown, info={"core": {**{s: old_core[s] for s in stale if s in old_core}, **info["core"]}},
+                  result=res, ozet=ozet, kontrol=cnote)
         results = [{"type": "rebalance", "sym": "PORTFÖY", "label": "Yeniden dengeleme", "reason": "hedef ağırlıklar",
                     "result": "; ".join(f"{'sanal' if m == 'PAPER' else 'gerçek'}: " + " / ".join(r) for m, r in res.items())}]
         self._publish("portfoy", [], " | ".join(lines), results, usd, model, t0)
+        self._pf_after(today, prev, kalan, stale)
         PF.maybe_train(lambda t: self.say(t, kind="oz"))
 
-    def _pf_buys(self, tg, info, ml_day):
-        """Bugun alinacaklar (sanal hesaba gore, Account.rebalance ile ayni esik): [(sym, hedef, simdiki, fiyat, aciklama)]."""
-        band = PF.BAND_ML if ml_day else PF.BAND
+    def _pf_now(self):
+        """Strateji pozisyonlarinin sanal hesapta simdiki agirliklari."""
         a = self.accounts["PAPER"]
         with self.lock:
             held = {s: p["qty"] * self.bid.get(s, p["entry"]) for s, p in a.st["positions"].items() if p.get("kind") == PF.KIND}
             base = a.st["cash"] + sum(held.values())
+        return {s: v / base if base > 0 else 0.0 for s, v in held.items()}
+
+    def _pf_buys(self, tg, info, ml_day):
+        """Bugun alinacaklar (sanal hesaba gore, Account.rebalance ile ayni esik): [(sym, hedef, simdiki, fiyat, aciklama)]."""
+        band = PF.BAND_ML if ml_day else PF.BAND
+        held = self._pf_now()
         out = []
         for s, t in tg.items():
-            c = held.get(s, 0.0) / base if base > 0 else 0.0
+            c = held.get(s, 0.0)
             if (t - c >= band or (s not in held and t >= 0.01)) and self.ask.get(s):
                 why = "çekirdek (trend)" if s in info["core"] else "haftalık ML seçimi"
                 out.append((s, t, c, self.ask[s], why))

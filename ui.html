@@ -907,8 +907,10 @@ async function loadPF() {
   const yrs = Object.entries(B.yillar).map(([y, v]) => `<span class="tag">${y}: <b class="${v[0] >= 0 ? "up" : "down"}">%${v[0]}</b> <span class="dim">BTC %${v[1]}</span></span>`).join(" ");
   $("#pfbody").innerHTML = `<div class="g2 g11"><div>${syms.length ? `<table><tr><th>Coin</th><th class="r">Hedef</th><th class="r">Şu an</th><th class="r">Neden</th></tr>${rows}
       <tr><td class="dim">Nakit (USDT)</td><td class="r">%${fmt(cash * 100, 1)}</td><td class="r"></td><td></td></tr></table>` : '<div class="dim">İlk dengeleme bekleniyor.</div>'}
-      ${ml.rest ? '<div class="warn" style="font-size:12px;margin-top:6px">ML sepeti dinlenmede: model son 6 ayda isabet kaybetti, pay nakitte.</div>'
+      ${ml.rest ? `<div class="warn" style="font-size:12px;margin-top:6px">ML sepeti dinlenmede: ${esc(ml.durum_not || "model son 6 ayda isabet kaybetti, pay nakitte")}.</div>`
+        : ml.durum_not ? `<div class="warn" style="font-size:12px;margin-top:6px">ML sepeti: ${esc(ml.durum_not)}.</div>`
         : ml.reg === false ? '<div class="dim" style="font-size:12px;margin-top:6px">ML sepeti şu an nakitte (piyasa zayıf).</div>' : ""}
+      ${Object.keys(pf.bekle || {}).length ? `<div class="warn" style="font-size:12px;margin-top:6px">Verisi bozuk, dokunulmadı: ${esc(Object.values(pf.bekle).join("; "))}.</div>` : ""}
       ${pf.ozet ? `<div class="banner info" style="display:block;margin:10px 0 0">🧠 ${esc(pf.ozet)}</div>` : ""}
       ${pf.kontrol ? `<div class="dim" style="font-size:12px;margin-top:6px">Kontrolör: ${esc(pf.kontrol)}</div>` : ""}</div>
     <div><div class="kv"><span>Test dönemi</span><span>${esc(B.donem)}</span>
@@ -1229,12 +1231,13 @@ const GROUPS = {
     ["RADAR_MIN_VOL", "Radar likidite alt sınırı (USDT)", "number", "24 saatlik hacmi bunun altındaki coinler radara alınmaz. Yüksek tutarla işlemde 3.000.000 ve üstü önerilir."],
     ["FEE", "Komisyon (tek yön)", "number", "0.001 = %0,1 · BNB ile ödüyorsan 0.00075"], ["UNIVERSE_SIZE", "Derin izlenen coin sayısı", "number", "Emir defteri ve ML ile saniyelik izlenen en likit coinler. Radar zaten tüm piyasayı tarar. Değişirse motor yeniden başlar."]]],
   live: ["Gerçek işlem (LIVE)", [["LIVE_ALLOWED", "Gerçek hesapta otomatik işlem", "toggle", "Açınca Claude'un kararları kullanıcının Binance hesabında gerçek emir olarak uygulanır."],
-    ["API_KEY", "Binance API key", "secret", "Sadece Spot Trading izni; Withdraw (çekim) KAPALI."], ["API_SECRET", "Binance API secret", "secret"]]],
+    ["LIVE_MAX_USDT", "Tek emir üst sınırı (USDT)", "number", "Gerçek hesapta tek alım bu tutarı ve kasanın %40'ını geçemez; geçerse emir gönderilmez, küçültülmez. Portföy dengelemesi de buna takılır: kasanız büyüdükçe bilerek yükseltin. Pozisyon satışı ve stop bu sınıra takılmaz."],
+    ["API_KEY", "Binance API key", "secret", "Sadece Spot Trading izni; Withdraw (çekim) KAPALI. Çekim izni açık anahtarla yeni alım yapılmaz."], ["API_SECRET", "Binance API secret", "secret"]]],
   guncelleme: ["Güncelleme deposu", [["UPDATE_REPO", "GitHub deposu", "text", "kullanici/depo (ör. melik/KriptoQuantBot). guncelleme_yayinla.bat bu depoya yayınlar."],
     ["UPDATE_TOKEN", "Erişim anahtarı (gizli depo ise)", "secret", "Depo gizliyse sadece okuma izinli GitHub anahtarı (fine-grained, Contents: Read)."],
     ["AUTO_UPDATE_CHECK", "Otomatik kontrol (6 saatte bir)", "toggle", "Yeni sürüm bulununca bildirim gelir; kurulum her zaman sizin onayınızla."]]],
   sunucu: ["Sunucu modu", [["SERVER_MODE", "Ağdan erişime aç (0.0.0.0)", "toggle", "Açıkken aynı ağdaki ve Tailscale'deki cihazlar tarayıcıdan bağlanır (giriş zorunlu). Değişiklik yeniden başlatınca etkin olur."]]],
-  zincir: ["Strateji ve zincir verisi", [["PORTFOY", "Portföy stratejisi (sanal hesap)", "toggle", "Her gün kapanışta (03:05 TR) %70 BTC/ETH trend çekirdeği + %30 haftalık ML sepetine göre sanal kasayı yeniden dengeler. 2022-2026 testinde yıllık %25, en derin düşüş %-24 (BTC al-tut %11 / %-67)."],
+  zincir: ["Strateji ve zincir verisi", [["PORTFOY", "Portföy stratejisi (sanal hesap)", "toggle", "Her gün kapanışta (03:05 TR) %70 BTC/ETH trend çekirdeği + %30 haftalık ML sepetine göre sanal kasayı yeniden dengeler. 2022-2026 testinde yıllık %24 (sepet gününden bağımsız ortalama %19), en derin düşüş %-22 (BTC al-tut %11 / %-67)."],
     ["PORTFOY_CORE", "Çekirdek payı (0-1)", "number", "0,7 = kasanın %70'i BTC/ETH çekirdeği, %30'u ML sepeti. 1 = sadece çekirdek (en sade, en az düşüş)."],
     ["PORTFOY_LIVE", "Portföy stratejisi gerçek hesapta", "toggle", "Açık ve 'Gerçek hesapta otomatik işlem' de açıksa aynı dengeleme gerçek Binance hesabında yapılır. Sanal karne yeterli olunca açın."],
     ["OTO_SAATLIK", "Eski saatlik otomatik al-sat", "toggle", "Yerel kurulumlar + Claude saatlik kararı. 2 yıllık testte ve GÜÇLÜ AL 4s/1g uzun tutma testinde piyasayı yenemedi: kapalı önerilir. Radar, grafik, elle işlem ve sohbet kapalıyken de çalışır."],

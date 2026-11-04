@@ -9,6 +9,11 @@ LIVE_ALLOWED = False
 # LIVE icin: sadece "Spot Trading" izni verin, "Withdraw" iznini KAPALI tutun
 API_KEY = ""
 API_SECRET = ""
+# Gercek emir kapisi (bot.py Account.fence): her gercek alim borsaya gitmeden denetlenir; PAPER etkilenmez. Pozisyon satisi ve
+# stop tutar sinirina takilmaz. LIVE_MAX_USDT'yi sadece admin degistirir: kucuk baslangic, kasa buyuyunce bilerek yukseltilir.
+LIVE_MAX_USDT = 100.0     # tek emir ust siniri (USDT)
+LIVE_MAX_EQUITY = 0.40    # tek emir kasanin bu payini gecemez
+LIVE_COLLAR_PCT = 3.0     # emir fiyati son fiyattan en fazla bu kadar uzak olabilir (%)
 
 # Telegram bildirim + komutlar (bos birakilirsa kapali). Bot sadece bu CHAT_ID'den gelen mesajlara cevap verir.
 TELEGRAM_TOKEN = ""
@@ -132,6 +137,7 @@ LOG_FILE = os.path.join(APP_DIR, "bot.log")
 PAUSE_FLAG = os.path.join(APP_DIR, "durdur_{}.flag")  # hesap basina (PAPER/LIVE): varsa yeni islem acilmaz
 JOURNAL_FILE = os.path.join(APP_DIR, "tahmin_defteri.csv")  # oz-degerlendirme icin tahmin kaydi
 LESSON_DB = os.path.join(APP_DIR, "ders_defteri.db")         # otopsiler, dersler, ogrenme ornekleri
+REBAL_DIR = os.path.join(APP_DIR, "dengeleme_defteri")       # dengeleme karar+sonuc kaydi: gun basina dosya, sadece sona eklenir
 SETTINGS_FILE = os.path.join(APP_DIR, "settings.json")      # arayuzden degistirilen ayarlar
 PORT = int(os.environ.get("KQB_PORT") or 8765)
 PUBLIC_HOST = {h.strip() for h in os.environ.get("KQB_PUBLIC_HOST", "").split(",") if h.strip()}  # sunucu: HTTPS adresleri
@@ -139,7 +145,7 @@ SUNUCU_URL_FILE = os.path.join(APP_DIR, "sunucu_adresi.txt")  # masaustu istemci
 
 # Arayuzden degistirilebilen ayarlar (settings.json bu dosyadaki degerleri ezer). Hepsini admin degistirir;
 # normal kullanici sadece USER_EDITABLE alanlarini (kendi Binance API'si) gorur ve degistirir.
-EDITABLE = ["LIVE_ALLOWED", "API_KEY", "API_SECRET", "TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID", "CLAUDE_API_KEY",
+EDITABLE = ["LIVE_ALLOWED", "LIVE_MAX_USDT", "API_KEY", "API_SECRET", "TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID", "CLAUDE_API_KEY",
             "CLAUDE_MODEL", "CLAUDE_EFFORT", "CLAUDE_DAILY_BUDGET", "DECISION_COOLDOWN_MIN", "AGENT_NOTES",
             "UNIVERSE_SIZE", "RISK_PCT", "MAX_POSITIONS", "MAX_POS_PCT", "DD_PAUSE_PCT", "DAILY_LOSS_PCT",
             "KILL_DD_PCT", "COOLDOWN_MIN", "FEE", "PAPER_BALANCE", "BE_TRIGGER_R", "TRAIL_ATR", "RADAR_MIN_VOL",

@@ -33,7 +33,7 @@ def tg(method, **data):
             log.warning("Telegram %s: %s", method, r.get("description"))
         return r
     except (requests.RequestException, ValueError) as e:
-        log.warning("Telegram %s: %s", method, e)
+        log.warning("Telegram %s: %s", method, type(e).__name__)  # hata metni token iceren adresi yazar
         return None
 
 
@@ -561,7 +561,7 @@ def poll_forever():
                     threading.Thread(target=_safe, args=(fn, arg), daemon=True).start()
         except (requests.RequestException, ValueError) as e:
             ME["polling"] = False
-            log.warning("Telegram dinleme: %s", e)
+            log.warning("Telegram dinleme: %s", type(e).__name__)
             time.sleep(10)
 
 

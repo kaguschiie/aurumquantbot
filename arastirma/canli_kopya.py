@@ -1,7 +1,7 @@
 """Canli yapinin kopyasi: 30 gunde bir egitim, ayni gun satirlari, sabit 100 tur (erken durdurma yok), canli bantlar %3/%1.
 Eski test (yillik egitim, Pazartesi mumu, tek tohum) %26 gosteriyordu; canli bot Pazar mumunu kullaniyor ve %14 ediyordu.
-Sifir testi: 30 rastgele sepette de ayni gun deseni var, yani fark secimden degil takvimden. Carsamba egitimde de en iyi gundu,
-ama secim test goruldukten sonra yapildi: 7 gun ortalamasini da oku. Calistirma: python canli_kopya.py (indir_1d.py sonrasi, ~5 dk)."""
+Gunler arasi farkin cogu haftalik BTC rejim orneklemesinin sansi (rastgele sepette de ayni desen). Carsamba test goruldukten sonra secildi,
+gercekci beklenti 7 gun ortalamasidir. Calistirma: python canli_kopya.py (indir_1d.py sonrasi, ~5 dk)."""
 import os, sys, warnings
 import numpy as np, pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor as HGB
@@ -17,7 +17,7 @@ BTC, ETH, TE = "BTCUSDT", "ETHUSDT", PN.TRAIN_END
 A = frame(c.index[c.index >= "2018-03-01"])
 A["iy"] = A.index
 fs = [k for k in A.columns if k not in ("y", "d", "iy")]
-reg = (b > b.rolling(100).mean()).fillna(False).values[:, None]
+reg_d = (b > b.rolling(100).mean()).fillna(False)
 Xa, ds = A[fs].values, A.d.values
 GUN = "Pzt Sal Car Per Cum Cmt Paz".split()
 
@@ -39,10 +39,23 @@ def scores(day, it=100, es=False, seed=0):
     return t.dropna().pivot_table(index="d", columns="iy", values="p").reindex(index=c.index, columns=c.columns)
 
 
-def ml_w(sc, day):
+def gate(day, n=3):
+    """Rejim sepet gunu okunur; hafta icinde n kapanis ust uste altindaysa cikis, geri donus sadece sepet gunu. n=None: sadece sepet gunu."""
+    below = (~reg_d).astype(int).rolling(n or 1).sum() == (n or 1)
+    cur, out = False, []
+    for r, bl, x in zip(c.index.dayofweek == day, below.values, reg_d.values):
+        if r:
+            cur = bool(x)
+        elif n and bl:
+            cur = False
+        out.append(cur)
+    return np.array(out)[:, None]
+
+
+def ml_w(sc, day, n=3):
     reb = np.repeat((c.index.dayofweek == day)[:, None], c.shape[1], 1)
     top = (sc.rank(axis=1, ascending=False) <= 5) & sc.notna()
-    return (top & reg).astype(float).div(5).where(reb, np.nan).ffill().fillna(0.0)
+    return top.astype(float).div(5).where(reb, np.nan).ffill().fillna(0.0) * gate(day, n)
 
 
 def core():
@@ -82,9 +95,10 @@ def show(ad, W, day):
 if __name__ == "__main__":
     C_ = core()
     old = scores(0, it=200, es=True)
-    show("eski canli (Paz mumu)", 0.7 * C_ + 0.3 * ml_w(old, 6), 6)
+    show("eski canli (Paz mumu)", 0.7 * C_ + 0.3 * ml_w(old, 6, None), 6)
     new = scores(2)
-    show("yeni canli (Car)", 0.7 * C_ + 0.3 * ml_w(new, 2), 2)
+    show("canli (Car, 3 gun cikis)", 0.7 * C_ + 0.3 * ml_w(new, 2), 2)
+    show("3 gun cikis olmadan", 0.7 * C_ + 0.3 * ml_w(new, 2, None), 2)
     show("sadece cekirdek", C_, 2)
     show("sadece ML (Car)", ml_w(new, 2), 2)
     W = pd.DataFrame(0.0, index=c.index, columns=c.columns); W[BTC] = 1.0

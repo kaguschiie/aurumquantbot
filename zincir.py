@@ -88,8 +88,9 @@ class Zincir:
                     self._onchain()
                 self.t, self.error = time.time(), ""
             except Exception as e:
-                self.error = str(e)[:160]
-                log.warning("zincir: %s", e)
+                err = str(e).replace(C.WHALE_ALERT_KEY, "***") if C.WHALE_ALERT_KEY else str(e)  # hata metni anahtarli adresi icerebilir
+                self.error = err[:160]
+                log.warning("zincir: %s", err)
             time.sleep(60)
 
     def chain_summary(self, coin):
