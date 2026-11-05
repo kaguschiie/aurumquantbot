@@ -426,6 +426,7 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
   </div></section>
 
   <!-- AYARLAR -->
+  <section id="hazirlik" class="page"><div id="hzwrap"></div></section>
   <section id="settings" class="page"><div id="setwrap"></div></section>
   </div>
 
@@ -460,10 +461,10 @@ const ICON = {home: '<path d="M3 12l9-8 9 8M5 10v10h14V10"/>', chartp: '<path d=
   lessons: '<path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/>',
   news: '<path d="M4 5h13v14a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2zM17 9h3v10a2 2 0 0 1-2 2M7 9h7M7 13h7M7 17h4"/>',
   trades: '<path d="M4 6h16M4 12h16M4 18h10"/>', decisions: '<path d="M12 3a6 6 0 0 0-6 6c0 2.2 1.2 3.6 2.4 4.8.8.8 1.1 1.6 1.1 2.7V18h5v-1.5c0-1.1.3-1.9 1.1-2.7C16.8 12.6 18 11.2 18 9a6 6 0 0 0-6-6zM10 21h4"/>',
-  notes: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>', bt: '<path d="M3 20h18M5 16l4-5 4 3 6-8"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+  notes: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>', bt: '<path d="M3 20h18M5 16l4-5 4 3 6-8"/>', hazirlik: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/>'};
 const PAGES = [["home", "Komuta Merkezi"], ["chartp", "Grafik"], ["screen", "Piyasa Tarayıcı"], ["opps", "Radar (tüm piyasa)"], ["macro", "Borsa / Makro"],
-  ["news", "Haberler"], ["trades", "İşlemler"], ["decisions", "Kararlar"], ["lessons", "Ders Defteri"], ["notes", "Karar Günlüğü"], ["bt", "ML Geçmiş Test", 1], ["chat", "Sohbet"], ["settings", "Ayarlar"]];
+  ["news", "Haberler"], ["trades", "İşlemler"], ["decisions", "Kararlar"], ["lessons", "Ders Defteri"], ["notes", "Karar Günlüğü"], ["bt", "ML Geçmiş Test", 1], ["hazirlik", "Gerçek Paraya Hazırlık", 1], ["chat", "Sohbet"], ["settings", "Ayarlar"]];
 const title = t => (PAGES.find(p => p[0] === t) || [, t])[1];
 const allowed = t => PAGES.some(p => p[0] === t && (!p[2] || ME?.role === "admin"));
 const visible = t => TAB === t || DOCK.includes(t);
@@ -609,7 +610,7 @@ function layout() {
 }
 function show(t) {
   ({home: () => loadPF().catch(() => {}), settings: loadSettings, chartp: () => { loadCandles(true); tvLoad(); }, screen: loadScreener, opps: loadOpps, macro: loadMacro, lessons: loadLessons, notes: loadNotes, trades: loadTrades,
-    news: loadNews, decisions: loadDecisions, bt: renderBT, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
+    news: loadNews, decisions: loadDecisions, bt: renderBT, hazirlik: loadHazirlik, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
 }
 (() => { // sag panel genisligi: surukle
   const r = $("#resizer"); let x0 = 0, w0 = 0;
@@ -1303,6 +1304,26 @@ async function saveGroup(id) {
   if (id === "live") body.confirm = ($("#f-confirm")?.value || "").trim().toUpperCase();
   const r = await api("/api/settings", body); $("#m-" + id).textContent = r.msg; $("#m-" + id).className = r.ok ? "up" : "down";
   toast(r.msg, r.ok ? "up" : "down"); if (r.ok) setTimeout(loadSettings, 400);
+}
+async function loadHazirlik() {
+  const d = await api("/api/hazirlik"), g = d.gozlem, K = d.kontrol, A = d.ayar || {};
+  if (d.motor === false) return $("#hzwrap").innerHTML = '<div class="big-empty">Motor başlıyor, birkaç saniye sonra yeniden açın.</div>';
+  const IM = {ok: ["✓", "up"], uyari: ["!", "down"], bekle: ["…", "warn"]};
+  const pct = v => v == null ? "-" : `${v > 0 ? "+" : ""}${fmt(v)}%`;
+  const kart = g ? [["Sanal kasa", pct(g.kasa_pct), `${fmt(g.kasa_bas)} → ${fmt(g.kasa_son)} $`], ["BTC aynı dönem", pct(g.btc_pct), "al-tut"], ["En derin düşüş", `-%${fmt(g.dusus)}`, "dönem içinde"], ["Süre", `${g.gun} gün`, `${esc(g.bas)} başlangıç`]]
+    .map(([a, b, c]) => `<div class="kpi"><div class="mute" style="font-size:12px">${a}</div><div style="font-size:20px;font-weight:650;margin:4px 0">${b}</div><div class="dim" style="font-size:11.5px">${c}</div></div>`).join("") : "";
+  $("#hzwrap").innerHTML = `<div class="banner ${d.hazir ? "ok" : "warn"}"><b>${d.hazir ? "Kontrollerin hepsi tamam." : "Henüz hazır değil: aşağıdaki eksikleri tamamlayın."}</b> Bu ekran emir vermez, ayar değiştirmez. Bir haftalık sonuç stratejinin işe yaradığını kanıtlamaz; sadece sistemin düzgün çalıştığını gösterir. Karar size aittir.</div>
+    <div class="card"><h3>Kontrol listesi</h3><table>${(d.maddeler || []).map(m => `<tr><td style="width:26px"><b class="${IM[m.durum][1]}">${IM[m.durum][0]}</b></td><td style="white-space:nowrap"><b>${esc(m.ad)}</b></td><td class="dim">${esc(m.not)}</td></tr>`).join("")}</table>
+      <p style="margin:12px 0 0"><button class="btn pri" id="hzbtn" onclick="hzKontrol()">Binance'te kontrol et</button> <span class="dim" style="font-size:12px">Gerçek emir gitmez. Binance'in emir deneme kapısı kullanılır, kasaya dokunulmaz.</span></p>
+      ${K ? `<table style="margin-top:10px">${(K.koin || []).map(x => `<tr><td><b>${esc(base(x.s))}</b></td><td>${x.ok ? '<span class="up">stop kabul edildi</span>' : `<span class="down">${x.belirsiz ? "kontrol edilemedi" : "reddedildi"}</span>`}</td><td class="dim">${esc(x.hata || "")}${x.yedek === true ? " Düz stop emri kabul ediliyor." : ""}${x.yedek === false ? " Düz stop emri de reddedildi." : ""}</td></tr>`).join("")}</table><div class="dim" style="font-size:11.5px;margin-top:6px">Son kontrol: ${tm(K.t)}${K.hata ? " · " + esc(K.hata) : ""}</div>` : ""}</div>
+    <div class="card"><h3>Sanal gözlem${g ? "" : ": kayıt yok"}</h3>${g ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px">${kart}</div>${g.uyarilar.length ? `<h3 style="margin-top:14px">En sık uyarılar</h3><table>${g.uyarilar.map(u => `<tr><td class="r" style="width:40px">${u.n}</td><td class="dim">${esc(u.m)}</td></tr>`).join("")}</table>` : '<div class="dim" style="margin-top:12px">Dönemde uyarı yok.</div>'}` : `<div class="dim">${esc(d.bas || "")} sonrası kayıt oluşunca burada görünür.</div>`}</div>
+    <div class="card"><h3>Günlük dengeleme</h3><div style="display:flex;flex-wrap:wrap;gap:6px">${(d.dengeleme || []).map(x => `<span class="tag" title="${esc(x.hata.join(" | "))}" style="color:var(--${x.ok && !x.hata.length ? "up" : "down"})">${esc(x.g.slice(5))} ${x.ok && !x.hata.length ? "✓" : "!"}</span>`).join("") || '<span class="dim">Kayıt yok.</span>'}</div></div>
+    <div class="card"><h3>Şu anki gerçek hesap ayarları</h3><div class="act">${[["Gerçek hesapta otomatik işlem", A.LIVE_ALLOWED], ["Portföy gerçek hesapta", A.PORTFOY_LIVE], ["Boş USDT Earn'de", A.EARN_USDT], ["Haberle gerçek işlem", A.HABER_LIVE]].map(([a, v]) => `<div class="row"><span>${a}</span><b>${v ? "açık" : "kapalı"}</b></div>`).join("")}<div class="row"><span>Tek emir sınırı</span><b>${A.LIVE_MAX_USDT} USDT</b></div></div></div>`;
+}
+async function hzKontrol() {
+  const b = $("#hzbtn"); b.disabled = true; b.textContent = "Kontrol ediliyor…";
+  const r = await post("/api/hazirlik/binance"); if (!r.ok) toast(r.msg, "warn");
+  await loadHazirlik();
 }
 async function loadSettings() {
   SET = await api("/api/settings");

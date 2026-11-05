@@ -18,7 +18,7 @@ python -m PyInstaller --noconfirm --clean --windowed --name KriptoQuantBot --ico
   --collect-submodules webview --collect-submodules anthropic --collect-submodules sklearn ^
   --hidden-import bot --hidden-import agent --hidden-import chat --hidden-import teknik --hidden-import quant --hidden-import telegram_bot ^
   --hidden-import dersler --hidden-import makro --hidden-import portfoy --hidden-import kontrolor --hidden-import haberler --hidden-import feedparser --hidden-import zincir --hidden-import guncelle --hidden-import sunucu ^
-  --hidden-import gecmis --hidden-import komite --hidden-import hafiza --hidden-import gunluk --hidden-import montecarlo ^
+  --hidden-import gecmis --hidden-import komite --hidden-import hafiza --hidden-import gunluk --hidden-import montecarlo --hidden-import hazirlik ^
   --distpath %DIST% --workpath build_%DIST% app.py
 if errorlevel 1 goto hata
 if /i "%~1"=="yayin" exit /b 0

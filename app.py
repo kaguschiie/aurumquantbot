@@ -369,6 +369,12 @@ def candles(sym, tf, mode):
     return out
 
 
+def hazirlik_rapor():
+    import hazirlik
+    b = ENGINE.bot
+    return hazirlik.rapor(b, b.ag.get("hazirlik")) if b else {"maddeler": [], "motor": False}
+
+
 def get_settings(sess):
     keys = C.EDITABLE if sess["role"] == "admin" else [k for k in C.EDITABLE if k in C.USER_EDITABLE]
     out = {k: ("" if k in C.SECRETS else getattr(C, k)) for k in keys}
@@ -570,6 +576,7 @@ class Handler(BaseHTTPRequestHandler):
                 routes["/api/update"] = lambda: __import__("guncelle").status()
                 routes["/api/server"] = lambda: __import__("sunucu").status()
                 routes["/api/history"] = history
+                routes["/api/hazirlik"] = hazirlik_rapor
                 routes["/api/memory"] = lambda: {"text": __import__("hafiza").tail(60000)}
             if u.path in routes:
                 return self._send(200, routes[u.path]())
@@ -614,6 +621,15 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(401, {"ok": False, "msg": "Oturum kapandı, tekrar giriş yapın."})
         admin, b = sess["role"] == "admin", ENGINE.bot
         mode = mode_for(sess, body)
+        if p == "/api/hazirlik/binance":  # gercek emir gitmez (order/test)
+            if not admin:
+                return self._send(403, {"ok": False, "msg": "Sadece admin."})
+            lv = b and b.accounts.get("LIVE")
+            if not lv:
+                return self._send(200, {"ok": False, "msg": "Gerçek hesap anahtarı girilmedi."})
+            import hazirlik
+            b.ag["hazirlik"] = hazirlik.binance_kontrol(lv, dict(lv.bid))
+            return self._send(200, {"ok": True})
         if p == "/api/chat":  # cevap parca parca akar
             import chat
             gate = CHAT_GATE.setdefault(sess["user"].lower(), threading.Semaphore(1))
