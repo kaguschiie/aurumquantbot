@@ -41,6 +41,16 @@ log = logging.getLogger("bot")
 ACCTS = ("PAPER", "LIVE")
 RADAR_KEYS = ("rs24", "rs4", "vspike", "r1h", "r4h", "breakout", "score", "full", "flow3")
 PF_LATE, PF_LATE_GRACE = 1800, 900  # dengeleme 00:30 UTC'ye kadar bitmediyse uyari; motor yeni basladiysa once ilk turu bitirsin
+SURE_MIN, SURE_MAX = 0.1, 720  # elle alim otomatik satis suresi (saat)
+AI_STOP_FRAC = 0.92  # yapay zekaya birakilan alimda stop bos: girisin %8 alti (Claude stopu sadece yukari tasir)
+AI_SYSTEM = ("Sen bir kripto pozisyon yoneticisisin. Kullanici bu spot pozisyonlari sana birakti; her saat basi her biri icin karar verirsin: "
+             "tut, kapat ya da guncelle (stop/hedef). Yeni alim yapamazsin. Stop sadece yukari tasinabilir ve fiyatin altinda kalmalidir; "
+             "degismeyecek alan icin 0 yaz. Kisa vadeli yon tahmini cok belirsizdir ve her satis komisyon odetir: acik bir bozulma veya "
+             "yorgunluk gormuyorsan tut. 'neden' alanina hic bilmeyen birine anlatir gibi tek kisa, sade Turkce cumle yaz.")
+AI_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["kararlar"], "properties": {"kararlar": {"type": "array", "items": {
+    "type": "object", "additionalProperties": False, "required": ["sym", "karar", "stop", "hedef", "neden"],
+    "properties": {"sym": {"type": "string"}, "karar": {"type": "string", "enum": ["tut", "kapat", "guncelle"]},
+                   "stop": {"type": "number"}, "hedef": {"type": "number"}, "neden": {"type": "string"}}}}}}
 
 
 def norm(sym):
@@ -901,7 +911,8 @@ class Account:
                "conviction": p.get("conviction"), "why": p.get("reason", ""), "p": p.get("p"), "be": False,
                "sigs": p.get("sigs") or [], "feats": p.get("feats") or {}, "edge": p.get("edge"),
                "btc0": self.bid.get(C.BTC), "manual": bool(p.get("manual")), "kind": p.get("kind"), "exit": ex,
-               "seen": time.time(), "mc": p.get("mc")}
+               "seen": time.time(), "mc": p.get("mc"), "ai": bool(p.get("ai")),
+               "sure_t": time.time() + p["sure_h"] * 3600 if p.get("sure_h") else None}
         self.st["positions"][s] = pos
         if self.live:
             pos["stop_id"] = self.place_stop(s, pos)
@@ -911,7 +922,9 @@ class Account:
                             f"{p.get('reason', '')} | felaket stopu {sl:.6g}", True)
         self.say(f"{s} ALINDI {qty:g} @ {price:g} | stop {sl:.6g}"
                  + (f", kısmi kâr {tp1:.6g}" if tp1 else "")
-                 + (" | Manuel Kilit (stop/hedef kullanıcıda)" if pos["manual"] else f", hedef {tp2:.6g}, en fazla {hours:g} sa")
+                 + (" | Manuel Kilit (stop/hedef kullanıcıda)" if pos["manual"] else
+                    " | yapay zekaya bırakıldı" if pos["ai"] else f", hedef {tp2:.6g}, en fazla {hours:g} sa")
+                 + (f" | {p['sure_h']:g} saat sonra otomatik satış" if pos["sure_t"] else "")
                  + ("\n" + MC.line(pos["mc"]) if pos.get("mc") else ""), True)
 
     def manage_positions(self):
@@ -953,6 +966,9 @@ class Account:
             bars += b
             since = b[-1][0] + 60_000
         for t, o, h, low, c, _ in bars:
+            if pos.get("sure_t") and t / 1000 >= pos["sure_t"]:
+                self.book(s, pos, o, "SURE_DOLDU")
+                return True
             if low <= pos["sl"]:
                 px = min(o, pos["sl"]) * (1 - C.SLIPPAGE)
                 self.say(f"{s}: uygulama kapalıyken stop tetiklendi ({time.strftime('%H:%M', time.localtime(t / 1000))}).")
@@ -1008,6 +1024,8 @@ class Account:
             self.exit(s, pos, self._stop_reason(pos), stop=True)
         elif bid >= pos["tp"]:
             self.exit(s, pos, "HEDEF")
+        elif pos.get("sure_t") and time.time() >= pos["sure_t"]:  # kullanicinin sectigi sure doldu (Manuel Kilit dahil)
+            self.exit(s, pos, "SURE_DOLDU")
         else:
             if pos.get("manual") or pos.get("kind") == PF.KIND:  # Manuel Kilit / portfoy: kademeli kar, kalkan, sure yok
                 return
@@ -1313,7 +1331,7 @@ class Account:
             pos["sl"] = sl
         if tp is not None:
             pos["tp"] = tp
-        pos["manual"], pos["partial_at"] = True, None
+        pos["manual"], pos["partial_at"], pos["ai"] = True, None, False
         if self.live and sl is not None:
             self._replace_stop(s, pos)
         self.say(f"{s} elle güncellendi ({who}): stop {old[0]:.6g} → {pos['sl']:.6g}, hedef {old[1]:.6g} → "
@@ -1325,9 +1343,22 @@ class Account:
         pos = self.st["positions"].get(s)
         if not pos:
             return "Bu coinde açık pozisyon yok."
-        pos["manual"] = False
+        pos["manual"], pos["ai"] = False, pos.get("kind") != PF.KIND
         self.say(f"{s} kontrolü yapay zekaya devredildi ({who}): sıfır zarar kalkanı ve karar beyni yeniden yönetiyor.",
                  kind="kalkan")
+        return None
+
+    def set_timer(self, s, hours, who="kullanıcı"):
+        """Otomatik satis suresi: hours saat sonra piyasadan satilir, None ise iptal. Hata metni veya None."""
+        pos = self.st["positions"].get(s)
+        if not pos:
+            return "Bu coinde açık pozisyon yok."
+        if pos.get("kind") == PF.KIND:
+            return "Portföy pozisyonu kendi kuralıyla yönetilir, süre konamaz."
+        if hours is not None and not SURE_MIN <= hours <= SURE_MAX:
+            return f"Süre {SURE_MIN:g} ile {SURE_MAX:g} saat arasında olmalı."
+        pos["sure_t"] = time.time() + hours * 3600 if hours else None
+        self.say(f"{s} otomatik satış süresi ({who}): " + (f"{hours:g} saat sonra satılacak." if hours else "iptal edildi."), kind="kalkan")
         return None
 
     def adjust(self, s, stop, tp2):
@@ -1722,6 +1753,10 @@ class Bot:
     def hourly(self):
         self.ensure_brain()
         self.scan()
+        try:
+            self.ai_positions()
+        except Exception:  # bu adimdaki hata saatlik isi durdurmasin; stop ve kalkan zaten saniyelik dongude
+            log.exception("ai_positions")
         if C.OTO_SAATLIK and not G.STATE["running"] and time.time() - (G.RES.get("t") or 0) > 7 * 86400:  # Gecmis Okulu (saatlik sistem icin) haftalik
             threading.Thread(target=G.run, args=(lambda t: self.say(t, kind="oz"),), name="gecmis", daemon=True).start()
         if not C.OTO_SAATLIK:  # saatlik otomatik al-sat kapali (testte avantajsiz): radar/ML guncel, emir yok
@@ -2102,10 +2137,17 @@ class Bot:
             threading.Thread(target=telegram_bot.notify_decision, args=(rec,), daemon=True).start()
         return rec
 
-    def manual_buy(self, mode, s, usdt, stop, tp=None, entry="taker", who="kullanıcı"):
-        """Grafikten elle alim: kullanicinin tutari ve stopu. Pozisyon Manuel Kilitle acilir (AI dokunmaz).
+    def manual_buy(self, mode, s, usdt, stop, tp=None, entry="taker", who="kullanıcı", cikis="suresiz", saat=None):
+        """Grafikten elle alim. cikis: stop (stop+hedef zorunlu), suresiz (elle satis), sure (saat sonra piyasadan satis) ->
+        Manuel Kilit; ai -> kalkan + saatlik Claude yonetir. Stop bos: ai %8 alti, digerleri felaket stopu.
         Gercek hesapta admin'in gercek islem izni sart. Hata metni veya None."""
         acct, s = self.accounts.get(mode), norm(s)
+        if cikis not in ("stop", "suresiz", "sure", "ai"):
+            return "Geçersiz satış seçimi."
+        if cikis == "stop" and not (stop and tp):
+            return "Sadece stop ve hedef için ikisini de girin (ya da Süresiz seçin)."
+        if cikis == "sure" and not (saat and SURE_MIN <= saat <= SURE_MAX):
+            return f"Süre {SURE_MIN:g} ile {SURE_MAX:g} saat arasında olmalı."
         if not acct:
             return "Hesap bağlı değil."
         if acct.live and (not C.LIVE_ALLOWED or not acct.synced or acct.error):
@@ -2123,6 +2165,7 @@ class Bot:
                                                              qvol=t.get("quoteVolume"), px_t=time.time())
                 self.extra.add(s)
         price = self.ask[s] if entry == "taker" else self.bid[s]
+        stop = stop or price * (AI_STOP_FRAC if cikis == "ai" else PF.STOP_FRAC)
         if not 0 < stop < price * 0.997:
             return f"Stop fiyatın en az %0,3 altında olmalı (fiyat {price:g})."
         if tp is not None and tp <= price * 1.003:
@@ -2132,14 +2175,79 @@ class Bot:
         row = self.market.get(s) or {}
         plan = {"stop": stop, "tp1": 0.0, "tp2": tp or price * 100, "risk_pct": C.RISK_PCT, "max_hours": 24 * 365,
                 "entry": "taker" if entry == "taker" else "maker", "conviction": None, "atr_pct": row.get("atr_pct") or 0.01,
-                "reason": f"Elle açıldı ({who}): stop ve hedef kullanıcıda (Manuel Kilit).", "p": None, "usdt": float(usdt),
-                "manual": True}
+                "reason": f"Elle açıldı ({who}): " + ("yapay zekaya bırakıldı." if cikis == "ai" else "stop ve hedef kullanıcıda (Manuel Kilit)."),
+                "p": None, "usdt": float(usdt), "manual": cikis != "ai", "ai": cikis == "ai", "sure_h": saat if cikis == "sure" else None}
         with self.lock:
             err = acct.enter(s, plan)
         if not err:
             self.say(f"{s} elle alış ({who}, {'gerçek' if acct.live else 'sanal'} hesap): {usdt:g} USDT, stop {stop:g}"
-                     + (f", hedef {tp:g}" if tp else ", hedef yok") + ".", kind="islem", acct=mode)
+                     + (f", hedef {tp:g}" if tp else ", hedef yok") + (f", {saat:g} saat sonra satış" if cikis == "sure" else "")
+                     + (", yapay zekaya bırakıldı" if cikis == "ai" else "") + ".", kind="islem", acct=mode)
         return err
+
+    def _ai_coin(self, s, pos):
+        """Claude'a pozisyon ozeti: giris/stop/hedef + 1s mumlardan yerel hesap. Kilit disinda cagrilir (ag)."""
+        k = self.ex.fetch_ohlcv(s, "1h", limit=72)
+        c = [x[4] for x in k]
+        if len(c) < 25:
+            return None
+        chg = lambda n: (c[-1] / c[-1 - n] - 1) * 100
+        up = [max(b - a, 0) for a, b in zip(c[-15:], c[-14:])]
+        down = [max(a - b, 0) for a, b in zip(c[-15:], c[-14:])]
+        rsi = 100 - 100 / (1 + sum(up) / (sum(down) or 1e-9))
+        v = [x[5] for x in k]
+        row = self.market.get(s) or {}
+        return (f"{s}: giris {pos['entry']:g}, fiyat {c[-1]:g} (girise gore %{(c[-1] / pos['entry'] - 1) * 100:+.2f}), "
+                f"{(time.time() - pos['t']) / 3600:.1f} saattir acik, stop {pos['sl']:g}, hedef {'yok' if pos['tp'] > pos['entry'] * 50 else format(pos['tp'], 'g')}. "
+                f"Son 1s %{chg(1):+.2f}, 4s %{chg(4):+.2f}, 24s %{chg(24):+.2f}, 72s tepeden %{(c[-1] / max(c) - 1) * 100:+.2f}, "
+                f"RSI(1s) {rsi:.0f}, son 4s hacim / 72s ortalama {sum(v[-4:]) / 4 / (sum(v) / len(v) or 1e-9):.1f}"
+                + (f", alici akisi 24s %{row['flow24'] * 100:+.0f}" if row.get("flow24") is not None else "")
+                + (f", fonlama %{row['funding'] * 100:+.3f}" if row.get("funding") is not None else "") + ".")
+
+    def ai_positions(self):
+        """Yapay zekaya birakilan elle alimlar: saat basinda Claude'a sorulur (tut / kapat / stop-hedef). Stop sadece yukari gider
+        (adjust), yeni alim yapamaz. Claude yoksa veya butce doluysa yerel kalkan ve stop korumaya devam eder."""
+        for mode, acct in self.accounts.items():
+            with self.lock:
+                held = {s: copy.deepcopy(p) for s, p in acct.st["positions"].items() if p.get("ai") and p.get("kind") != PF.KIND}
+            if not held:
+                continue
+            if A.brain() == "local" or self.budget_full():
+                acct.note("ai_poz", "Yapay zekaya bırakılan pozisyonlara Claude bakamıyor (bağlı değil veya bütçe doldu): şimdilik sadece stop ve kalkan koruyor.")
+                continue
+            try:
+                lines = [x for x in (self._ai_coin(s, p) for s, p in held.items()) if x]
+                if not lines:
+                    continue
+                dec, usd, model = A.ask_json(AI_SYSTEM, "\n".join([f"Makro risk iştahı: {self.macro.risk()[0]}", *lines]), AI_SCHEMA)
+                self.add_cost(usd)
+            except A.AgentError as e:
+                acct.note("ai_poz", f"Claude'a ulaşılamadı ({e}): şimdilik sadece stop ve kalkan koruyor.")
+                continue
+            except (ccxt.BaseError, requests.RequestException) as e:
+                log.warning("ai_positions veri: %s", e)
+                continue
+            if self.stop.is_set():
+                return
+            kararlar = dec.get("kararlar") if isinstance(dec, dict) else None
+            for o in kararlar if isinstance(kararlar, list) else []:
+                s = o.get("sym") if isinstance(o, dict) else None
+                karar, why = (o.get("karar"), str(o.get("neden") or "")[:300]) if s else (None, "")
+                with self.lock:
+                    pos = acct.st["positions"].get(s) if s in held else None
+                    if not pos or not pos.get("ai"):  # bu sirada satildi ya da kullanici geri aldi
+                        continue
+                    pos["ai_not"], pos["ai_t"] = why, time.time()
+                    try:
+                        if karar == "kapat":
+                            acct.close(s, "CLAUDE_KAPATTI")
+                            self.say(f"{s} yapay zeka kapattı ({model}): {why}", True, "karar", acct=mode)
+                        elif karar == "guncelle":
+                            r = acct.adjust(s, float(o.get("stop") or 0), float(o.get("hedef") or 0))
+                            if r:
+                                pos["ai_not"] = f"{why} (uygulanmadı: {r})"
+                    except (ccxt.BaseError, TypeError, ValueError) as e:
+                        acct.note(("ai_poz", s), f"{s} yapay zeka kararı uygulanamadı: {str(e)[:120]}")
 
     def observe(self):
         """Saatlik gozlem gunlugu (gozlem.csv): gercek paraya gecis karari icin kasa, K/Z, BTC'ye gore seyir,

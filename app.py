@@ -177,6 +177,7 @@ def state(sess, q):
             unreal = p.get("realized", 0) + p["qty"] * ((px or p["entry"]) - p["entry"]) - p["fee"] \
                 - p["qty"] * (px or p["entry"]) * C.FEE  # alis + satis komisyonu dahil net
             positions.append({**{k: v for k, v in p.items() if k not in ("stop_chk", "stop_try")}, "sym": s, "price": px,
+                              "sure_kalan": max(p["sure_t"] - time.time(), 0) if p.get("sure_t") else None,
                               "pnl": unreal if px else None,
                               "pnl_pct": unreal / (p.get("qty0", p["qty"]) * p["entry"]) * 100 if px else None})
         curve = st.get("curve", [])
@@ -352,7 +353,8 @@ def candles(sym, tf, mode):
             out["levels"] += [["Giris", p["entry"], "#5b8cff"], ["Stop" + mk, p["sl"], "#ff5c6c"]] + (
                 [["Hedef" + mk, p["tp"], "#22c38e"]] if p["tp"] < p["entry"] * 50 else [])
             out["pos"] = {"entry": p["entry"], "sl": p["sl"], "tp": p["tp"] if p["tp"] < p["entry"] * 50 else None,
-                          "manual": bool(p.get("manual")), "qty": p["qty"], "be": p.get("be")}
+                          "manual": bool(p.get("manual")), "qty": p["qty"], "be": p.get("be"), "kind": p.get("kind"),
+                          "ai": p.get("ai"), "ai_not": p.get("ai_not"), "sure_t": p.get("sure_t")}
             if not p.get("part") and p.get("partial_at"):
                 out["levels"].append(["Kismi kar", p["partial_at"], "#9ad0b3"])
         if q:
@@ -673,7 +675,7 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/pause":
             set_pause(mode, bool(body.get("on")))
             return self._send(200, {"ok": True})
-        if p in ("/api/position/levels", "/api/position/auto", "/api/manual/buy"):  # grafikten elle yonetim
+        if p in ("/api/position/levels", "/api/position/auto", "/api/position/timer", "/api/manual/buy"):  # grafikten elle yonetim
             a = b and b.accounts.get(mode)
             if not a:
                 return self._send(200, {"ok": False, "msg": "Hesap bağlı değil."})
@@ -681,8 +683,13 @@ class Handler(BaseHTTPRequestHandler):
             sym = B_norm(body.get("sym"))
             try:
                 if p == "/api/manual/buy":
-                    err = b.manual_buy(mode, sym, num("usdt"), num("stop") or 0, num("tp"), body.get("entry", "taker"), sess["user"])
-                    msg = "Elle alış emri verildi (Manuel Kilit açık)."
+                    cikis = body.get("cikis", "suresiz")
+                    err = b.manual_buy(mode, sym, num("usdt"), num("stop") or 0, num("tp"), body.get("entry", "taker"), sess["user"], cikis, num("saat"))
+                    msg = "Elle alış emri verildi (yapay zekaya bırakıldı)." if cikis == "ai" else "Elle alış emri verildi (Manuel Kilit açık)."
+                elif p == "/api/position/timer":
+                    with b.lock:
+                        err = a.set_timer(sym, num("saat"), sess["user"])
+                    msg = "Otomatik satış süresi kaydedildi." if num("saat") else "Otomatik satış iptal edildi."
                 else:
                     with b.lock:
                         err = a.set_levels(sym, num("sl"), num("tp"), sess["user"]) if p.endswith("levels") \

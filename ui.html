@@ -745,9 +745,13 @@ function renderPositions(s, sel) {
   const inv = s.positions.reduce((a, p) => a + p.qty * p.entry, 0), now = s.positions.reduce((a, p) => a + p.qty * (p.price || p.entry), 0);
   $(sel).innerHTML = `<table><tr><th>Coin</th><th class="r">Yatırılan</th><th class="r">Giriş</th><th class="r">Şimdi</th><th class="r">Net K/Z</th><th class="hide-sm">Hedefe</th><th class="r hide-sm">Stop</th><th class="r hide-sm">Hedef</th><th class="hide-sm">Durum</th><th></th></tr>` +
     s.positions.map(p => { const noTp = p.tp > p.entry * 50, prog = p.price && !noTp ? Math.max(0, Math.min(100, (p.price - p.entry) / (p.tp - p.entry) * 100)) : 0;
-      return `<tr class="click" onclick="openChart('${p.sym}')" title="${esc(p.why || "")}"><td><b>${base(p.sym)}</b></td><td class="r"><b>${fmt(p.qty * p.entry)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(p.qty * (p.price || p.entry))} $</div></td><td class="r">${px(p.entry)}</td><td class="r">${px(p.price)}</td><td class="r">${sg(p.pnl, 2, " $")} ${sg(p.pnl_pct)}</td><td class="hide-sm"><div class="bar"><i style="width:${prog}%"></i></div></td><td class="r hide-sm">${px(p.sl)}</td><td class="r hide-sm">${noTp ? "-" : px(p.tp)}</td><td class="hide-sm">${shieldTxt(p)}</td><td class="r"><button class="btn sm danger" title="Piyasa fiyatından kapat" onclick="event.stopPropagation();closePos('${p.sym}')">✕</button></td></tr>`; }).join("") +
+      return `<tr class="click" onclick="openChart('${p.sym}')" title="${esc(p.why || "")}"><td><b>${base(p.sym)}</b>${p.sure_kalan != null ? `<div class="warn" style="font-size:11.5px" title="Süre dolunca piyasa fiyatından otomatik satılır">⏱ ${kalan(p.sure_kalan)}</div>` : ""}${p.ai ? `<div class="mute" style="font-size:11.5px" title="${esc(p.ai_not || "Saat başında Claude bakar")}">🤖 yapay zeka</div>` : ""}</td><td class="r"><b>${fmt(p.qty * p.entry)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(p.qty * (p.price || p.entry))} $</div></td><td class="r">${px(p.entry)}</td><td class="r">${px(p.price)}</td><td class="r">${sg(p.pnl, 2, " $")} ${sg(p.pnl_pct)}</td><td class="hide-sm"><div class="bar"><i style="width:${prog}%"></i></div></td><td class="r hide-sm">${px(p.sl)}</td><td class="r hide-sm">${noTp ? "-" : px(p.tp)}</td><td class="hide-sm">${shieldTxt(p)}</td><td class="r"><button class="btn sm danger" title="Piyasa fiyatından kapat" onclick="event.stopPropagation();closePos('${p.sym}')">✕</button></td></tr>`; }).join("") +
     (s.positions.length ? `<tr><td class="dim">Toplam</td><td class="r"><b>${fmt(inv)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(now)} $</div></td><td colspan="8" class="dim">nakit ${fmt(s.cash)} $ · Binance komisyonu (alış + satış, %${fmt((s.fee ?? 0.001) * 100, 2)}) K/Z'den düşülmüş</td></tr>` : "") +
     s.pending.map(p => `<tr><td><b>${base(p.sym)}</b></td><td class="r">${fmt(p.qty * p.price)} $</td><td class="r">${px(p.price)}</td><td class="r">${px(p.price_now)}</td><td class="r">-</td><td class="hide-sm"></td><td class="r hide-sm">${px(p.stop)}</td><td class="r hide-sm">${px(p.tp2)}</td><td class="warn hide-sm">Pasif alış emri</td><td class="r"><button class="btn sm" onclick="closePos('${p.sym}')">İptal</button></td></tr>`).join("") + "</table>";
+}
+function kalan(sn) {  // kalan sure: 3 sa 12 dk / 12 dk 05 sn
+  const s = Math.floor(sn), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), d = String(s % 60).padStart(2, "0");
+  return h >= 24 ? `${Math.floor(h / 24)} gün ${h % 24} sa` : h ? `${h} sa ${m} dk` : `${m} dk ${d} sn`;
 }
 function shieldTxt(p) {
   const lock = (p.sl / p.entry - 1) * 100;
@@ -1066,6 +1070,8 @@ function renderTradePanel(pos) {
     $("#tphead").innerHTML = `Açık pozisyon · ${base(csym)}<span class="grow"></span>${pos.manual ? '<span class="lockb">🔒 Manuel Kilit</span>' : '<span class="tag">🤖 AI + kalkan yönetiyor</span>'}`;
     $("#tpanel").innerHTML = `<div class="kv" style="font-size:12.5px"><span>Giriş</span><span>${px(pos.entry)}</span><span>Miktar</span><span>${fmt(pos.qty, 4)}</span></div>
       ${row("sl", "Stop")}${row("tp", "Hedef")}<div class="tp-btns">${pick}</div>
+      ${pos.kind === "portfoy" ? "" : `<div class="tp-row"><label class="mute">Süre</label><input id="tp-saat" type="number" min="0.1" step="any" placeholder="kaç saat sonra satılsın"><button class="btn sm" onclick="tpTimer(true)">⏱ Kaydet</button>${pos.sure_t ? '<button class="btn sm" onclick="tpTimer(false)">Süreyi iptal et</button>' : ""}</div>`}
+      ${pos.ai && pos.ai_not ? `<div class="dim" style="font-size:11.5px;margin:6px 0">🤖 Son yapay zeka notu: ${esc(pos.ai_not)}</div>` : ""}
       <div class="tp-btns"><button class="btn pri sm" onclick="tpSave()">💾 Kaydet (Manuel Kilit)</button>${pos.manual ? '<button class="btn sm" onclick="tpAuto()">🤖 AI\'ya devret / Kilidi aç</button>' : ""}
       <button class="btn sm danger" onclick="closePos('${csym}')">Pozisyonu kapat</button></div>
       <div id="tpmc" class="mcbox"></div>
@@ -1074,10 +1080,12 @@ function renderTradePanel(pos) {
   } else {
     $("#tphead").innerHTML = `Elle alış · ${base(csym)}<span class="grow"></span><span class="tag ${ACCT}">${ACCT === "LIVE" ? "gerçek hesap" : "sanal kasa"}</span>`;
     $("#tpanel").innerHTML = `<div class="tp-row"><label class="mute">Tutar</label><input id="tp-usdt" type="number" step="any" placeholder="USDT"><select id="tp-entry"><option value="taker">Piyasa</option><option value="maker">Pasif</option></select></div>
-      ${row("sl", "Stop")}${row("tp", "Hedef")}<div class="tp-btns">${pick}<button class="btn pri sm" onclick="tpBuy()">🟢 Al</button></div>
+      ${row("sl", "Stop")}${row("tp", "Hedef")}
+      <div class="tp-row"><label class="mute">Satış</label><select id="tp-cikis" onchange="tpCikis()"><option value="suresiz">Süresiz (ben satarım)</option><option value="sure">Süre dolunca otomatik sat</option><option value="ai">Yapay zekaya bırak</option><option value="stop">Sadece stop ve hedef</option></select><input id="tp-saat" type="number" min="0.1" step="any" placeholder="saat" hidden></div>
+      <div class="tp-btns">${pick}<button class="btn pri sm" onclick="tpBuy()">🟢 Al</button></div>
       <div id="tpmc" class="mcbox"></div>
-      <div class="dim" style="font-size:11.5px;margin-top:8px">% kutusu anlık fiyata göredir (ör. stop -2, hedef 5). Elle açılan pozisyon Manuel Kilitle açılır; sadece sizin stop/hedefiniz geçerlidir. Hedef boş bırakılabilir.</div>`;
-    tpDraw();
+      <div id="tp-not" class="dim" style="font-size:11.5px;margin-top:8px"></div>`;
+    tpCikis(); tpDraw();
   }
 }
 async function tpSave() {
@@ -1086,11 +1094,26 @@ async function tpSave() {
   if (r.ok) { TP.sig = ""; loadCandles(false); }
 }
 async function tpAuto() { const r = await post("/api/position/auto", {sym: csym}); toast(r.msg, r.ok ? "up" : "down"); TP.sig = ""; loadCandles(false); }
+const CIKIS = {
+  suresiz: "Siz satana kadar açık kalır. Stop boşsa %35 altına felaket stopu konur; hedef isteğe bağlı.",
+  sure: "Süre dolunca piyasa fiyatından otomatik satılır; önce stop veya hedef gelirse orada kapanır. Stop boşsa %35 altına felaket stopu konur.",
+  ai: "Saat başında Claude bakar: tutar, satar veya stopu yukarı taşır; arada sıfır zarar kalkanı korur. Stop boşsa %8 altı. Claude bağlı değilse sadece stop ve kalkan çalışır. Bu yöntem geçmiş veriyle test edilmedi.",
+  stop: "Pozisyon sadece stop veya hedefte kapanır (ya da siz kapatırsınız). İkisi de zorunlu."};
+function tpCikis() { const v = $("#tp-cikis").value; $("#tp-saat").hidden = v !== "sure"; $("#tp-not").textContent = CIKIS[v] + " % kutusu anlık fiyata göredir (ör. stop -2, hedef 5)."; }
+async function tpTimer(on) {
+  const saat = on ? $("#tp-saat").value : null;
+  if (on && !saat) return toast("Kaç saat sonra satılacağını girin.", "warn");
+  const r = await post("/api/position/timer", {sym: csym, saat}); toast(r.msg, r.ok ? "up" : "down");
+  if (r.ok) { TP.sig = ""; tick(); loadCandles(false); }
+}
 async function tpBuy() {
-  const usdt = $("#tp-usdt").value, stop = $("#tp-sl").value, tp = $("#tp-tp").value, entry = $("#tp-entry").value;
-  if (!usdt || !stop) return toast("Tutar ve stop girin.", "warn");
-  if (!confirm(`${csym} için ${usdt} USDT ${entry === "taker" ? "piyasa" : "pasif limit"} alış (${ACCT === "LIVE" ? "GERÇEK hesap" : "sanal kasa"}), stop ${stop}${tp ? ", hedef " + tp : ""}. Onaylıyor musunuz?`)) return;
-  const r = await post("/api/manual/buy", {sym: csym, usdt, stop, tp: tp || null, entry}); toast(r.msg, r.ok ? "up" : "down");
+  const usdt = $("#tp-usdt").value, stop = $("#tp-sl").value, tp = $("#tp-tp").value, entry = $("#tp-entry").value, cikis = $("#tp-cikis").value, saat = $("#tp-saat").value;
+  if (!usdt) return toast("Tutar girin.", "warn");
+  if (cikis === "stop" && !(stop && tp)) return toast("Stop ve hedef girin (ya da Süresiz seçin).", "warn");
+  if (cikis === "sure" && !saat) return toast("Kaç saat sonra satılacağını girin.", "warn");
+  const son = {suresiz: "süresiz, siz satarsınız", sure: `${saat} saat sonra otomatik satış`, ai: "yapay zekaya bırakılır", stop: "sadece stop ve hedef"}[cikis];
+  if (!confirm(`${csym} için ${usdt} USDT ${entry === "taker" ? "piyasa" : "pasif limit"} alış (${ACCT === "LIVE" ? "GERÇEK hesap" : "sanal kasa"}), stop ${stop || "otomatik"}${tp ? ", hedef " + tp : ""}, ${son}. Onaylıyor musunuz?`)) return;
+  const r = await post("/api/manual/buy", {sym: csym, usdt, stop: stop || null, tp: tp || null, entry, cikis, saat: saat || null}); toast(r.msg, r.ok ? "up" : "down");
   if (r.ok) { TP.sig = ""; tick(); loadCandles(false); }
 }
 let CEXTRA = {};
