@@ -191,7 +191,7 @@ def state(sess, q):
         out.update({
             "equity": eq, "start_equity": st["start_equity"], "pnl": st["pnl"], "wins": st["wins"],
             "losses": st["losses"], "n": st["wins"] + st["losses"], "day_pct": a.day_pct(), "blocked": a.blocked(),
-            "acct_error": a.error, "cash": a.usdt_free if a.live else st["cash"], "fee": C.FEE,
+            "acct_error": a.error, "cash": a.usdt_free if a.live else st["cash"], "earn": st.get("earn_son", 0.0) if a.live else 0.0, "fee": C.FEE,
             "positions": positions, "pending": [{**p, "sym": s, "price_now": bid.get(s)} for s, p in st["pending"].items()],
             "open_pnl": sum(p["pnl"] or 0 for p in positions),
             "curve": curve[::step] + curve[-1:] + [[int(time.time()), round(eq, 2), bid.get(C.BTC)]],
@@ -593,8 +593,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "max": MAXED})
         if p == "/api/show":
             if WINDOW:
-                WINDOW.show()
-                WINDOW.restore()
+                goster()
             return self._send(200, {"ok": True})
         if p == "/api/auth/setup":  # ilk calistirma: admin hesabi olustur
             err = auth.create(str(body.get("user", "")).strip(), str(body.get("password", "")), "admin", first=True)
@@ -871,6 +870,68 @@ def work_area():
     return 0, 0, s.width, s.height
 
 
+YEREL = None  # Windows pencere kolu (hwnd): yerel cerceve kuruluysa dolu
+YEREL_HAZIR = threading.Event()  # pencere acilinca (arayuz bundan once sorabilir)
+KENAR = {"tasi": 2, "l": 10, "r": 11, "t": 12, "tl": 13, "tr": 14, "b": 15, "bl": 16, "br": 17}  # WM_NCLBUTTONDOWN isabet kodlari
+
+
+def yerel_cerceve():
+    """Cercevesiz pencereye Windows cercevesini geri verir ama gostermez (WM_NCCALCSIZE): tepeye surukleyince tam ekran, yanlara
+    yarim ekran, gorev cubugu ortulmez, tasirken eski boyuta doner. Olmazsa eski davranis (YEREL None) surer."""
+    global YEREL, _wndproc
+    import ctypes
+    from ctypes import wintypes
+    from webview.platforms.winforms import BrowserView
+    u = ctypes.windll.user32
+    L = ctypes.c_ssize_t
+    WNDPROC = ctypes.WINFUNCTYPE(L, wintypes.HWND, wintypes.UINT, ctypes.c_size_t, L)
+    u.SetWindowLongPtrW.restype = L
+    u.SetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int, L)
+    u.GetWindowLongPtrW.restype = L
+    u.GetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int)
+    u.CallWindowProcW.restype = L
+    u.CallWindowProcW.argtypes = (L, wintypes.HWND, wintypes.UINT, ctypes.c_size_t, L)
+    hwnd = int(BrowserView.instances[WINDOW.uid].Handle.ToInt64())
+    eski = u.GetWindowLongPtrW(hwnd, -4)
+
+    def proc(h, msg, wp, lp):
+        if msg == 0x83 and wp:  # WM_NCCALCSIZE: istemci alani tum pencere; tam ekranda ekran disina tasan cerceve kadar iceri
+            if u.IsZoomed(h):
+                r = wintypes.RECT.from_address(lp)
+                pad = u.GetSystemMetrics(92)
+                x, y = u.GetSystemMetrics(32) + pad, u.GetSystemMetrics(33) + pad
+                r.left, r.top, r.right, r.bottom = r.left + x, r.top + y, r.right - x, r.bottom - y
+            return 0
+        return u.CallWindowProcW(eski, h, msg, wp, lp)
+    _wndproc = WNDPROC(proc)  # cop toplayiciya karsi modul duzeyinde tutulur
+    u.SetWindowLongPtrW(hwnd, -4, ctypes.cast(_wndproc, ctypes.c_void_p).value)
+    u.SetWindowLongPtrW(hwnd, -16, u.GetWindowLongPtrW(hwnd, -16) | 0xC00000 | 0x40000 | 0x20000 | 0x10000 | 0x80000)  # baslik, kalin kenar, kucult/buyut, menu
+    u.SetWindowPos(hwnd, None, 0, 0, 0, 0, 0x27)  # SWP_FRAMECHANGED | NOMOVE | NOSIZE | NOZORDER
+    u.ShowWindow(hwnd, 3)  # tam ekran acilir; suruklenince %80 boyuta iner
+    YEREL = hwnd
+
+
+def yerel_kur():
+    try:
+        yerel_cerceve()
+    except Exception:
+        logging.exception("yerel pencere cercevesi kurulamadi")
+    YEREL_HAZIR.set()
+
+
+def goster():
+    """Tepsiden/ikinci acilistan pencereyi one getir; tam ekransa tam ekran kalir."""
+    WINDOW.show()
+    if YEREL:
+        import ctypes
+        u = ctypes.windll.user32
+        if u.IsIconic(YEREL):
+            u.ShowWindow(YEREL, 9)
+        u.SetForegroundWindow(YEREL)
+    else:
+        WINDOW.restore()
+
+
 def win_action(act):
     """Ozel baslik cubugu dugmeleri. Buyut = gorev cubugu haric tam alan; kucult/kapat."""
     global MAXED
@@ -878,6 +939,10 @@ def win_action(act):
         return
     if act == "minimize":
         WINDOW.minimize()
+    elif act == "max" and YEREL:
+        import ctypes
+        u = ctypes.windll.user32
+        u.ShowWindow(YEREL, 9 if u.IsZoomed(YEREL) else 3)
     elif act == "max":
         x, y, w, h = work_area()
         if MAXED:  # normal boyut: calisma alaninin %80'i, ortada
@@ -899,6 +964,24 @@ class JsApi:
     def win(self, act):
         win_action(act)
         return {"max": MAXED}
+
+    def pencere(self, act):
+        """Arayuzden: yerel (destek var mi), tasi (basliktan surukleme), kenar kodu (boyutlandirma). Fare birakildiysa bir sey yapmaz."""
+        if act == "yerel":
+            YEREL_HAZIR.wait(10)
+        if act == "yerel" or not YEREL:
+            return bool(YEREL)
+        import ctypes
+        u = ctypes.windll.user32
+        if u.GetAsyncKeyState(0x01) & 0x8000 and act in KENAR:
+            from System import Func, Type
+            from webview.platforms.winforms import BrowserView
+
+            def basla():  # fare WebView2'de: pencerenin kendi is parcaciginda yakalamayi birakip Windows'a devret (surukleme bitene kadar burada kalir)
+                u.ReleaseCapture()
+                u.SendMessageW(YEREL, 0xA1, KENAR[act], 0)  # WM_NCLBUTTONDOWN
+            BrowserView.instances[WINDOW.uid].BeginInvoke(Func[Type](basla))
+        return True
 
 
 def client_url():
@@ -922,8 +1005,9 @@ def run_client(url):
     if not os.path.exists(ICON):
         make_icon()
     x, y, w, h = work_area()
-    WINDOW = webview.create_window("KriptoQuantBot", url, x=x, y=y, width=w, height=h, min_size=(1100, 700),
+    WINDOW = webview.create_window("KriptoQuantBot", url, x=x + w // 10, y=y + h // 10, width=w * 4 // 5, height=h * 4 // 5, min_size=(800, 560),
                                    background_color="#0b0e14", frameless=True, easy_drag=False, js_api=JsApi())
+    WINDOW.events.shown += yerel_kur
     webview.start(icon=ICON, private_mode=False, storage_path=os.path.join(C.APP_DIR, "pencere"))
 
 
@@ -957,8 +1041,7 @@ def tray():
 
     def show(*_):
         if WINDOW:
-            WINDOW.show()
-            WINDOW.restore()
+            goster()
     paused = lambda: all(os.path.exists(C.pause_flag(m)) for m in ("PAPER", "LIVE"))
     menu = pystray.Menu(
         pystray.MenuItem("Paneli ac", show, default=True),
@@ -1038,8 +1121,9 @@ def main():
     import webview
     # Cercevesiz koyu cubuk; ekrani gorev cubugu HARIC kaplar (Windows'un 'maximize'i cercevesizde gorev cubugunu ortuyor)
     x, y, w, h = work_area()
-    WINDOW = webview.create_window("KriptoQuantBot", URL, x=x, y=y, width=w, height=h, min_size=(1100, 700),
+    WINDOW = webview.create_window("KriptoQuantBot", URL, x=x + w // 10, y=y + h // 10, width=w * 4 // 5, height=h * 4 // 5, min_size=(800, 560),
                                    background_color="#0b0e14", frameless=True, easy_drag=False, js_api=JsApi())
+    WINDOW.events.shown += yerel_kur
 
     def on_closing():  # kapat -> tepsiye in, motor calismaya devam etsin
         threading.Thread(target=WINDOW.hide, daemon=True).start()

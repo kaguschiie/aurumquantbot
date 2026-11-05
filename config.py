@@ -51,6 +51,7 @@ MAX_VOL_SHARE = 0.002
 # kapanista yeniden dengeleme. Gercek hesapta sadece PORTFOY_LIVE ve LIVE_ALLOWED birlikte acikken.
 PORTFOY = True
 PORTFOY_LIVE = False
+EARN_USDT = False            # gercek hesapta bos USDT Binance Esnek Earn'de bekler (PORTFOY_LIVE ve LIVE_ALLOWED de gerekir)
 PORTFOY_CORE = 0.7           # kasanin cekirdege ayrilan payi (kalani ML sepeti)
 # Eski saatlik otomatik al-sat (yerel kurulumlar + Claude saatlik karari): 2 yillik testte ve GUCLU AL 4s/1g uzun
 # tutma testinde piyasayi yenemedi -> kapali. Radar, grafik, elle islem ve sohbet calisir.
@@ -150,7 +151,7 @@ EDITABLE = ["LIVE_ALLOWED", "LIVE_MAX_USDT", "API_KEY", "API_SECRET", "TELEGRAM_
             "UNIVERSE_SIZE", "RISK_PCT", "MAX_POSITIONS", "MAX_POS_PCT", "DD_PAUSE_PCT", "DAILY_LOSS_PCT",
             "KILL_DD_PCT", "COOLDOWN_MIN", "FEE", "PAPER_BALANCE", "BE_TRIGGER_R", "TRAIL_ATR", "RADAR_MIN_VOL",
             "QUOTA_SAVER", "REVIEW_HOURS", "REVIEW_MODEL", "LOCAL_EVERY_MIN", "WHALE_ALERT_KEY", "CLAUDE_CLI_PATH",
-            "MAX_COST_R", "PORTFOY", "PORTFOY_LIVE", "PORTFOY_CORE", "OTO_SAATLIK",
+            "MAX_COST_R", "PORTFOY", "PORTFOY_LIVE", "EARN_USDT", "PORTFOY_CORE", "OTO_SAATLIK",
             "HABER", "HABER_ISLEM", "HABER_LIVE", "CRYPTOPANIC_KEY",
             "UPDATE_REPO", "UPDATE_TOKEN", "AUTO_UPDATE_CHECK", "SERVER_MODE"]
 USER_EDITABLE = {"API_KEY", "API_SECRET"}

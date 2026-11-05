@@ -14,6 +14,10 @@ button{font:inherit}
 .titlebar{height:38px;display:flex;align-items:stretch;background:#07090e;border-bottom:1px solid var(--line);flex:none;position:relative;z-index:50}
 .titlebar .drag{flex:1;display:flex;align-items:center;gap:9px;padding-left:14px;font-weight:650;font-size:13px}
 .titlebar .drag svg{width:20px;height:20px}
+.kenar{position:fixed;z-index:99999}.tam-ekran .kenar{display:none}
+.k-t,.k-b{left:6px;right:6px;height:4px;cursor:ns-resize}.k-l,.k-r{top:6px;bottom:6px;width:4px;cursor:ew-resize}
+.k-t{top:0}.k-b{bottom:0}.k-l{left:0}.k-r{right:0}
+.k-tl,.k-tr,.k-bl,.k-br{width:7px;height:7px}.k-tl{top:0;left:0;cursor:nwse-resize}.k-br{bottom:0;right:0;cursor:nwse-resize}.k-tr{top:0;right:0;cursor:nesw-resize}.k-bl{bottom:0;left:0;cursor:nesw-resize}
 .wbtn{width:46px;border:0;background:none;color:var(--mute);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
 .wbtn:hover{background:#1a202b;color:var(--text)}.wbtn.x:hover{background:#c42b1c;color:#fff}
 .wbtn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.2}
@@ -240,7 +244,7 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
 </head>
 <body>
 <div class="titlebar">
-  <div class="drag pywebview-drag-region" ondblclick="win('max')"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#171b23"/><path d="M7 23l6-6 4 3 8-10" stroke="#5b8cff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="9" width="3" height="7" fill="#22c38e"/><rect x="14" y="7" width="3" height="6" fill="#22c38e"/></svg>KriptoQuantBot</div>
+  <div class="drag pywebview-drag-region" id="wdrag" ondblclick="win('max')"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#171b23"/><path d="M7 23l6-6 4 3 8-10" stroke="#5b8cff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="9" width="3" height="7" fill="#22c38e"/><rect x="14" y="7" width="3" height="6" fill="#22c38e"/></svg>KriptoQuantBot</div>
   <div id="wctl" style="display:none">
     <button class="wbtn" title="Simge durumuna küçült" onclick="win('minimize')"><svg viewBox="0 0 11 11"><path d="M0 5.5h11"/></svg></button>
     <button class="wbtn" title="Ekranı kapla / küçült" onclick="win('max')"><svg viewBox="0 0 11 11"><rect x=".5" y=".5" width="10" height="10"/></svg></button>
@@ -746,7 +750,7 @@ function renderPositions(s, sel) {
   $(sel).innerHTML = `<table><tr><th>Coin</th><th class="r">Yatırılan</th><th class="r">Giriş</th><th class="r">Şimdi</th><th class="r">Net K/Z</th><th class="hide-sm">Hedefe</th><th class="r hide-sm">Stop</th><th class="r hide-sm">Hedef</th><th class="hide-sm">Durum</th><th></th></tr>` +
     s.positions.map(p => { const noTp = p.tp > p.entry * 50, prog = p.price && !noTp ? Math.max(0, Math.min(100, (p.price - p.entry) / (p.tp - p.entry) * 100)) : 0;
       return `<tr class="click" onclick="openChart('${p.sym}')" title="${esc(p.why || "")}"><td><b>${base(p.sym)}</b>${p.sure_kalan != null ? `<div class="warn" style="font-size:11.5px" title="Süre dolunca piyasa fiyatından otomatik satılır">⏱ ${kalan(p.sure_kalan)}</div>` : ""}${p.ai ? `<div class="mute" style="font-size:11.5px" title="${esc(p.ai_not || "Saat başında Claude bakar")}">🤖 yapay zeka</div>` : ""}</td><td class="r"><b>${fmt(p.qty * p.entry)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(p.qty * (p.price || p.entry))} $</div></td><td class="r">${px(p.entry)}</td><td class="r">${px(p.price)}</td><td class="r">${sg(p.pnl, 2, " $")} ${sg(p.pnl_pct)}</td><td class="hide-sm"><div class="bar"><i style="width:${prog}%"></i></div></td><td class="r hide-sm">${px(p.sl)}</td><td class="r hide-sm">${noTp ? "-" : px(p.tp)}</td><td class="hide-sm">${shieldTxt(p)}</td><td class="r"><button class="btn sm danger" title="Piyasa fiyatından kapat" onclick="event.stopPropagation();closePos('${p.sym}')">✕</button></td></tr>`; }).join("") +
-    (s.positions.length ? `<tr><td class="dim">Toplam</td><td class="r"><b>${fmt(inv)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(now)} $</div></td><td colspan="8" class="dim">nakit ${fmt(s.cash)} $ · Binance komisyonu (alış + satış, %${fmt((s.fee ?? 0.001) * 100, 2)}) K/Z'den düşülmüş</td></tr>` : "") +
+    (s.positions.length ? `<tr><td class="dim">Toplam</td><td class="r"><b>${fmt(inv)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(now)} $</div></td><td colspan="8" class="dim">nakit ${fmt(s.cash)} $${s.earn > 0 ? ` (+ ${fmt(s.earn)} $ Earn'de)` : ""} · Binance komisyonu (alış + satış, %${fmt((s.fee ?? 0.001) * 100, 2)}) K/Z'den düşülmüş</td></tr>` : "") +
     s.pending.map(p => `<tr><td><b>${base(p.sym)}</b></td><td class="r">${fmt(p.qty * p.price)} $</td><td class="r">${px(p.price)}</td><td class="r">${px(p.price_now)}</td><td class="r">-</td><td class="hide-sm"></td><td class="r hide-sm">${px(p.stop)}</td><td class="r hide-sm">${px(p.tp2)}</td><td class="warn hide-sm">Pasif alış emri</td><td class="r"><button class="btn sm" onclick="closePos('${p.sym}')">İptal</button></td></tr>`).join("") + "</table>";
 }
 function kalan(sn) {  // kalan sure: 3 sa 12 dk / 12 dk 05 sn
@@ -1070,7 +1074,7 @@ function renderTradePanel(pos) {
     $("#tphead").innerHTML = `Açık pozisyon · ${base(csym)}<span class="grow"></span>${pos.manual ? '<span class="lockb">🔒 Manuel Kilit</span>' : '<span class="tag">🤖 AI + kalkan yönetiyor</span>'}`;
     $("#tpanel").innerHTML = `<div class="kv" style="font-size:12.5px"><span>Giriş</span><span>${px(pos.entry)}</span><span>Miktar</span><span>${fmt(pos.qty, 4)}</span></div>
       ${row("sl", "Stop")}${row("tp", "Hedef")}<div class="tp-btns">${pick}</div>
-      ${pos.kind === "portfoy" ? "" : `<div class="tp-row"><label class="mute">Süre</label><input id="tp-saat" type="number" min="0.1" step="any" placeholder="kaç saat sonra satılsın"><button class="btn sm" onclick="tpTimer(true)">⏱ Kaydet</button>${pos.sure_t ? '<button class="btn sm" onclick="tpTimer(false)">Süreyi iptal et</button>' : ""}</div>`}
+      ${pos.kind === "portfoy" ? "" : `<div class="tp-row"><label class="mute">Süre</label>${SUREKUTU}<button class="btn sm" onclick="tpTimer(true)">⏱ Kaydet</button>${pos.sure_t ? '<button class="btn sm" onclick="tpTimer(false)">Süreyi iptal et</button>' : ""}</div>`}
       ${pos.ai && pos.ai_not ? `<div class="dim" style="font-size:11.5px;margin:6px 0">🤖 Son yapay zeka notu: ${esc(pos.ai_not)}</div>` : ""}
       <div class="tp-btns"><button class="btn pri sm" onclick="tpSave()">💾 Kaydet (Manuel Kilit)</button>${pos.manual ? '<button class="btn sm" onclick="tpAuto()">🤖 AI\'ya devret / Kilidi aç</button>' : ""}
       <button class="btn sm danger" onclick="closePos('${csym}')">Pozisyonu kapat</button></div>
@@ -1081,7 +1085,8 @@ function renderTradePanel(pos) {
     $("#tphead").innerHTML = `Elle alış · ${base(csym)}<span class="grow"></span><span class="tag ${ACCT}">${ACCT === "LIVE" ? "gerçek hesap" : "sanal kasa"}</span>`;
     $("#tpanel").innerHTML = `<div class="tp-row"><label class="mute">Tutar</label><input id="tp-usdt" type="number" step="any" placeholder="USDT"><select id="tp-entry"><option value="taker">Piyasa</option><option value="maker">Pasif</option></select></div>
       ${row("sl", "Stop")}${row("tp", "Hedef")}
-      <div class="tp-row"><label class="mute">Satış</label><select id="tp-cikis" onchange="tpCikis()"><option value="suresiz">Süresiz (ben satarım)</option><option value="sure">Süre dolunca otomatik sat</option><option value="ai">Yapay zekaya bırak</option><option value="stop">Sadece stop ve hedef</option></select><input id="tp-saat" type="number" min="0.1" step="any" placeholder="saat" hidden></div>
+      <div class="tp-row"><label class="mute">Satış</label><select id="tp-cikis" onchange="tpCikis()"><option value="suresiz">Süresiz (ben satarım)</option><option value="sure">Süre dolunca otomatik sat</option><option value="ai">Yapay zekaya bırak</option><option value="stop">Sadece stop ve hedef</option></select></div>
+      <div class="tp-row" id="tp-sure" style="display:none"><label class="mute">Süre</label>${SUREKUTU}</div>
       <div class="tp-btns">${pick}<button class="btn pri sm" onclick="tpBuy()">🟢 Al</button></div>
       <div id="tpmc" class="mcbox"></div>
       <div id="tp-not" class="dim" style="font-size:11.5px;margin-top:8px"></div>`;
@@ -1094,24 +1099,27 @@ async function tpSave() {
   if (r.ok) { TP.sig = ""; loadCandles(false); }
 }
 async function tpAuto() { const r = await post("/api/position/auto", {sym: csym}); toast(r.msg, r.ok ? "up" : "down"); TP.sig = ""; loadCandles(false); }
+const SUREKUTU = `<input id="tp-saat" type="number" min="1" step="1" placeholder="kaç"><select id="tp-birim" style="min-width:86px;flex:none"><option value="dakika">dakika</option><option value="saat" selected>saat</option><option value="gün">gün</option></select>`;
+const sureSaat = () => +$("#tp-saat").value * {dakika: 1 / 60, saat: 1, "gün": 24}[$("#tp-birim").value];  // arka uc saat ister
+const sureYazi = () => `${$("#tp-saat").value} ${$("#tp-birim").value}`;
 const CIKIS = {
   suresiz: "Siz satana kadar açık kalır. Stop boşsa %35 altına felaket stopu konur; hedef isteğe bağlı.",
   sure: "Süre dolunca piyasa fiyatından otomatik satılır; önce stop veya hedef gelirse orada kapanır. Stop boşsa %35 altına felaket stopu konur.",
   ai: "Saat başında Claude bakar: tutar, satar veya stopu yukarı taşır; arada sıfır zarar kalkanı korur. Stop boşsa %8 altı. Claude bağlı değilse sadece stop ve kalkan çalışır. Bu yöntem geçmiş veriyle test edilmedi.",
   stop: "Pozisyon sadece stop veya hedefte kapanır (ya da siz kapatırsınız). İkisi de zorunlu."};
-function tpCikis() { const v = $("#tp-cikis").value; $("#tp-saat").hidden = v !== "sure"; $("#tp-not").textContent = CIKIS[v] + " % kutusu anlık fiyata göredir (ör. stop -2, hedef 5)."; }
+function tpCikis() { const v = $("#tp-cikis").value; $("#tp-sure").style.display = v === "sure" ? "" : "none"; $("#tp-not").textContent = CIKIS[v] + " % kutusu anlık fiyata göredir (ör. stop -2, hedef 5)."; }
 async function tpTimer(on) {
-  const saat = on ? $("#tp-saat").value : null;
-  if (on && !saat) return toast("Kaç saat sonra satılacağını girin.", "warn");
+  const saat = on ? sureSaat() : null;
+  if (on && !(saat > 0)) return toast("Süreyi girin (5 dakika ile 30 gün arası).", "warn");
   const r = await post("/api/position/timer", {sym: csym, saat}); toast(r.msg, r.ok ? "up" : "down");
   if (r.ok) { TP.sig = ""; tick(); loadCandles(false); }
 }
 async function tpBuy() {
-  const usdt = $("#tp-usdt").value, stop = $("#tp-sl").value, tp = $("#tp-tp").value, entry = $("#tp-entry").value, cikis = $("#tp-cikis").value, saat = $("#tp-saat").value;
+  const usdt = $("#tp-usdt").value, stop = $("#tp-sl").value, tp = $("#tp-tp").value, entry = $("#tp-entry").value, cikis = $("#tp-cikis").value, saat = cikis === "sure" ? sureSaat() : null;
   if (!usdt) return toast("Tutar girin.", "warn");
   if (cikis === "stop" && !(stop && tp)) return toast("Stop ve hedef girin (ya da Süresiz seçin).", "warn");
-  if (cikis === "sure" && !saat) return toast("Kaç saat sonra satılacağını girin.", "warn");
-  const son = {suresiz: "süresiz, siz satarsınız", sure: `${saat} saat sonra otomatik satış`, ai: "yapay zekaya bırakılır", stop: "sadece stop ve hedef"}[cikis];
+  if (cikis === "sure" && !(saat > 0)) return toast("Süreyi girin (5 dakika ile 30 gün arası).", "warn");
+  const son = {suresiz: "süresiz, siz satarsınız", sure: cikis === "sure" ? `${sureYazi()} sonra otomatik satış` : "", ai: "yapay zekaya bırakılır", stop: "sadece stop ve hedef"}[cikis];
   if (!confirm(`${csym} için ${usdt} USDT ${entry === "taker" ? "piyasa" : "pasif limit"} alış (${ACCT === "LIVE" ? "GERÇEK hesap" : "sanal kasa"}), stop ${stop || "otomatik"}${tp ? ", hedef " + tp : ""}, ${son}. Onaylıyor musunuz?`)) return;
   const r = await post("/api/manual/buy", {sym: csym, usdt, stop: stop || null, tp: tp || null, entry, cikis, saat: saat || null}); toast(r.msg, r.ok ? "up" : "down");
   if (r.ok) { TP.sig = ""; tick(); loadCandles(false); }
@@ -1263,6 +1271,7 @@ const GROUPS = {
   zincir: ["Strateji ve zincir verisi", [["PORTFOY", "Portföy stratejisi (sanal hesap)", "toggle", "Her gün kapanışta (03:05 TR) %70 BTC/ETH trend çekirdeği + %30 haftalık ML sepetine göre sanal kasayı yeniden dengeler. 2022-2026 testinde yıllık %24 (sepet gününden bağımsız ortalama %19), en derin düşüş %-22 (BTC al-tut %11 / %-67)."],
     ["PORTFOY_CORE", "Çekirdek payı (0-1)", "number", "0,7 = kasanın %70'i BTC/ETH çekirdeği, %30'u ML sepeti. 1 = sadece çekirdek (en sade, en az düşüş)."],
     ["PORTFOY_LIVE", "Portföy stratejisi gerçek hesapta", "toggle", "Açık ve 'Gerçek hesapta otomatik işlem' de açıksa aynı dengeleme gerçek Binance hesabında yapılır. Sanal karne yeterli olunca açın."],
+    ["EARN_USDT", "Boş USDT Earn'de beklesin (gerçek hesap)", "toggle", "Portföy dengelemesinden sonra boş USDT'nin kasanın %5'i üstü Binance Esnek Earn'e konur, alımdan önce otomatik çekilir. Getiri Binance'in o günkü oranıdır (testte varsayım %3: yıllık yaklaşık +2 puan). Para Binance'te Earn hesabında durur; çekim gecikirse o günkü alım gecikir. 'Portföy gerçek hesapta' ve 'Gerçek hesapta otomatik işlem' de açık olmalı. Sanal kasada çalışmaz. Kapatınca para spota döner."],
     ["OTO_SAATLIK", "Eski saatlik otomatik al-sat", "toggle", "Yerel kurulumlar + Claude saatlik kararı. 2 yıllık testte ve GÜÇLÜ AL 4s/1g uzun tutma testinde piyasayı yenemedi: kapalı önerilir. Radar, grafik, elle işlem ve sohbet kapalıyken de çalışır."],
     ["HABER", "Haber akışı", "toggle", "Güvenilir kaynaklardaki kritik haberleri okur, Claude ile puanlar. Yorum ve tahmin yazıları elenir."],
     ["HABER_ISLEM", "Haberle sanal işlem", "toggle", "Acil satış: kritik olumsuz haber + kaynak ve fiyat doğrulaması. Alım: puan 0,85 üstü + doğrulama, sadece BTC/ETH, en çok %10 ek pay."],
@@ -1475,7 +1484,28 @@ function win(a) {  // masaustu pencere dugmeleri: pywebview koprusu (istemci/sun
   fetch("/api/window", {method: "POST", headers: {"X-KQB": "1", "Content-Type": "application/json"}, body: JSON.stringify({a})});
 }
 fetch("/api/app").then(r => r.json()).then(a => { if (a.desktop) $("#wctl").style.display = "flex"; });
-addEventListener("pywebviewready", () => $("#wctl").style.display = "flex");
+async function pencereKur() {  // yerel Windows cercevesi: surukleyince yaslanma (Snap) ve kenarlardan boyutlandirma. Eski exe'de eski surukleme kalir
+  const api = window.pywebview?.api;
+  if (!api?.pencere || !await api.pencere("yerel")) return;
+  const d = $("#wdrag");
+  d.classList.remove("pywebview-drag-region"); d.removeAttribute("ondblclick");
+  let son = 0;
+  d.addEventListener("mousedown", e => {
+    if (e.button) return;
+    const t = Date.now();
+    if (t - son < 400) { son = 0; return win("max"); }
+    son = t; api.pencere("tasi");
+  });
+  for (const k of ["t", "b", "l", "r", "tl", "tr", "bl", "br"]) {
+    const el = document.createElement("div");
+    el.className = "kenar k-" + k;
+    el.addEventListener("mousedown", e => { if (!e.button) api.pencere(k); });
+    document.body.append(el);
+  }
+  const tam = () => document.body.classList.toggle("tam-ekran", outerWidth >= screen.availWidth && outerHeight >= screen.availHeight);
+  addEventListener("resize", tam); tam();
+}
+addEventListener("pywebviewready", () => { $("#wctl").style.display = "flex"; pencereKur(); });
 boot().catch(() => showLogin());
 </script>
 </body>

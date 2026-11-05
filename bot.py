@@ -41,7 +41,10 @@ log = logging.getLogger("bot")
 ACCTS = ("PAPER", "LIVE")
 RADAR_KEYS = ("rs24", "rs4", "vspike", "r1h", "r4h", "breakout", "score", "full", "flow3")
 PF_LATE, PF_LATE_GRACE = 1800, 900  # dengeleme 00:30 UTC'ye kadar bitmediyse uyari; motor yeni basladiysa once ilk turu bitirsin
-SURE_MIN, SURE_MAX = 0.1, 720  # elle alim otomatik satis suresi (saat)
+SURE_MIN, SURE_MAX = 5 / 60, 720  # elle alim otomatik satis suresi (saat): 5 dakika - 30 gun
+SURE_ARALIK = "Süre 5 dakika ile 30 gün arasında olmalı."
+EARN_READ_SEC, EARN_HOLD_SEC, EARN_WAIT_SEC = 120, 90, 8  # Earn konumu okuma araligi, sonuc belirsizken kasa dondurma, onay bekleme
+EARN_RESERVE, EARN_MIN = 0.05, 10.0  # spotta kalan kasa payi, en kucuk yatirma (USDT)
 AI_STOP_FRAC = 0.92  # yapay zekaya birakilan alimda stop bos: girisin %8 alti (Claude stopu sadece yukari tasir)
 AI_SYSTEM = ("Sen bir kripto pozisyon yoneticisisin. Kullanici bu spot pozisyonlari sana birakti; her saat basi her biri icin karar verirsin: "
              "tut, kapat ya da guncelle (stop/hedef). Yeni alim yapamazsin. Stop sadece yukari tasinabilir ve fiyatin altinda kalmalidir; "
@@ -172,6 +175,13 @@ def hold_lock(key):
     return None
 
 
+def sure_yazi(h):
+    """Saat cinsinden sureyi okunur yazar: 90 dakika, 4 saat, 3 gün."""
+    if h < 2 and h != int(h):
+        return f"{round(h * 60)} dakika"
+    return f"{h / 24:g} gün" if h >= 24 and h % 24 == 0 else f"{round(h, 2):g} saat"
+
+
 class Account:
     """Tek portfoy: emir verme, saniyelik pozisyon yonetimi ve hesap korumalari."""
 
@@ -184,6 +194,7 @@ class Account:
         self.st.update({k: v for k, v in saved.items() if k in self.st})
         self.ex = D.exchange(auth=True) if self.live else bot.ex  # sanal hesap ortak (anahtarsiz) baglantiyi kullanir
         self.usdt_total, self.usdt_free, self.synced, self.error = 0.0, 0.0, not self.live, ""
+        self.earn_t, self.earn_hold = 0.0, 0  # son Earn okumasi; dolu iken sonuc belirsiz: kasa toplami dondurulur
         self.own, self.lock_why, self.lock_err = not self.live, "", ""  # LIVE: hesap kilidi bizde degilse emir de stop iptali de yok
         self.key_ok, self.key_err, self.key_na, self.key_t, self._said, self._stat = None, "", False, 0.0, {}, {}
         self._sending = set()  # su an create_order icinde olan kimlikler (reconcile dokunmaz)
@@ -211,7 +222,10 @@ class Account:
     def sync(self):
         """LIVE: borsadaki USDT bakiyesi."""
         try:
-            self.usdt_free, self.usdt_total = self.balance("USDT")
+            self.usdt_free, tot = self.balance("USDT")
+            self.earn_read()
+            if not self.earn_hold:  # para Earn ile spot arasindayken kasa dusmus gorunup zarar kilitlerini tetiklemesin
+                self.usdt_total = tot + self.st.get("earn_son", 0.0)
             self.synced, self.error = True, self.guard()
         except ccxt.AuthenticationError as e:
             self.error = f"Binance anahtarı reddedildi: {str(e)[:120]}"
@@ -226,8 +240,116 @@ class Account:
 
     def free_cash(self):
         if self.live:
-            return self.balance("USDT")[0]
+            return self.balance("USDT")[0] + self.st.get("earn_son", 0.0)  # Earn'deki bot parasi alimdan once otomatik cekilir
         return self.st["cash"] - sum(p["qty"] * p["price"] * (1 + C.FEE) for p in self.st["pending"].values())
+
+    # ---------------- bos USDT: Esnek Earn (sadece gercek hesap, varsayilan kapali) ----------------
+    def _earn_pos(self):
+        """Hesabin USDT esnek konumu: (toplam, urun kimligi). Hata yukari gider."""
+        rows = self.ex.sapi_get_simple_earn_flexible_position({"asset": "USDT", "size": 100}).get("rows") or []
+        return sum(float(r["totalAmount"]) for r in rows), rows[0]["productId"] if rows else None
+
+    def earn_read(self, force=False):
+        """Botun Earn payini (st['earn_son']) tazeler. Bot once hic yatirmadiysa borsaya sormaz. Kullanicinin onceden kendi yatirdigi tutar
+        (st['earn_dis']) kasaya sayilmaz, cekilmez. Okunamazsa son bilinen deger kalir. Donus: okundu mu."""
+        if not self.live or not self.st.get("earn_var") or (not force and time.time() - self.earn_t < EARN_READ_SEC):
+            return False
+        self.earn_t = time.time()
+        try:
+            top = self._earn_pos()[0]
+        except (ccxt.BaseError, AttributeError, KeyError, IndexError, TypeError, ValueError) as e:
+            log.warning("earn konumu: %s", e)
+            return False
+        st = self.st
+        dis, son = st.get("earn_dis", 0.0), st.get("earn_son", 0.0)
+        if not self.earn_hold:  # bot islem yapmadan azaldiysa kullanici kendi parasini cekti: bot zarari sayilmaz
+            dis = max(0.0, dis - max(0.0, dis + son - top))
+        st["earn_dis"] = dis = min(dis, top)
+        st["earn_son"] = top - dis
+        if self.earn_hold and time.time() >= self.earn_hold:
+            self.earn_hold = 0
+        return True
+
+    def earn_park(self):
+        """Dengeleme bittikten sonra: bos USDT'nin kasanin %5'i ustu Earn'e. Yeni riskli islem degil ama izinsiz yapilmaz; hata hicbir seyi durdurmaz."""
+        if not (self.live and self.own and C.EARN_USDT and C.PORTFOY_LIVE and C.LIVE_ALLOWED and self.key_ok) or self.earn_hold:
+            return None
+        with self.b.lock:
+            try:
+                if self.st["orders"] or self.st["pending"]:  # yolda emir varken bos para kesin degil
+                    return None
+                urun = next((r for r in self.ex.sapi_get_simple_earn_flexible_list({"asset": "USDT", "size": 100}).get("rows") or []
+                             if r.get("canPurchase") and not r.get("isSoldOut") and r.get("status") == "PURCHASING"), None)
+                if not urun:
+                    return None
+                tut = int((self.balance("USDT")[0] - self.equity() * EARN_RESERVE) * 100) / 100
+                if tut < max(EARN_MIN, float(urun.get("minPurchaseAmount") or 0)):
+                    return None
+                top = self._earn_pos()[0]
+                if not self.st.get("earn_var"):  # ilk kez: hesapta zaten duran Earn kullanicinindir
+                    self.st.update(earn_var=True, earn_dis=top, earn_son=0.0)
+                    if not self._save():
+                        self.st.update(earn_var=False)
+                        return None
+                once = self.st["earn_son"] = top - self.st["earn_dis"]
+                self.earn_hold = time.time() + EARN_HOLD_SEC  # istek gittikten sonra sonuc belirsiz kalabilir
+                self.ex.sapi_post_simple_earn_flexible_subscribe({"productId": urun["productId"], "amount": f"{tut:.2f}",
+                                                                  "autoSubscribe": "false", "sourceAccount": "SPOT"})
+                for _ in range(EARN_WAIT_SEC):
+                    if self.earn_read(True) and self.st["earn_son"] >= once + tut * 0.99:
+                        self.earn_hold = 0
+                        break
+                    time.sleep(1)
+                self.sync()
+                self._save()
+                self.say(f"Boş {tut:.2f} USDT Binance Esnek Earn'e {'gönderildi, onay bekleniyor' if self.earn_hold else 'kondu'} (yıllık yaklaşık %{float(urun.get('latestAnnualPercentageRate') or 0) * 100:.1f}, oran Binance'e göre değişir).", kind="oz")
+                return tut
+            except (ccxt.BaseError, AttributeError, KeyError, IndexError, TypeError, ValueError) as e:
+                log.warning("earn yatirma: %s", e)
+                self.note("earn", f"Boş USDT Earn'e konamadı: {str(e)[:120]}. İşlemler etkilenmez.")
+                return None
+
+    def earn_redeem(self):
+        """Botun Earn payini spota geri ceker. Para gorunene kadar bekler; True: geldi."""
+        pay = self.st.get("earn_son", 0.0)
+        try:
+            top, pid = self._earn_pos()
+            pay = self.st["earn_son"] = max(0.0, top - self.st.get("earn_dis", 0.0))
+            if pay <= 0 or not pid:
+                self.earn_hold = 0
+                return True
+            once = self.balance("USDT")[0]
+            self.earn_hold = time.time() + EARN_HOLD_SEC
+            tam = {"redeemAll": "true"} if self.st.get("earn_dis", 0.0) <= 0 else {"amount": f"{int(pay * 1e8) / 1e8:.8f}"}
+            self.ex.sapi_post_simple_earn_flexible_redeem({"productId": pid, "destAccount": "SPOT", **tam})
+            for i in range(EARN_WAIT_SEC):
+                if self.balance("USDT")[0] >= once + pay * 0.99:
+                    self.st["earn_son"] = 0.0
+                    self.earn_hold = 0
+                    self.earn_read(True)
+                    self.sync()
+                    self._save()
+                    self.say(f"{pay:.2f} USDT Earn'den spota alındı.", kind="oz")
+                    return True
+                time.sleep(1)
+        except (ccxt.BaseError, AttributeError, KeyError, IndexError, TypeError, ValueError) as e:
+            log.warning("earn cekme: %s", e)
+        self.note("earn_cek", "USDT Earn'den çekilemedi veya henüz gelmedi: alımlar bekliyor, satış ve stoplar etkilenmez. Tekrar denenecek.")
+        return False
+
+    def _earn_fund(self, s, cost):
+        """Alimdan hemen once: spottaki USDT yetmiyorsa Earn'deki bot parasi cekilir. Gelmezse emir gitmez (dengeleme yeniden dener)."""
+        if not self.live or not self.st.get("earn_var") or self.balance("USDT")[0] >= cost:
+            return
+        self.earn_read(True)
+        if self.st.get("earn_son", 0.0) > 0 and not self.earn_redeem():
+            raise ccxt.ExchangeNotAvailable(f"{s} alışı bekliyor: para Earn'den henüz gelmedi.")
+
+    def earn_tick(self):
+        """Ayar kapatildiysa botun Earn'deki parasi spota doner."""
+        if self.live and self.own and not C.EARN_USDT and self.st.get("earn_son", 0.0) > 0 and not self.earn_hold:
+            with self.b.lock:
+                self.earn_redeem()
 
     def mark(self):
         """Saniyelik: baslangic/gun basi kasasi ve 15 dk'da bir kasa egrisi noktasi."""
@@ -473,6 +595,8 @@ class Account:
         belirsizse once kimlikle sorulur: asla korlemesine yeniden gonderilmez, reddedildi de sayilmaz (OrderUnknown)."""
         self.gate(s, side, qty, price, (params or {}).get("stopPrice"))
         self._no_unknown(s, typ, act)
+        if side == "buy":
+            self._earn_fund(s, qty * (price or self.ask.get(s) or 0) * (1 + C.FEE) * 1.003)
         st, t = self.st, time.time()
         st["oseq"] = st.get("oseq", 0) + 1
         cid = order_cid(self.mode, st["oseq"], s, typ, side, qty, price, t)
@@ -924,7 +1048,7 @@ class Account:
                  + (f", kısmi kâr {tp1:.6g}" if tp1 else "")
                  + (" | Manuel Kilit (stop/hedef kullanıcıda)" if pos["manual"] else
                     " | yapay zekaya bırakıldı" if pos["ai"] else f", hedef {tp2:.6g}, en fazla {hours:g} sa")
-                 + (f" | {p['sure_h']:g} saat sonra otomatik satış" if pos["sure_t"] else "")
+                 + (f" | {sure_yazi(p['sure_h'])} sonra otomatik satış" if pos["sure_t"] else "")
                  + ("\n" + MC.line(pos["mc"]) if pos.get("mc") else ""), True)
 
     def manage_positions(self):
@@ -1356,9 +1480,9 @@ class Account:
         if pos.get("kind") == PF.KIND:
             return "Portföy pozisyonu kendi kuralıyla yönetilir, süre konamaz."
         if hours is not None and not SURE_MIN <= hours <= SURE_MAX:
-            return f"Süre {SURE_MIN:g} ile {SURE_MAX:g} saat arasında olmalı."
+            return SURE_ARALIK
         pos["sure_t"] = time.time() + hours * 3600 if hours else None
-        self.say(f"{s} otomatik satış süresi ({who}): " + (f"{hours:g} saat sonra satılacak." if hours else "iptal edildi."), kind="kalkan")
+        self.say(f"{s} otomatik satış süresi ({who}): " + (f"{sure_yazi(hours)} sonra satılacak." if hours else "iptal edildi."), kind="kalkan")
         return None
 
     def adjust(self, s, stop, tp2):
@@ -1689,6 +1813,7 @@ class Bot:
                     last_mut = time.time()
                     for a in self.accounts.values():
                         a.balance_check()
+                        a.earn_tick()
                 self.refresh_prices()
                 with self.lock:
                     for a in self.accounts.values():
@@ -2147,7 +2272,7 @@ class Bot:
         if cikis == "stop" and not (stop and tp):
             return "Sadece stop ve hedef için ikisini de girin (ya da Süresiz seçin)."
         if cikis == "sure" and not (saat and SURE_MIN <= saat <= SURE_MAX):
-            return f"Süre {SURE_MIN:g} ile {SURE_MAX:g} saat arasında olmalı."
+            return SURE_ARALIK
         if not acct:
             return "Hesap bağlı değil."
         if acct.live and (not C.LIVE_ALLOWED or not acct.synced or acct.error):
@@ -2181,7 +2306,7 @@ class Bot:
             err = acct.enter(s, plan)
         if not err:
             self.say(f"{s} elle alış ({who}, {'gerçek' if acct.live else 'sanal'} hesap): {usdt:g} USDT, stop {stop:g}"
-                     + (f", hedef {tp:g}" if tp else ", hedef yok") + (f", {saat:g} saat sonra satış" if cikis == "sure" else "")
+                     + (f", hedef {tp:g}" if tp else ", hedef yok") + (f", {sure_yazi(saat)} sonra satış" if cikis == "sure" else "")
                      + (", yapay zekaya bırakıldı" if cikis == "ai" else "") + ".", kind="islem", acct=mode)
         return err
 
@@ -2443,6 +2568,11 @@ class Bot:
                 res[a.mode] = [f"borsa hatası: {str(e)[:120]}"]
             finally:  # sonuc yoksa (None) dengeleme motor hatasiyla yarim kaldi
                 a.ledger("sonuc", sonuc=res.get(a.mode))
+            if a.mode in biten:
+                try:
+                    a.earn_park()
+                except Exception:  # Earn hatasi dengelemeyi bozmaz
+                    log.exception("earn")
         ml = info["ml"]
         for s, v in info["core"].items():
             lines.append(f"{s.split('/')[0]}: yükseliş gücü {word(v['trend'])} → kasadaki payı %{v['w'] * 100:.0f}")
