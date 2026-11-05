@@ -12,7 +12,7 @@ API_SECRET = ""
 # Gercek emir kapisi (bot.py Account.fence): her gercek alim borsaya gitmeden denetlenir; PAPER etkilenmez. Pozisyon satisi ve
 # stop tutar sinirina takilmaz. LIVE_MAX_USDT'yi sadece admin degistirir: kucuk baslangic, kasa buyuyunce bilerek yukseltilir.
 LIVE_MAX_USDT = 100.0     # tek emir ust siniri (USDT)
-LIVE_MAX_EQUITY = 0.40    # tek emir kasanin bu payini gecemez
+LIVE_MAX_EQUITY = 0.45    # tek emir kasanin bu payini gecemez (en buyuk portfoy alimi %41: cekirdek %35 + sepet %6)
 LIVE_COLLAR_PCT = 3.0     # emir fiyati son fiyattan en fazla bu kadar uzak olabilir (%)
 
 # Telegram bildirim + komutlar (bos birakilirsa kapali). Bot sadece bu CHAT_ID'den gelen mesajlara cevap verir.

@@ -1263,7 +1263,7 @@ const GROUPS = {
     ["RADAR_MIN_VOL", "Radar likidite alt sınırı (USDT)", "number", "24 saatlik hacmi bunun altındaki coinler radara alınmaz. Yüksek tutarla işlemde 3.000.000 ve üstü önerilir."],
     ["FEE", "Komisyon (tek yön)", "number", "0.001 = %0,1 · BNB ile ödüyorsan 0.00075"], ["UNIVERSE_SIZE", "Derin izlenen coin sayısı", "number", "Emir defteri ve ML ile saniyelik izlenen en likit coinler. Radar zaten tüm piyasayı tarar. Değişirse motor yeniden başlar."]]],
   live: ["Gerçek işlem (LIVE)", [["LIVE_ALLOWED", "Gerçek hesapta otomatik işlem", "toggle", "Açınca Claude'un kararları kullanıcının Binance hesabında gerçek emir olarak uygulanır."],
-    ["LIVE_MAX_USDT", "Tek emir üst sınırı (USDT)", "number", "Gerçek hesapta tek alım bu tutarı ve kasanın %40'ını geçemez; geçerse emir gönderilmez, küçültülmez. Portföy dengelemesi de buna takılır: kasanız büyüdükçe bilerek yükseltin. Pozisyon satışı ve stop bu sınıra takılmaz."],
+    ["LIVE_MAX_USDT", "Tek emir üst sınırı (USDT)", "number", "Gerçek hesapta tek alım bu tutarı ve kasanın %45'ini geçemez; geçerse emir gönderilmez, küçültülmez. Portföy dengelemesi de buna takılır: kasanız büyüdükçe bilerek yükseltin. Pozisyon satışı ve stop bu sınıra takılmaz."],
     ["API_KEY", "Binance API key", "secret", "Sadece Spot Trading izni; Withdraw (çekim) KAPALI. Çekim izni açık anahtarla yeni alım yapılmaz."], ["API_SECRET", "Binance API secret", "secret"]]],
   guncelleme: ["Güncelleme deposu", [["UPDATE_REPO", "GitHub deposu", "text", "kullanici/depo (ör. melik/KriptoQuantBot). guncelleme_yayinla.bat bu depoya yayınlar."],
     ["UPDATE_TOKEN", "Erişim anahtarı (gizli depo ise)", "secret", "Depo gizliyse sadece okuma izinli GitHub anahtarı (fine-grained, Contents: Read)."],
