@@ -181,7 +181,7 @@ class Teknik:
 
     def __init__(self):
         self.data, self.opps, self.t, self.t_opps, self.error = {}, [], 0.0, 0.0, ""
-        self.radar_map, self.n_all, self.n_liquid = {}, 0, 0
+        self.radar_map, self.n_all, self.n_liquid, self.liquid = {}, 0, 0, []
         self._started = False
         self.ex = ccxt.binance({"enableRateLimit": True})  # kendi baglantisi (thread guvenli olsun)
 
@@ -284,7 +284,7 @@ class Teknik:
         deep.sort(key=lambda r: -r["score"])
         for r in deep:
             r["t"] = time.time()
-        self.opps, self.radar_map = deep, {r["sym"]: r for r in deep}
+        self.opps, self.radar_map, self.liquid = deep, {r["sym"]: r for r in deep}, rows  # liquid: on eleme oncesi tum likit pariteler
         self.n_all, self.n_liquid, self.t_opps = n_all, len(rows), time.time()
 
     def _loop(self):

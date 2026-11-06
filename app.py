@@ -15,13 +15,15 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+import requests
+
 import auth
 import config as C
 
 log = logging.getLogger("bot")
 URL = f"http://127.0.0.1:{C.PORT}"
 HOSTS = {f"127.0.0.1:{C.PORT}", f"localhost:{C.PORT}"}
-CACHE = {}
+CACHE, LOCKS, ARKA, ARKA_KILIT = {}, {}, set(), threading.Lock()
 ICON = os.path.join(C.APP_DIR, "icon.ico")
 
 
@@ -73,16 +75,53 @@ ENGINE = Engine()
 
 
 def cached(key, ttl, fn):
+    """Anahtar basina kilit: ayni anahtar icin tek dis istek; farkli anahtarlar birbirini beklemez.
+    fn hata atarsa onceki deger korunur ve ttl kadar sonra yeniden denenir (onceki deger yoksa hata yukari gider)."""
     t, v = CACHE.get(key, (0, None))
-    if time.time() - t > ttl:
-        v = fn()
-        CACHE[key] = (time.time(), v)
+    if time.time() - t <= ttl:
+        return v
+    with LOCKS.setdefault(key, threading.Lock()):
+        t, v = CACHE.get(key, (0, None))
+        if time.time() - t > ttl:
+            try:
+                v = fn()
+            except Exception:
+                if not t:
+                    raise
+                log.warning("Onbellek yenilenemedi, eski deger kullaniliyor: %s", key)
+            CACHE[key] = (time.time(), v)
     return v
 
 
-def exchange():
-    import ccxt
-    return cached("ex", 86400, lambda: ccxt.binance({"enableRateLimit": True}))
+def arkada(key, fn):
+    """fn'i HTTP isteginden ayri calistirir; ayni anahtarla ust uste baslamaz."""
+    with ARKA_KILIT:
+        if key in ARKA:
+            return
+        ARKA.add(key)
+
+    def run():
+        try:
+            fn()
+        except Exception:
+            log.exception("Arka plan isi: %s", key)
+        finally:
+            with ARKA_KILIT:
+                ARKA.discard(key)
+    threading.Thread(target=run, daemon=True).start()
+
+
+def beyin_durumu():
+    """(ok, bilgi, beyin). CLI denetimi HTTP isteginde bekletmez: eldeki deger doner, 60 sn'de bir arka planda yenilenir."""
+    import agent as A
+
+    def yenile():
+        ok, info = A.status()
+        CACHE["claude"] = (time.time(), (ok, info, A.brain()))
+    t, v = CACHE.get("claude", (0, None))
+    if time.time() - t > 60:
+        arkada("claude", yenile)
+    return v or (True, "Beyin kontrol ediliyor", None)
 
 
 def clean(o):
@@ -131,17 +170,17 @@ def state(sess, q):
     b = ENGINE.bot
     admin = sess["role"] == "admin"
     import guncelle
+    lt = guncelle.STATE["latest"] or {}  # git calistirmaz; guncelle.status() ile ayni anlam
     base = {"user": sess["user"], "role": sess["role"], "live_allowed": C.LIVE_ALLOWED, "error": ENGINE.error,
             "uptime": time.time() - ENGINE.started, "version": C.VERSION,
-            "update": (guncelle.STATE["latest"] or {}).get("version") if guncelle.status()["newer"] and
-            sess["role"] == "admin" else None}
+            "update": lt.get("version") if lt.get("newer") and sess["role"] == "admin" else None}
     if not b:
         return {**base, "status": "Motor başlatılıyor", "ready": False}
     import agent as A
     mode = mode_for(sess, q)
     a = b.accounts.get(mode)
-    ok, info = cached("claude", 60, A.status)
-    base.update(chat_ok=ok, chat_info=info, brain=cached("brain", 60, A.brain))
+    ok, info, beyin = beyin_durumu()
+    base.update(chat_ok=ok, chat_info=info, brain=beyin)
     with b.lock:
         ag = b.ag
         agent = {"spent": ag["spent"] if ag["day"] == time.strftime("%Y-%m-%d", time.gmtime()) else 0.0,
@@ -320,10 +359,19 @@ def decisions(sess):
     return ds[::-1]
 
 
-def candles(sym, tf, mode):
-    """Gecmis mumlar (REST, 15 sn onbellek) + canli son mum (WebSocket, saniyelik; 10 sn'den eskiyse kullanilmaz)."""
+def _klines(sym, tf):
+    """Dogrudan REST: ccxt load_markets beklenmez."""
+    r = requests.get("https://api.binance.com/api/v3/klines", params={"symbol": sym.replace("/", ""), "interval": tf, "limit": 500},
+                     timeout=10)
+    r.raise_for_status()
+    return [[int(x[0]), *map(float, x[1:6])] for x in r.json()]
+
+
+def candles(sym, tf, mode, son=False):
+    """Gecmis mumlar (REST, 15 sn onbellek) + canli son mum (WebSocket, saniyelik; 10 sn'den eskiyse kullanilmaz).
+    son=True: saniyelik yoklama, sadece son 2 mum (seviyeler ve markerlar yine tam)."""
     from stream import Stream
-    rows = cached(f"c:{sym}:{tf}", 15, lambda: exchange().fetch_ohlcv(sym, tf, limit=500))
+    rows = cached(f"c:{sym}:{tf}", 15, lambda: _klines(sym, tf))
     cs = [{"time": r[0] // 1000, "open": r[1], "high": r[2], "low": r[3], "close": r[4], "volume": r[5]} for r in rows]
     st = Stream.shared()
     st.watch_kline(sym, tf)
@@ -334,10 +382,12 @@ def candles(sym, tf, mode):
             cs[-1] = k
         elif k["time"] > cs[-1]["time"]:
             cs.append(k)
-    out = {"candles": cs, "levels": [], "markers": []}
+    out = {"candles": cs[-2:] if son else cs, "levels": [], "markers": []}
     from zincir import Zincir
     z = Zincir.shared()
-    lm = cached(f"liq:{sym}", 300, lambda: z.liq_map(sym))  # likidasyon kumeleri (tahmini, vadeli verisinden)
+    lm = z.liq.get(sym)  # likidasyon kumeleri (tahmini, vadeli verisinden); mumu bekletmez, sonraki yoklamada gelir
+    if not lm or time.time() - lm["t"] > 600:  # liq_map'in kendi suresi; basarisizsa 60 sn sonra yeniden dener
+        cached(f"liq:{sym}", 60, lambda: arkada(f"liq:{sym}", lambda: z.liq_map(sym)))
     if lm and not lm.get("none"):
         out["liq"] = {"long": lm["long"], "short": lm["short"]}
         out["levels"] += [["Long likidasyon", p, "rgba(255,92,108,%.2f)" % (0.35 + 0.6 * w)] for p, w, _ in lm["long"][:3]]
@@ -566,7 +616,7 @@ class Handler(BaseHTTPRequestHandler):
                       "/api/trades": lambda: copy.deepcopy(acct.st["trades"]) if acct else [],
                       "/api/notes": lambda: [dict(n, text=n["text"] if admin else hide_paper(n["text"]))
                                              for n in (b.notes if b else []) if admin or n.get("acct") in (None, "LIVE")],
-                      "/api/candles": lambda: candles(q.get("sym", C.BTC), q.get("tf", "1h"), mode),
+                      "/api/candles": lambda: candles(q.get("sym", C.BTC), q.get("tf", "1h"), mode, q.get("son") == "1"),
                       "/api/macro": macro, "/api/whale": lambda: __import__("zincir").Zincir.shared().snapshot(), "/api/lessons": lambda: lessons(sess), "/api/portfoy": portfoy,
                       "/api/news": lambda: __import__("haberler").view(admin, hidden=q.get("hepsi") == "1"),
                       "/api/telegram": lambda: __import__("telegram_bot").status(sess["user"]),

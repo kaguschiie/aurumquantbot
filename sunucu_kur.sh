@@ -34,6 +34,7 @@ mkdir -p $DIR/secim && cp $REPO/secim.html $DIR/secim/index.html
     echo "    }"
     echo "}"
   done
+  if ls /etc/caddy/kqb.d/*.caddy >/dev/null 2>&1; then echo "import /etc/caddy/kqb.d/*.caddy"; fi  # sunucu_agresif_ekle.sh bloklari kaybolmasin
 } > /tmp/kqb.Caddyfile
 caddy validate --adapter caddyfile --config /tmp/kqb.Caddyfile   # gecersizse calisan yapilandirmaya dokunulmaz
 mv /tmp/kqb.Caddyfile /etc/caddy/Caddyfile

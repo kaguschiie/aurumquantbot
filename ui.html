@@ -442,6 +442,7 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
+const AGR = window.KISILIK === "agresif";  // agresif.py enjekte eder; melik/fatih'te hep false
 let ME = null, S = null, SCR = [], TAB = "home", DOCK = [], PREV = "home", ACCT = "PAPER";
 let csym = "BTC/USDT", ctf = "1h", cmode = "bot", sortKey = "qvol", sortDir = -1, noteFilter = "hepsi", lastNoteT = 0;
 const fmt = (v, d = 2) => v == null || isNaN(v) ? "-" : Number(v).toLocaleString("tr-TR", {minimumFractionDigits: d, maximumFractionDigits: d});
@@ -454,7 +455,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&
 const base = s => s.split("/")[0];
 const REG = {trend: ["Yükseliş trendi", "up"], yatay: ["Yatay", "warn"], dusus: ["Sert düşüş", "down"]};
 const KINDS = {hepsi: "Hepsi", karar: "Kararlar", bekleme: "Beklemeler", islem: "İşlemler", kalkan: "Kalkan", radar: "Radar", oz: "Öz-değerlendirme", egitim: "Eğitim", uyari: "Uyarılar", sistem: "Sistem"};
-const REASON = {HEDEF: "Hedef", STOP: "Stop", IZ_STOP: "İz süren stop", BASABAS: "Başabaş", SURE_DOLDU: "Süre doldu", CLAUDE_KAPATTI: "Claude kapattı", ELLE_KAPATILDI: "Elle kapatıldı", ZAMAN_ASIMI: "Zaman aşımı", ZAMAN_STOPU: "Zaman stopu", BALINA_SATIS: "Balina satışı", PORTFOY_CIKIS: "Portföy dengeleme", HABER_ACIL: "Haber: acil satış", KESINTI: "Uygulama kapalıyken", GUNLUK_CIKIS: "10 günlük dip"};
+const REASON = {HEDEF: "Hedef", STOP: "Stop", IZ_STOP: "İz süren stop", BASABAS: "Başabaş", SURE_DOLDU: "Süre doldu", AGRESIF_SAT: "1s güçlü sat", CLAUDE_KAPATTI: "Claude kapattı", ELLE_KAPATILDI: "Elle kapatıldı", ZAMAN_ASIMI: "Zaman aşımı", ZAMAN_STOPU: "Zaman stopu", BALINA_SATIS: "Balina satışı", PORTFOY_CIKIS: "Portföy dengeleme", HABER_ACIL: "Haber: acil satış", KESINTI: "Uygulama kapalıyken", GUNLUK_CIKIS: "10 günlük dip"};
 const ICON = {home: '<path d="M3 12l9-8 9 8M5 10v10h14V10"/>', chartp: '<path d="M6 4v16M6 8h-2v6h2M12 6v14M12 10h-2v4h2M18 3v18M18 7h-2v8h2"/>',
   screen: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>', opps: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6.5-6.5"/>',
   macro: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
@@ -465,8 +466,16 @@ const ICON = {home: '<path d="M3 12l9-8 9 8M5 10v10h14V10"/>', chartp: '<path d=
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/>'};
 const PAGES = [["home", "Komuta Merkezi"], ["chartp", "Grafik"], ["screen", "Piyasa Tarayıcı"], ["opps", "Radar (tüm piyasa)"], ["macro", "Borsa / Makro"],
   ["news", "Haberler"], ["trades", "İşlemler"], ["decisions", "Kararlar"], ["lessons", "Ders Defteri"], ["notes", "Karar Günlüğü"], ["bt", "ML Geçmiş Test", 1], ["hazirlik", "Gerçek Paraya Hazırlık", 1], ["chat", "Sohbet"], ["settings", "Ayarlar"]];
+if (AGR) {
+  PAGES.push(["agresif", "Agresif Karne"]);
+  ICON.agresif = '<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>';
+  const sec = document.createElement("section"); sec.id = "agresif"; sec.className = "page"; sec.innerHTML = '<div id="agrwrap"></div>'; $("#pages").appendChild(sec);
+}
+const AGR_SAYFA = ["home", "chartp", "opps", "trades", "notes", "agresif"], AGRK = {agr_radar: "Radar", agr_senaryo: "Senaryo"};
 const title = t => (PAGES.find(p => p[0] === t) || [, t])[1];
-const allowed = t => PAGES.some(p => p[0] === t && (!p[2] || ME?.role === "admin"));
+const allowed = t => AGR ? AGR_SAYFA.includes(t) : PAGES.some(p => p[0] === t && (!p[2] || ME?.role === "admin"));
+const BOTLAR = ["melik", "fatih", "agresif"], BOT_HOST = /^[a-z]+\.\d+-\d+-\d+-\d+\.sslip\.io$/.test(location.host), BOT_AD = location.host.split(".")[0];
+const botGit = b => { location.href = `${location.protocol}//${location.host.split(".").slice(1).join(".")}/?sec=1&git=${b}`; };
 const visible = t => TAB === t || DOCK.includes(t);
 const store = (k, v) => { try { v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
@@ -477,6 +486,7 @@ async function api(p, body) {
   const url = body === undefined && ME?.role === "admin" && !p.startsWith("/api/auth") ? p + sep + "acct=" + ACCT : p;
   const r = await fetch(url, body === undefined ? {} : {method: "POST", headers: {"X-KQB": "1", "Content-Type": "application/json"}, body: JSON.stringify(body)});
   if (r.status === 401) { showLogin(); throw new Error("401"); }
+  if (AGR && (r.status === 403 || r.status === 429) && !p.startsWith("/api/auth")) throw new Error("kapali");  // kapali uc: sessiz
   return r.json();
 }
 const post = (p, body = {}) => api(p, ME?.role === "admin" ? {acct: ACCT, ...body} : body);
@@ -609,7 +619,7 @@ function layout() {
   setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
 }
 function show(t) {
-  ({home: () => loadPF().catch(() => {}), settings: loadSettings, chartp: () => { loadCandles(true); tvLoad(); }, screen: loadScreener, opps: loadOpps, macro: loadMacro, lessons: loadLessons, notes: loadNotes, trades: loadTrades,
+  ({home: () => { if (S) renderHome(S); loadPF().catch(() => {}); }, agresif: loadAgr, settings: loadSettings, chartp: () => { loadCandles(true).finally(tvLoad); }, screen: loadScreener, opps: loadOpps, macro: loadMacro, lessons: loadLessons, notes: loadNotes, trades: loadTrades,
     news: loadNews, decisions: loadDecisions, bt: renderBT, hazirlik: loadHazirlik, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
 }
 (() => { // sag panel genisligi: surukle
@@ -649,7 +659,7 @@ const techs = (t, tfs = ["15m", "1h", "4h", "1d"]) => `<span class="techs">${tfs
 /* ---------- komuta merkezi ---------- */
 function renderHeader(s) {
   const admin = ME.role === "admin";
-  $("#acctseg").hidden = !admin; $("#acctpill").hidden = admin;
+  $("#acctseg").hidden = !admin || AGR; $("#acctpill").hidden = admin && !AGR;
   $$("#acctseg button").forEach(b => b.classList.toggle("on", b.dataset.a === ACCT));
   const busy = s.ready && s.status !== "Çalışıyor";
   $("#dot").className = "dot" + (s.error ? " err" : busy || !s.ready ? " busy" : "");
@@ -720,6 +730,8 @@ function renderHome(s) {
     (ag.error ? `<div class="warn" style="font-size:12px">${esc(ag.error)}</div>` : "");
   renderPositions(s, "#pos"); renderProtections(s);
   $("#feed").innerHTML = s.notes.slice().reverse().map(noteHtml).join("") || `<div class="big-empty">Henüz not yok.</div>`;
+}
+function noteToasts(s) {  // Ana Sayfa gorunmese de bildirim kaybolmasin
   for (const n of s.notes) if (n.t > lastNoteT) { if (lastNoteT && ["islem", "karar", "uyari"].includes(n.kind)) toast(n.text.split("\n")[0].slice(0, 160), n.kind === "uyari" ? "down" : n.kind === "islem" ? "up" : ""); }
   lastNoteT = Math.max(lastNoteT, ...s.notes.map(n => n.t), 0);
 }
@@ -746,11 +758,11 @@ function renderProtections(s) {
     `<div class="dim" style="font-size:11.5px;margin-top:8px">Günlük zarar limiti, stop serisi molası, coin kilidi, 7 günlük acil durdurma şalteri ve borsa tarafı stop emirleri yerel risk yöneticisindedir; Claude bunları aşamaz.</div>`;
 }
 function renderPositions(s, sel) {
-  if (!s.positions?.length && !s.pending?.length) { $(sel).innerHTML = `<div class="big-empty">Açık pozisyon yok. Claude uygun fırsat bekliyor.</div>`; return; }
+  if (!s.positions?.length && !s.pending?.length) { $(sel).innerHTML = `<div class="big-empty">Açık pozisyon yok. ${AGR ? "Kural sinyali bekleniyor (saat başı)." : "Claude uygun fırsat bekliyor."}</div>`; return; }
   const inv = s.positions.reduce((a, p) => a + p.qty * p.entry, 0), now = s.positions.reduce((a, p) => a + p.qty * (p.price || p.entry), 0);
   $(sel).innerHTML = `<table><tr><th>Coin</th><th class="r">Yatırılan</th><th class="r">Giriş</th><th class="r">Şimdi</th><th class="r">Net K/Z</th><th class="hide-sm">Hedefe</th><th class="r hide-sm">Stop</th><th class="r hide-sm">Hedef</th><th class="hide-sm">Durum</th><th></th></tr>` +
     s.positions.map(p => { const noTp = p.tp > p.entry * 50, prog = p.price && !noTp ? Math.max(0, Math.min(100, (p.price - p.entry) / (p.tp - p.entry) * 100)) : 0;
-      return `<tr class="click" onclick="openChart('${p.sym}')" title="${esc(p.why || "")}"><td><b>${base(p.sym)}</b>${p.sure_kalan != null ? `<div class="warn" style="font-size:11.5px" title="Süre dolunca piyasa fiyatından otomatik satılır">⏱ ${kalan(p.sure_kalan)}</div>` : ""}${p.ai ? `<div class="mute" style="font-size:11.5px" title="${esc(p.ai_not || "Saat başında Claude bakar")}">🤖 yapay zeka</div>` : ""}</td><td class="r"><b>${fmt(p.qty * p.entry)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(p.qty * (p.price || p.entry))} $</div></td><td class="r">${px(p.entry)}</td><td class="r">${px(p.price)}</td><td class="r">${sg(p.pnl, 2, " $")} ${sg(p.pnl_pct)}</td><td class="hide-sm"><div class="bar"><i style="width:${prog}%"></i></div></td><td class="r hide-sm">${px(p.sl)}</td><td class="r hide-sm">${noTp ? "-" : px(p.tp)}</td><td class="hide-sm">${shieldTxt(p)}</td><td class="r"><button class="btn sm danger" title="Piyasa fiyatından kapat" onclick="event.stopPropagation();closePos('${p.sym}')">✕</button></td></tr>`; }).join("") +
+      return `<tr class="click" onclick="openChart('${p.sym}')" title="${esc(p.why || "")}"><td><b>${base(p.sym)}</b>${AGRK[p.kind] ? `<div class="mute" style="font-size:11.5px">${AGRK[p.kind]}</div>` : ""}${p.sure_kalan != null ? `<div class="warn" style="font-size:11.5px" title="Süre dolunca piyasa fiyatından otomatik satılır">⏱ ${kalan(p.sure_kalan)}</div>` : ""}${p.ai ? `<div class="mute" style="font-size:11.5px" title="${esc(p.ai_not || "Saat başında Claude bakar")}">🤖 yapay zeka</div>` : ""}</td><td class="r"><b>${fmt(p.qty * p.entry)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(p.qty * (p.price || p.entry))} $</div></td><td class="r">${px(p.entry)}</td><td class="r">${px(p.price)}</td><td class="r">${sg(p.pnl, 2, " $")} ${sg(p.pnl_pct)}</td><td class="hide-sm"><div class="bar"><i style="width:${prog}%"></i></div></td><td class="r hide-sm">${px(p.sl)}</td><td class="r hide-sm">${noTp ? "-" : px(p.tp)}</td><td class="hide-sm">${shieldTxt(p)}</td><td class="r"><button class="btn sm danger" title="Piyasa fiyatından kapat" onclick="event.stopPropagation();closePos('${p.sym}')">✕</button></td></tr>`; }).join("") +
     (s.positions.length ? `<tr><td class="dim">Toplam</td><td class="r"><b>${fmt(inv)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(now)} $</div></td><td colspan="8" class="dim">nakit ${fmt(s.cash)} $${s.earn > 0 ? ` (+ ${fmt(s.earn)} $ Earn'de)` : ""} · Binance komisyonu (alış + satış, %${fmt((s.fee ?? 0.001) * 100, 2)}) K/Z'den düşülmüş</td></tr>` : "") +
     s.pending.map(p => `<tr><td><b>${base(p.sym)}</b></td><td class="r">${fmt(p.qty * p.price)} $</td><td class="r">${px(p.price)}</td><td class="r">${px(p.price_now)}</td><td class="r">-</td><td class="hide-sm"></td><td class="r hide-sm">${px(p.stop)}</td><td class="r hide-sm">${px(p.tp2)}</td><td class="warn hide-sm">Pasif alış emri</td><td class="r"><button class="btn sm" onclick="closePos('${p.sym}')">İptal</button></td></tr>`).join("") + "</table>";
 }
@@ -760,6 +772,7 @@ function kalan(sn) {  // kalan sure: 3 sa 12 dk / 12 dk 05 sn
 }
 function shieldTxt(p) {
   const lock = (p.sl / p.entry - 1) * 100;
+  if (AGRK[p.kind]) return `<span class="mute" title="${esc(p.why || "")}">${AGRK[p.kind]} · ${ago(p.t)}</span>`;
   if (p.kind === "portfoy") return `<span class="mute" title="Günlük dengelemeyle yönetilir">📊 Portföy · ${ago(p.t)}</span>`;
   if (p.manual) return `<span class="lockb" title="Stop/hedef kullanıcıda; AI ve kalkan dokunmaz">🔒 Manuel</span> <button class="btn sm" title="Kontrolü yapay zekaya devret" onclick="event.stopPropagation();unlockPos('${p.sym}')">🤖</button>`;
   if (p.be && lock > 0.35) return `<span class="up" title="Stop kârı kilitleyerek zirveyi izliyor">🛡 kâr kilitli %${fmt(lock, 2)}${p.part ? " · kısmi kâr alındı" : ""}</span>`;
@@ -815,6 +828,7 @@ async function loadOpps() {
   OPPS = await api("/api/opps"); renderOpps(); tvScreener(); loadWhale().catch(() => {});
 }
 async function loadWhale() {
+  if (AGR) return;
   const w = await api("/api/whale"), rows = (w.whale || []).filter(x => x.n);
   $("#whaleinfo").textContent = (w.key ? "Binance büyük işlemler + zincir üstü (Whale Alert)" : "Binance büyük tekil işlemler (borsa balinaları)") + (w.t ? ` · ${ago(w.t)} önce` : "");
   const bar = r => `<span class="wbar"><i class="${r < 0 ? "neg" : ""}" style="${r < 0 ? "right:50%" : "left:50%"};width:${Math.abs(r) * 50}%"></i></span>`;
@@ -980,7 +994,7 @@ function tvEmbed(el, kind, cfg) {
   const h = cfg.autosize ? "100%" : (cfg.height || 420) + "px";
   el.innerHTML = "";
   const f = document.createElement("iframe");
-  f.style.cssText = `width:100%;height:${h};border:0;display:block`;
+  f.style.cssText = `width:100%;height:${h};border:0;display:block`; f.loading = "lazy";
   f.src = `https://s.tradingview.com/embed-widget/${kind}/?locale=tr#${encodeURIComponent(JSON.stringify(cfg))}`;
   el.appendChild(f);
   el.insertAdjacentHTML("beforeend", `<div class="tvnote">Veri: <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">TradingView</a> · sadece gösterim, bot kararlarında kullanılmaz</div>`);
@@ -999,26 +1013,47 @@ function tvScreener() { if (tvScr) return; tvScr = true; tvEmbed($("#tvscr"), "s
 /* ---------- mum grafigi ---------- */
 const TFS = ["15m", "1h", "4h", "1d"], TF_TR = {"15m": "15dk", "1h": "1s", "4h": "4s", "1d": "1g"};
 $("#tfs").innerHTML = TFS.map(t => `<button class="btn sm${t === ctf ? " on" : ""}" data-tf="${t}">${TF_TR[t]}</button>`).join(" ");
-$("#tfs").onclick = e => { if (!e.target.dataset.tf) return; ctf = e.target.dataset.tf; $$("#tfs .btn").forEach(b => b.classList.toggle("on", b.dataset.tf === ctf)); loadCandles(true); tvLoad(); };
-$("#csym").onchange = e => { csym = e.target.value; loadCandles(true); renderCoinDetail(); tvLoad(); };
+$("#tfs").onclick = e => { if (!e.target.dataset.tf) return; ctf = e.target.dataset.tf; $$("#tfs .btn").forEach(b => b.classList.toggle("on", b.dataset.tf === ctf)); loadCandles(true).finally(tvLoad); };
+$("#csym").onchange = e => { csym = e.target.value; loadCandles(true).finally(tvLoad); renderCoinDetail(); };
 $("#cmode").onclick = e => { const m = e.target.dataset.m; if (!m) return; cmode = m; $$("#cmode button").forEach(b => b.classList.toggle("on", b.dataset.m === m)); $("#candle").hidden = m !== "bot"; $("#tvchart").hidden = m !== "tv"; tvLoad(); window.dispatchEvent(new Event("resize")); };
-function openChart(sym) { csym = sym; if (!visible("chartp")) { PREV = TAB; go("chartp"); } else { $("#csym").value = sym; loadCandles(true); renderCoinDetail(); tvLoad(); } }
+function openChart(sym) { csym = sym; if (!visible("chartp")) { PREV = TAB; go("chartp"); } else { $("#csym").value = sym; loadCandles(true).finally(tvLoad); renderCoinDetail(); } }
+const CC = new Map();  // coin+zaman dilimi basina son mumlar: geri donunce aninda cizilir
+let cGoster = "", cLinesK = "", cMarkK = "";
+const cVol = c => ({time: c.time, value: c.volume, color: c.close >= c.open ? "rgba(34,195,142,.35)" : "rgba(255,92,108,.35)"});
+function cSet(a) { cS.setData(a); cV.setData(a.map(cVol)); }
 async function loadCandles(fit) {
   if (!cC) { cC = mkChart("candle"); if (!cC) return; cS = cC.addCandlestickSeries({upColor: "#22c38e", downColor: "#ff5c6c", borderVisible: false, wickUpColor: "#22c38e", wickDownColor: "#ff5c6c"});
     cV = cC.addHistogramSeries({priceFormat: {type: "volume"}, priceScaleId: "", color: "#2a3346"}); cV.priceScale().applyOptions({scaleMargins: {top: .82, bottom: 0}});
     cC.subscribeClick(prm => {  // "Stop/Hedef sec" modunda grafikte tiklanan fiyat
       if (!TP.pick || !prm.point) return; const v = cS.coordinateToPrice(prm.point.y); if (v == null || v <= 0) return;
       const k = TP.pick; tpSetPrice(k, v); tpPick(null); toast(`${k === "sl" ? "Stop" : "Hedef"}: ${px(v)} — kaydetmek için ${TP.pos ? "Kaydet" : "Al"}'a basın.`); }); }
-  const want = csym + ctf, d = await api(`/api/candles?sym=${encodeURIComponent(csym)}&tf=${ctf}`);
-  if (!d.candles || want !== csym + ctf) return;
+  const want = csym + ctf; let e = CC.get(want);
+  if (cGoster !== want) {  // coin/zaman dilimi degisti: once eldeki mum, yoksa "yukleniyor"; eski coinin cizgileri kalmasin
+    cGoster = want; cLines.forEach(l => cS.removePriceLine(l)); cLines = []; cLinesK = cMarkK = ""; cS.setMarkers([]);
+    cSet(e ? e.c : []); if (e && fit) cC.timeScale().fitContent();
+    if (!e) $("#cinfo").textContent = `${csym} yükleniyor...`;
+  }
+  const tam = fit || !e?.c.length || Date.now() - e.t > 60000;  // tam yukleme: coin/zaman dilimi degisince ve 60 sn'de bir
+  const d = await api(`/api/candles?sym=${encodeURIComponent(csym)}&tf=${ctf}${tam ? "" : "&son=1"}`);
+  if (want !== csym + ctf) return;
+  if (!d.candles) { if (!CC.get(want)?.c.length) $("#cinfo").textContent = `${csym} verisi alınamadı, yeniden deneniyor...`; return; }
   CEXTRA = {liq: d.liq, whale: d.whale}; renderCoinDetail();
   TP.last = d.candles[d.candles.length - 1]?.close; renderTradePanel(d.pos);
-  cS.setData(d.candles); cV.setData(d.candles.map(c => ({time: c.time, value: c.volume, color: c.close >= c.open ? "rgba(34,195,142,.35)" : "rgba(255,92,108,.35)"})));
-  cLines.forEach(l => cS.removePriceLine(l)); cLines = d.levels.map(([t, p, c]) => cS.createPriceLine({price: p, color: c, lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: t}));
-  const step = {"15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}[ctf], t0 = d.candles[0]?.time || 0;
-  cS.setMarkers(d.markers.map(m => ({...m, time: m.time - m.time % step})).filter(m => m.time >= t0).sort((a, b) => a.time - b.time));
+  e = CC.get(want);
+  if (tam || !e?.c.length || d.candles.length > 2) {
+    CC.delete(want); CC.set(want, e = {c: d.candles, t: Date.now()}); if (CC.size > 40) CC.delete(CC.keys().next().value);
+    cSet(e.c);
+  } else for (const k of d.candles) {  // eski mum gelirse atla (update hata atar)
+    const a = e.c, n = a.length - 1; if (k.time < a[n].time) continue;
+    if (k.time === a[n].time) a[n] = k; else a.push(k);
+    cS.update(k); cV.update(cVol(k));
+  }
+  const lk = JSON.stringify(d.levels);  // cizgiler ve markerlar sadece degisince yeniden kurulur
+  if (lk !== cLinesK) { cLinesK = lk; cLines.forEach(l => cS.removePriceLine(l)); cLines = d.levels.map(([t, p, c]) => cS.createPriceLine({price: p, color: c, lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: t})); }
+  const step = {"15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}[ctf], t0 = e.c[0]?.time || 0, mk = t0 + JSON.stringify(d.markers);
+  if (mk !== cMarkK) { cMarkK = mk; cS.setMarkers(d.markers.map(m => ({...m, time: m.time - m.time % step})).filter(m => m.time >= t0).sort((a, b) => a.time - b.time)); }
   if (fit) cC.timeScale().fitContent();
-  const last = d.candles[d.candles.length - 1]; $("#cinfo").innerHTML = last ? `${csym} · ${px(last.close)} · ${d.levels.length ? "bot seviyeleri gösteriliyor" : "bu coinde açık pozisyon yok"}` : "";
+  const last = e.c[e.c.length - 1]; $("#cinfo").innerHTML = last ? `${csym} · ${px(last.close)} · ${d.levels.length ? "bot seviyeleri gösteriliyor" : "bu coinde açık pozisyon yok"}` : "";
 }
 /* ---------- islem paneli: grafikten stop/hedef sec, Manuel Kilit, elle alis ---------- */
 const TP = {pick: null, sig: "", last: null, pos: null, drafts: []};
@@ -1034,7 +1069,7 @@ const mcBar = (m, small) => !m || m.error ? `<div class="dim" style="font-size:1
   `<div class="mcb${small ? " sm" : ""}" title="Hedef önce %${fmt(m.tp * 100, 1)} · Stop önce %${fmt(m.stop * 100, 1)} · Nötr %${fmt(m.neutral * 100, 1)}"><i class="g" style="width:${m.tp * 100}%"></i><i class="r" style="width:${m.stop * 100}%"></i><i class="n" style="width:${m.neutral * 100}%"></i></div>` +
   (small ? "" : `<div class="mcl"><span class="up">Hedef önce %${fmt(m.tp * 100, 1)}</span> · <span class="down">Stop önce %${fmt(m.stop * 100, 1)}</span> · <span class="mute">Nötr %${fmt(m.neutral * 100, 1)}</span> · beklenen ${sg(m.ev_r, 2, "R")}</div>`);
 let MCT = null;
-function mcLoad() { clearTimeout(MCT); MCT = setTimeout(async () => {
+function mcLoad() { if (AGR) return; clearTimeout(MCT); MCT = setTimeout(async () => {
   const el = $("#tpmc"); if (!el) return;
   const sl = $("#tp-sl")?.value, tp = $("#tp-tp")?.value, q = TP.pos ? "" : (sl ? `&stop=${sl}` : "") + (tp ? `&tp=${tp}` : "");
   el.innerHTML = '<div class="dim" style="font-size:11.5px">🎲 10.000 olası yol simüle ediliyor...</div>';
@@ -1044,7 +1079,7 @@ function mcLoad() { clearTimeout(MCT); MCT = setTimeout(async () => {
   } catch (e) { el.innerHTML = ""; } }, 700); }
 const MCR = {};
 async function mcRadar() {  // radarin ilk 10 satiri: varsayilan plan, 5 dk onbellek
-  if (mcRadar.busy) return; mcRadar.busy = true;
+  if (AGR || mcRadar.busy) return; mcRadar.busy = true;
   try { await mcRadarRun(); } finally { mcRadar.busy = false; }
 }
 async function mcRadarRun() {
@@ -1064,6 +1099,7 @@ function tpDraw() {  // taslak cizgiler (kaydedilmemis yeni stop/hedef)
 function tpPick(k) { TP.pick = TP.pick === k ? null : k; $("#candle").classList.toggle("picking", !!TP.pick);
   $$(".tp-pick").forEach(b => b.classList.toggle("pick", b.dataset.k === TP.pick)); if (TP.pick) toast(`Grafikte ${k === "sl" ? "stop" : "hedef"} seviyesine tıklayın.`); }
 function renderTradePanel(pos) {
+  if (AGR) return;
   TP.pos = pos || null;
   const sig = csym + "|" + ACCT + "|" + JSON.stringify(pos || {});
   if (sig === TP.sig || document.activeElement?.closest?.("#tpanel")) return;  // yazarken yeniden cizme
@@ -1129,7 +1165,7 @@ let CEXTRA = {};
 function renderCoinDetail() {
   const r = SCR.find(x => x.sym === csym) || {}, X = CEXTRA || {}, lq = X.liq, wh = X.whale;
   const lqtxt = side => (lq?.[side] || []).slice(0, 3).map(([p, w]) => `${px(p)} <span class="dim">(${Math.round(w * 100)})</span>`).join(" · ") || "-";
-  $("#cdet").innerHTML = [["Fiyat", px(r.price)], ["24s değişim", sg(r.chg24)], ["24s hacim", big(r.qvol) + " $"], ["Teknik 15dk/1s", techs(r.tech, ["15m", "1h"])], ["Teknik 4s/1g", techs(r.tech, ["4h", "1d"])],
+  const html = [["Fiyat", px(r.price)], ["24s değişim", sg(r.chg24)], ["24s hacim", big(r.qvol) + " $"], ["Teknik 15dk/1s", techs(r.tech, ["15m", "1h"])], ["Teknik 4s/1g", techs(r.tech, ["4h", "1d"])],
     ["RSI (1s)", r.rsi == null ? "-" : Math.round(r.rsi)], ["Fonlama", r.funding == null ? "-" : sg(r.funding * 100, 4)], ["Alıcı akışı (24s)", r.flow24 == null ? "-" : sg(r.flow24 * 100, 1)],
     ["Açık pozisyon 24s", r.oi24 == null ? "-" : sg(r.oi24 * 100, 1)], ["Sıkışma", r.squeeze == null ? "-" : "%" + Math.round(r.squeeze * 100)],
     ["Emir defteri", r.ob == null ? "-" : `%${Math.round(r.ob * 100)} alıcı (ilk 20 kademe) · spread %${fmt(r.spread, 3)}`], ["ML olasılığı", r.p == null ? "-" : "%" + Math.round(r.p * 100)],
@@ -1138,6 +1174,7 @@ function renderCoinDetail() {
     ["Long likidasyon (altta)", lq ? `<span class="down">${lqtxt("long")}</span>` : '<span class="dim">vadeli verisi yok</span>'],
     ["Short likidasyon (üstte)", lq ? `<span class="up">${lqtxt("short")}</span>` : "-"]]
     .map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join("");
+  if ($("#cdet").dataset.v !== html) { $("#cdet").innerHTML = html; $("#cdet").dataset.v = html; }
 }
 
 /* ---------- islemler ---------- */
@@ -1442,7 +1479,8 @@ $("#acctseg").onclick = e => { const a = e.target.dataset.a; if (!a || a === ACC
 $("#me").onclick = e => {
   const m = document.createElement("div"); m.className = "menu"; const r = $("#me").getBoundingClientRect();
   m.style.left = r.left + "px"; m.style.bottom = (innerHeight - r.top + 6) + "px";
-  m.innerHTML = `<button onclick="pickAvatar()">Profil fotoğrafı seç</button><button onclick="go('settings')">Ayarlar ve şifre</button><button onclick="openPal()">Hızlı geçiş (Ctrl+K)</button><button onclick="logout()">Çıkış yap</button>`;
+  m.innerHTML = (AGR ? "" : `<button onclick="pickAvatar()">Profil fotoğrafı seç</button><button onclick="go('settings')">Ayarlar ve şifre</button>`) + `<button onclick="openPal()">Hızlı geçiş (Ctrl+K)</button>` +
+    (BOT_HOST ? `<div class="dim" style="padding:6px 12px 2px;font-size:11px">Hesap değiştir</div>` + BOTLAR.map(b => `<button onclick="botGit('${b}')">${b === BOT_AD ? "✓ " : ""}${b}</button>`).join("") : "") + `<button onclick="logout()">Çıkış yap</button>`;
   document.body.appendChild(m); setTimeout(() => addEventListener("click", () => m.remove(), {once: true}), 0);
 };
 
@@ -1452,12 +1490,12 @@ function openPal() { $("#pal").classList.add("open"); $("#palq").value = ""; ren
 function closePal() { $("#pal").classList.remove("open"); }
 function renderPal() {
   const q = $("#palq").value.trim().toLowerCase();
-  palList = [...PAGES.filter(p => allowed(p[0])).map(p => ({k: "page", id: p[0], t: p[1], s: "sayfa · Shift+Enter sağ panele"})), ...SCR.map(r => ({k: "coin", id: r.sym, t: r.sym, s: "grafik"}))]
+  palList = [...PAGES.filter(p => allowed(p[0])).map(p => ({k: "page", id: p[0], t: p[1], s: "sayfa · Shift+Enter sağ panele"})), ...(BOT_HOST ? BOTLAR.map(b => ({k: "bot", id: b, t: "Hesap: " + b, s: b === BOT_AD ? "şu anki hesap" : "hesap değiştir"})) : []), ...SCR.map(r => ({k: "coin", id: r.sym, t: r.sym, s: "grafik"}))]
     .filter(x => !q || x.t.toLowerCase().includes(q) || x.id.toLowerCase().includes(q)).slice(0, 30);
   palSel = Math.min(palSel, Math.max(0, palList.length - 1));
   $("#palitems").innerHTML = palList.map((x, i) => `<div class="it${i === palSel ? " sel" : ""}" data-i="${i}">${x.k === "page" ? `<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--acc);fill:none;stroke-width:1.8">${ICON[x.id]}</svg>` : "◆"} ${esc(x.t)}<small>${x.s}</small></div>`).join("") || '<div class="dim" style="padding:12px">Sonuç yok</div>';
 }
-function palGo(i, dock) { const x = palList[i]; if (!x) return; closePal(); if (x.k === "page") { if (dock) dockAdd(x.id); else { PREV = TAB; go(x.id); } } else openChart(x.id); }
+function palGo(i, dock) { const x = palList[i]; if (!x) return; closePal(); if (x.k === "bot") botGit(x.id); else if (x.k === "page") { if (dock) dockAdd(x.id); else { PREV = TAB; go(x.id); } } else openChart(x.id); }
 $("#palq").oninput = () => { palSel = 0; renderPal(); };
 $("#palitems").onclick = e => { const it = e.target.closest(".it"); if (it) palGo(+it.dataset.i); };
 $("#pal").onclick = e => { if (e.target.id === "pal") closePal(); };
@@ -1470,22 +1508,49 @@ document.addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); palGo(palSel, e.shiftKey); }
 });
 
+/* ---------- agresif karne (sadece window.KISILIK) ---------- */
+async function loadAgr() {
+  const d = await api("/api/agresif"), R = Object.entries(d.kurallar || {});
+  const tablo = (bas, sat, bos) => sat.length ? `<table><tr>${bas}</tr>${sat.join("")}</table>` : `<div class="big-empty" style="padding:14px">${bos}</div>`;
+  const html = `<div class="banner bad" style="display:block">${esc(d.uyari)}</div>
+    <div class="kpis"><div class="kpi hero"><small>Sanal kasa</small><b>${fmt(d.kasa)} $</b><span>başlangıç ${fmt(d.baslangic)} $</span></div>
+      <div class="kpi"><small>Kasa getirisi</small><b>${sg(d.kasa_pct)}</b><span>aynı dönem BTC ${sg(d.btc_pct)}</span></div>
+      <div class="kpi"><small>Kapanan işlem</small><b>${d.n ?? 0}</b><span>değerlendirme için en az 100</span></div>
+      <div class="kpi"><small>Son kural taraması</small><b>${d.son ? ago(d.son) : "-"}</b><span>${d.evren ?? 0} likit coin (${d.radar_n ?? 0} radar) · BTC ${d.btc_ust == null ? "-" : d.btc_ust ? "100 gün üstü" : "100 gün altı"}</span></div></div>
+    ${d.hata ? `<div class="banner" style="display:block">Son taramada hata: ${esc(d.hata)}</div>` : ""}${d.engel ? `<div class="banner" style="display:block">Yeni işlem kapalı: ${esc(d.engel)}</div>` : ""}
+    <div class="card"><h3>Kural karşılaştırma<span class="grow"></span><button class="btn sm danger" onclick="agrSifirla()">Kasa sıfırla</button></h3>${tablo(`<th>Kural</th><th class="r">Geçmiş test</th><th class="r">İşlem</th><th class="r">Kazanma</th><th class="r">Net USDT</th><th class="r">Ort. işlem</th><th class="r">Açık / slot</th><th class="hide-sm">Çıkışlar</th>`,
+      R.map(([k, v]) => `<tr title="${esc(v.kural)}"><td><b>${esc(v.ad)}</b><div class="dim" style="font-size:11.5px;white-space:normal">${esc(v.kural)}</div></td><td class="r">${sg(v.test, 1)}</td><td class="r">${v.n}</td><td class="r">${v.kazanma == null ? "-" : "%" + fmt(v.kazanma, 0)}</td><td class="r">${sg(v.net, 2, "")}</td><td class="r">${sg(v.ort_pct)}</td><td class="r">${v.acik} / ${v.slot}</td><td class="hide-sm dim" style="font-size:11.5px">${Object.entries(v.cikis).map(([a, n]) => `${esc(REASON[a] || a)} ${n}`).join(" · ") || "-"}</td></tr>`), "Veri yok.")}</div>
+    <div class="card"><h3>Açık pozisyonlar</h3>${tablo(`<th>Coin</th><th>Kural</th><th class="r">Giriş</th><th class="r">Şimdi</th><th class="r">Stop</th><th class="r">Hedef</th><th class="r">Net</th><th class="r">Kalan</th>`,
+      (d.acik || []).map(p => `<tr class="click" title="${esc(p.why)}" onclick="openChart('${esc(p.sym)}')"><td><b>${esc(base(p.sym))}</b></td><td>${esc(p.kural)}</td><td class="r">${px(p.giris)}</td><td class="r">${px(p.fiyat)}</td><td class="r">${px(p.stop)}</td><td class="r">${px(p.hedef)}</td><td class="r">${sg(p.net, 2, " $")} ${sg(p.net_pct)}</td><td class="r">${p.kalan == null ? "-" : kalan(p.kalan)}</td></tr>`), "Açık pozisyon yok.")}</div>
+    <div class="card"><h3>Geri test bekleyenler (izleme)</h3>${tablo(`<th>Coin</th><th class="r">Seviye</th><th class="r">Kırılım</th><th class="r">Hacim</th><th class="r">Geçersiz altı</th><th class="r">Kalan mum</th>`,
+      (d.izleme || []).map(z => `<tr class="click" onclick="openChart('${esc(z.sym)}')"><td><b>${esc(base(z.sym))}</b></td><td class="r">${px(z.L)}</td><td class="r">${tm(z.t)}</td><td class="r">${fmt(z.vspike, 1)}x</td><td class="r">${px(z.gecersiz)}</td><td class="r">${z.kalan}</td></tr>`), "Şu an geri test bekleyen kırılım yok.")}</div>
+    <div class="card"><h3>Son senaryolar</h3>${(d.senaryolar || []).map(x => `<div class="note"><time>${tm(x.t)}</time><span><span class="tag">${esc(AGRK[x.kind] || x.kind)}</span></span><div><b>${esc(base(x.sym))}</b> · ${esc(x.durum)}${x.metin ? `<div class="dim" style="font-size:12px;white-space:normal">${esc(x.metin)}</div>` : ""}</div></div>`).join("") || `<div class="big-empty" style="padding:14px">Henüz senaryo yok (kurallar saat başında çalışır).</div>`}</div>`;
+  if ($("#agrwrap").dataset.v !== html) { $("#agrwrap").innerHTML = html; $("#agrwrap").dataset.v = html; }
+}
+async function agrSifirla() { await paperReset(); loadAgr().catch(() => {}); }
+
 /* ---------- canli dongu ---------- */
 async function tick() {
   if (!ME) return;
-  try { S = await api("/api/state"); renderHome(S); renderChatBanner(S); if (visible("bt")) renderBT(); if (visible("trades") && S.ready) renderPositions(S, "#pos2"); }
-  catch (e) { if (e.message !== "401") { $("#status").textContent = "Motora bağlanılamıyor"; $("#dot").className = "dot err"; } }
+  try { S = await api("/api/state"); if (visible("home")) renderHome(S); else renderHeader(S); if (S.ready) noteToasts(S); renderChatBanner(S); if (visible("bt")) renderBT(); if (visible("trades") && S.ready) renderPositions(S, "#pos2"); }
+  catch (e) { if (e.message !== "401" && e.message !== "kapali") { $("#status").textContent = "Motora bağlanılamıyor"; $("#dot").className = "dot err"; } }
 }
-const every = (ms, fn) => { const run = async () => { try { if (ME) await fn(); } catch {} setTimeout(run, ms); }; run(); };
+const every = (ms, fn) => { const run = async () => { try { if (ME && !document.hidden) await fn(); } catch {} setTimeout(run, ms); }; run(); };
 async function boot() {
   const me = await api("/api/auth/me");
   if (!me.user) return showLogin(me.setup);
   ME = me; $("#login").classList.add("hide"); setTimeout(() => $("#login").hidden = true, 400);
   $("#mename").textContent = me.user; $("#merole").textContent = me.role === "admin" ? "Admin · tüm araçlar" : "Kullanıcı · gerçek hesap"; $("#av").textContent = me.user.slice(0, 2).toUpperCase(); paintAvatars();
-  $$("[data-admin]").forEach(el => el.hidden = me.role !== "admin");
-  ACCT = me.role === "admin" ? load("kqb.acct", "PAPER") : "LIVE";
+  $$("[data-admin]").forEach(el => el.hidden = me.role !== "admin" || AGR);
+  ACCT = AGR ? "PAPER" : me.role === "admin" ? load("kqb.acct", "PAPER") : "LIVE";
+  if (AGR) {  // gizleme kolaylik icindir; koruma agresif.py kapisinda
+    $("#merole").textContent = "Sanal deney · gerçek para yok"; document.title = "KriptoQuantBot · Agresif";
+    $("#acctpill").innerHTML = '<i class="dot still" style="background:var(--warn)"></i>SANAL · gerçek para yok';
+    ["#pfbody", "#kasa", "#tpanel"].forEach(s => { $(s).closest(".card").style.display = "none"; });
+    $("#regime").style.display = "none";
+  }
   buildNav(); DOCK = load("kqb.dock." + me.user, []); TAB = load("kqb.tab." + me.user, "home"); if (!allowed(TAB) || DOCK.includes(TAB)) TAB = "home";
-  layout(); await tick(); loadScreener().catch(() => {}); loadChat().catch(() => {}); loadPF().catch(() => {}); $$("section.page").forEach(s => visible(s.id) && s.id !== "home" && show(s.id));
+  layout(); await tick(); loadScreener().catch(() => {}); if (!AGR) { loadChat().catch(() => {}); loadPF().catch(() => {}); } $$("section.page").forEach(s => visible(s.id) && s.id !== "home" && show(s.id));
   toast(`Hoş geldin, ${me.user}.`, "up", 2500);
 }
 every(1000, tick);
@@ -1498,7 +1563,8 @@ every(20000, () => visible("news") && loadNews());
 every(15000, () => visible("opps") && loadOpps());
 every(30000, () => visible("macro") && loadMacro());
 every(15000, () => visible("lessons") && loadLessons());
-every(30000, () => visible("home") && loadPF().catch(() => {}));
+every(30000, () => !AGR && visible("home") && loadPF().catch(() => {}));
+every(5000, () => AGR && visible("agresif") && loadAgr());
 every(3000, () => visible("settings") && loadTelegram());
 function win(a) {  // masaustu pencere dugmeleri: pywebview koprusu (istemci/sunucu), yoksa yerel API
   if (window.pywebview?.api?.win) return window.pywebview.api.win(a);

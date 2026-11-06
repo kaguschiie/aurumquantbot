@@ -19,9 +19,10 @@ a.b:hover{border-color:var(--acc)}a.b span{display:block;color:var(--mute);font-
 <body>
 <div class="c">
   <h1>Hangi bot?</h1>
-  <p>Seçimin bu cihazda hatırlanır. Değiştirmek için uygulamada Ayarlar → Hesabım → Bot değiştir.</p>
+  <p>Seçimin bu cihazda hatırlanır. Değiştirmek için uygulamada kullanıcı menüsü → Hesap değiştir.</p>
   <a class="b" href="#" data-bot="melik">Melik'in botu<span>melik.<i class="h"></i></span></a>
   <a class="b" href="#" data-bot="fatih">Fatih'in botu<span>fatih.<i class="h"></i></span></a>
+  <a class="b" href="#" data-bot="agresif">Agresif (sadece sanal)<span>agresif.<i class="h"></i></span></a>
 </div>
 <script>
 const K = "kqb.bot", host = location.host;
@@ -29,7 +30,11 @@ document.querySelectorAll("i.h").forEach(e => e.textContent = host);
 let saved = null;
 try { saved = localStorage.getItem(K); } catch (e) {}
 const go = b => location.replace(location.protocol + "//" + b + "." + host + "/");
-if (saved && !location.search.includes("sec")) go(saved);
+const git = new URLSearchParams(location.search).get("git");  // uygulamadan hesap degistirme; sadece listedeki botlar
+if (git && [...document.querySelectorAll("a.b")].some(a => a.dataset.bot === git)) {
+  try { localStorage.setItem(K, git); } catch (e) {}
+  go(git);
+} else if (saved && !location.search.includes("sec")) go(saved);
 document.querySelectorAll("a.b").forEach(a => a.onclick = e => {
   e.preventDefault();
   try { localStorage.setItem(K, a.dataset.bot); } catch (err) {}
