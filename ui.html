@@ -474,8 +474,13 @@ if (AGR) {
 const AGR_SAYFA = ["home", "chartp", "opps", "trades", "notes", "agresif"], AGRK = {agr_radar: "Radar", agr_senaryo: "Senaryo"};
 const title = t => (PAGES.find(p => p[0] === t) || [, t])[1];
 const allowed = t => AGR ? AGR_SAYFA.includes(t) : PAGES.some(p => p[0] === t && (!p[2] || ME?.role === "admin"));
-const BOTLAR = ["melik", "fatih", "agresif"], BOT_HOST = /^[a-z]+\.\d+-\d+-\d+-\d+\.sslip\.io$/.test(location.host), BOT_AD = location.host.split(".")[0];
-const botGit = b => { location.href = `${location.protocol}//${location.host.split(".").slice(1).join(".")}/?sec=1&git=${b}`; };
+const BOT_HOST = /^[a-z]+\.\d+-\d+-\d+-\d+\.sslip\.io$/.test(location.host), BOT_AD = location.host.split(".")[0];
+// melik ve fatih birbirine baglanmaz: her biri sadece agresife gecer; agresif sadece geldigi hesaba doner
+const GERI = (() => { let g = (location.hash.match(/^#geri=(melik|fatih)$/) || [])[1];
+  try { if (g) { localStorage.setItem("kqb.geri", g); history.replaceState(null, "", location.pathname + location.search); } else g = localStorage.getItem("kqb.geri"); } catch (e) {}
+  return ["melik", "fatih"].includes(g) ? g : null; })();
+const BOTLAR = BOT_AD === "agresif" ? ["agresif", ...(GERI ? [GERI] : [])] : [BOT_AD, "agresif"];
+const botGit = b => { if (b === BOT_AD) return; location.href = `${location.protocol}//${b}.${location.host.split(".").slice(1).join(".")}/` + (b === "agresif" ? `#geri=${BOT_AD}` : ""); };
 const visible = t => TAB === t || DOCK.includes(t);
 const store = (k, v) => { try { v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
@@ -504,6 +509,10 @@ function showLogin(setup) {
   ME = null; SETUP = !!setup; $("#login").classList.remove("hide"); $("#login").hidden = false;
   $("#ltitle").textContent = SETUP ? "Kurulum: admin hesabı" : "Giriş yap";
   $("#lsub").textContent = SETUP ? "İlk çalıştırma. Tüm ayarlara erişen admin hesabını oluşturun." : "Hesabınızla devam edin.";
+  if (BOT_HOST && !SETUP) {  // her botun hesabi ayri: yanlis bota sifre girilmesin
+    const ad = {melik: "Melik'in botu", fatih: "Fatih'in botu", agresif: "Agresif (sanal)"}[BOT_AD] || BOT_AD;
+    $("#lsub").innerHTML = `Bu sayfa: <b>${esc(ad)}</b>. Sadece bu botun hesabıyla girilir. <a href="${location.protocol}//${location.host.split(".").slice(1).join(".")}/?sec=1">Başka bot seç</a>`;
+  }
   $("#lbtn").textContent = SETUP ? "Admin hesabını oluştur" : "Giriş yap"; $("#lp2").hidden = !SETUP;
   $("#lpass").autocomplete = SETUP ? "new-password" : "current-password"; setTimeout(() => $("#luser").focus(), 50);
 }
