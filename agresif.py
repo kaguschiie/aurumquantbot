@@ -63,10 +63,13 @@ app.mode_for = lambda sess, q: "PAPER"
 app.migrate_old_files = lambda: None  # kod klasorundeki dosyalar veri klasorune tasinmasin
 
 log = logging.getLogger("bot")
-KURAL = {"agr_radar": {"ad": "Radar", "slot": 4, "test": -98.6, "kural": "Taze GÜÇLÜ AL (1s); stop 1,5 ATR, hedef 3 ATR, GÜÇLÜ SAT'ta çık, en çok 48 sa"},
-         "agr_senaryo": {"ad": "Senaryo", "slot": 4, "test": -82.1, "kural": "Tüm likit coinlerde 24 sa zirve kırılımı + hacim, geri test; BTC 100 gün üstü; hedef 2R, en çok 48 sa"}}
-UYARI = ("Ölçüm deneyi, kâr hedefi değil. 36 kuralın hepsi geçmiş testte zarar etti: en iyisi -%82, radar saf hali -%98,6, aynı dönemde BTC +%13,3; "
-         "hepsi rastgele girişin de altında. Sadece sanal kasa, gerçek para yok.")
+KURAL = {"agr_radar": {"ad": "Radar", "slot": 4, "test": -99.8, "saat": 12,
+                       "kural": "Taze GÜÇLÜ AL (1s); 1 saat sonra kapanış girişin %0,5 üstündeyse sat, stop -%3, en çok 12 sa"},
+         "agr_senaryo": {"ad": "Senaryo", "slot": 4, "test": -82.1, "saat": 48, "kural": "Tüm likit coinlerde 24 sa zirve kırılımı + hacim, geri test; BTC 100 gün üstü; hedef 2R, en çok 48 sa"}}
+UYARI = ("Ölçüm deneyi, kâr hedefi değil. 47 kuralın hepsi geçmiş testte zarar etti (hızlı kâr alanlar dahil, komisyonsuz da): en iyisi -%82, "
+         "aynı dönemde BTC +%13,3. Kârda hemen satmak kazanma oranını yükseltir ama küçük kazanç / büyük kayıp kasayı eritir. "
+         "Karar 100+ işlemden sonra. Sadece sanal kasa, gerçek para yok.")
+KAR_ESIK, RADAR_STOP = 0.005, 0.03
 GET_IZIN = {"/", "/lw.js", "/api/app", "/api/health", "/api/auth/me", "/api/state", "/api/screener", "/api/opps", "/api/trades",
             "/api/notes", "/api/decisions", "/api/candles", "/api/agresif"}
 POST_IZIN = {"/api/auth/login", "/api/auth/logout", "/api/pause", "/api/close", "/api/paper/reset"}
@@ -222,12 +225,13 @@ class AgresifBot(B.Bot):
         self._temizle()
         with self.lock:
             radar_poz = [s for s, p in a.st["positions"].items() if p.get("kind") == "agr_radar"]
-        for s in radar_poz:  # radar disina cikmis coinde de okunur
+        for s in radar_poz:  # hizli kar: en az bir kapanmis mum tutuldu ve son kapanis girisin %0,5 ustunde (test: k_1s_kar0.5_sl3_12s)
             try:
                 d = kapali(s)
-                if len(d) >= 61 and T.rating(d)["rec"] < -.5:
-                    with self.lock:
-                        a.close(s, "AGRESIF_SAT")
+                with self.lock:
+                    p = a.st["positions"].get(s)
+                    if p and len(d) and time.time() - p["t"] >= 3000 and float(d["close"].iloc[-1]) >= p["entry"] * (1 + KAR_ESIK):
+                        a.close(s, "AGRESIF_KAR")
             except Exception as e:
                 hata.append(f"{s}: {str(e)[:80]}")
         rows = sorted((r for r in self.tech.opps if (r.get("qvol") or 0) >= C.RADAR_MIN_VOL), key=lambda r: -(r.get("score") or 0))
@@ -267,9 +271,10 @@ class AgresifBot(B.Bot):
     @staticmethod
     def _radar_plan(s, ask, rt):
         at = float(np.clip(rt.get("atr_pct") or 0.02, 0.004, 0.06))
-        stop, hedef = ask * (1 - 1.5 * at), ask * (1 + 3 * at)
+        stop, hedef = ask * (1 - RADAR_STOP), ask * 1.5  # testte sabit hedef yok; +%50 sadece ust sinir
         return stop, hedef, at, (f"SENARYO (Radar): {s} 1 saatlik teknik özet bu mumda GÜÇLÜ AL'a döndü (puan {rt['rec']:+.2f}), önceki mumda değildi. "
-                                 f"Giriş {_f(ask)}, stop {_f(stop)} (1,5 ATR), hedef {_f(hedef)} (3 ATR), en çok 48 saat. Geçersiz: stop veya 1s GÜÇLÜ SAT.")
+                                 f"Giriş {_f(ask)}, stop {_f(stop)} (-%3). Saat başı kapanış girişin %0,5 üstündeyse kâr alınır "
+                                 f"(en erken 1 saat sonra), en çok 12 saat tutulur.")
 
     @staticmethod
     def _senaryo_plan(s, ask, sg):
@@ -304,8 +309,8 @@ class AgresifBot(B.Bot):
                 self.extra.add(s)
             stop, hedef, at, metin = plan_fn(s, t["ask"], sinyal)
             en_az = (m.get("limits", {}).get("cost", {}).get("min") or 5) * 1.05
-            plan = {"stop": stop, "tp1": 0.0, "tp2": hedef, "risk_pct": C.RISK_PCT, "max_hours": 48, "entry": "taker", "kind": kind, "manual": True,
-                    "sure_h": 48, "atr_pct": at, "conviction": None, "p": None, "reason": metin}
+            plan = {"stop": stop, "tp1": 0.0, "tp2": hedef, "risk_pct": C.RISK_PCT, "max_hours": KURAL[kind]["saat"], "entry": "taker", "kind": kind, "manual": True,
+                    "sure_h": KURAL[kind]["saat"], "atr_pct": at, "conviction": None, "p": None, "reason": metin}
             with self.lock:
                 plan["usdt"] = max(a.equity() / 8, en_az)
                 err = a.enter(s, plan)
@@ -344,7 +349,8 @@ def karne():
         out["acik"].append({"sym": s, "kind": p.get("kind"), "kural": (KURAL.get(p.get("kind")) or {}).get("ad", "-"), "giris": p["entry"], "fiyat": px, "stop": p["sl"],
                             "hedef": p["tp"], "net": net, "net_pct": net / (p["qty0"] * p["entry"]) * 100, "kalan": max(p["sure_t"] - time.time(), 0) if p.get("sure_t") else None,
                             "why": p.get("why", "")})
-    out.update(hazir=True, kasa=eq, baslangic=bas, kasa_pct=(eq / bas - 1) * 100 if bas else None, btc_pct=(btc1 / btc0 - 1) * 100 if btc0 and btc1 else None,
+    kom = sum(x.get("qty", 0) * (x.get("entry", 0) + x.get("exit", 0)) * C.FEE for x in tr) + sum(p["fee"] for p in poz.values())  # Binance spot: her yon %0,1
+    out.update(komisyon=kom, fee=C.FEE * 100, kayma=C.SLIPPAGE * 100, hazir=True, kasa=eq, baslangic=bas, kasa_pct=(eq / bas - 1) * 100 if bas else None, btc_pct=(btc1 / btc0 - 1) * 100 if btc0 and btc1 else None,
                donem=curve[0][0] if curve else None, n=len(tr), engel=durdu, senaryolar=agr.get("senaryolar", [])[::-1], izleme=agr.get("izleme", []),
                son=agr.get("son"), hata=agr.get("hata"), btc_ust=agr.get("btc_ust"), evren=agr.get("evren"), radar_n=agr.get("radar_n"))
     return out

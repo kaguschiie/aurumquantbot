@@ -455,7 +455,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&
 const base = s => s.split("/")[0];
 const REG = {trend: ["Yükseliş trendi", "up"], yatay: ["Yatay", "warn"], dusus: ["Sert düşüş", "down"]};
 const KINDS = {hepsi: "Hepsi", karar: "Kararlar", bekleme: "Beklemeler", islem: "İşlemler", kalkan: "Kalkan", radar: "Radar", oz: "Öz-değerlendirme", egitim: "Eğitim", uyari: "Uyarılar", sistem: "Sistem"};
-const REASON = {HEDEF: "Hedef", STOP: "Stop", IZ_STOP: "İz süren stop", BASABAS: "Başabaş", SURE_DOLDU: "Süre doldu", AGRESIF_SAT: "1s güçlü sat", CLAUDE_KAPATTI: "Claude kapattı", ELLE_KAPATILDI: "Elle kapatıldı", ZAMAN_ASIMI: "Zaman aşımı", ZAMAN_STOPU: "Zaman stopu", BALINA_SATIS: "Balina satışı", PORTFOY_CIKIS: "Portföy dengeleme", HABER_ACIL: "Haber: acil satış", KESINTI: "Uygulama kapalıyken", GUNLUK_CIKIS: "10 günlük dip"};
+const REASON = {HEDEF: "Hedef", STOP: "Stop", IZ_STOP: "İz süren stop", BASABAS: "Başabaş", SURE_DOLDU: "Süre doldu", AGRESIF_SAT: "1s güçlü sat", AGRESIF_KAR: "Hızlı kâr", CLAUDE_KAPATTI: "Claude kapattı", ELLE_KAPATILDI: "Elle kapatıldı", ZAMAN_ASIMI: "Zaman aşımı", ZAMAN_STOPU: "Zaman stopu", BALINA_SATIS: "Balina satışı", PORTFOY_CIKIS: "Portföy dengeleme", HABER_ACIL: "Haber: acil satış", KESINTI: "Uygulama kapalıyken", GUNLUK_CIKIS: "10 günlük dip"};
 const ICON = {home: '<path d="M3 12l9-8 9 8M5 10v10h14V10"/>', chartp: '<path d="M6 4v16M6 8h-2v6h2M12 6v14M12 10h-2v4h2M18 3v18M18 7h-2v8h2"/>',
   screen: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>', opps: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6.5-6.5"/>',
   macro: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
@@ -1525,6 +1525,7 @@ async function loadAgr() {
     <div class="kpis"><div class="kpi hero"><small>Sanal kasa</small><b>${fmt(d.kasa)} $</b><span>başlangıç ${fmt(d.baslangic)} $</span></div>
       <div class="kpi"><small>Kasa getirisi</small><b>${sg(d.kasa_pct)}</b><span>aynı dönem BTC ${sg(d.btc_pct)}</span></div>
       <div class="kpi"><small>Kapanan işlem</small><b>${d.n ?? 0}</b><span>değerlendirme için en az 100</span></div>
+      <div class="kpi"><small>Ödenen komisyon</small><b>${fmt(d.komisyon)} $</b><span>Binance spot her alış ve satışta %${fmt(d.fee, 2)} · stop/piyasa çıkışında +%${fmt(d.kayma, 2)} kayma</span></div>
       <div class="kpi"><small>Son kural taraması</small><b>${d.son ? ago(d.son) : "-"}</b><span>${d.evren ?? 0} likit coin (${d.radar_n ?? 0} radar) · BTC ${d.btc_ust == null ? "-" : d.btc_ust ? "100 gün üstü" : "100 gün altı"}</span></div></div>
     ${d.hata ? `<div class="banner" style="display:block">Son taramada hata: ${esc(d.hata)}</div>` : ""}${d.engel ? `<div class="banner" style="display:block">Yeni işlem kapalı: ${esc(d.engel)}</div>` : ""}
     <div class="card"><h3>Kural karşılaştırma<span class="grow"></span><button class="btn sm danger" onclick="agrSifirla()">Kasa sıfırla</button></h3>${tablo(`<th>Kural</th><th class="r">Geçmiş test</th><th class="r">İşlem</th><th class="r">Kazanma</th><th class="r">Net USDT</th><th class="r">Ort. işlem</th><th class="r">Açık / slot</th><th class="hide-sm">Çıkışlar</th>`,
