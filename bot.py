@@ -411,6 +411,8 @@ class Account:
             return self.error or "Binance bakiyesi bekleniyor"
         if os.path.exists(C.pause_flag(self.mode)):
             return "duraklatıldı"
+        if self.nostop():
+            return self.nostop()
         if HB.peg_why():
             return HB.peg_why()
         if time.time() < st["pause_until"]:
@@ -423,6 +425,11 @@ class Account:
                 len(st["pending"]) >= C.MAX_POSITIONS:
             return "pozisyon limiti dolu"
         return None
+
+    def nostop(self):
+        """Fail-closed: borsa stopu 2 dk'dan uzun kurulamayan pozisyon varken yeni alim yok (bot saniyelik izler, stop dakikada bir denenir)."""
+        bad = [s for s, p in self.st["positions"].items() if self.live and not p.get("stop_id") and time.time() - p.get("stop_err", 1e18) > 120]
+        return f"borsa stop emri kurulamadı: {', '.join(bad)} (yeni alım durdu, stop yeniden deneniyor)" if bad else None
 
     def locked(self, s):
         """Coin bazli kilit: bakiye uyusmazligi + cikistan sonra bekleme + son 48 saatte 3+ islemde net zarar (24 saat kilit)."""
@@ -561,6 +568,8 @@ class Account:
             return "admin gerçek işlem iznini açmadı"
         if side == "buy" and self.lock_err:
             return self.lock_err
+        if side == "buy" and self.nostop():  # elle alim dahil her yol
+            return self.nostop()
         if side == "buy" and not self.key_ok:
             return self.key_err or "API anahtarının izinleri henüz doğrulanmadı"
         px = price or (self.ask if side == "buy" else self.bid).get(s)
@@ -646,7 +655,7 @@ class Account:
     def _no_unknown(self, s, typ=None, act=None):
         """Bu coinde sonucu bilinmeyen emir varken yeni emir yok. Koruma bunun disinda (tam cikis: act.reason, koruma stopu): satis serbest
         bakiyeyle ve _maybe_sold ile sinirli, kilit cikisi engellemez. Tek bekleme: yolda olabilecek satis (stop icin belirsiz stop da), ORDER_HOLD_SEC."""
-        exiting, stop = bool((act or {}).get("reason")), typ == "STOP_LOSS_LIMIT"
+        exiting, stop = bool((act or {}).get("reason")), typ in ("STOP_LOSS_LIMIT", "STOP_LOSS")
         for r in self.st["orders"].values():
             if r["s"] != s:
                 continue
@@ -1515,12 +1524,21 @@ class Account:
             qty = self._sellable(s, pos["qty"] - self._maybe_sold(s))  # BNB komisyonu defterden az serbest birakabilir
             if qty <= 0:  # coinlerin tamami sonucu bilinmeyen emirde: stop kurulacak miktar yok
                 return None
-            oid = self.order(s, "STOP_LOSS_LIMIT", "sell", float(self.ex.amount_to_precision(s, qty)),
-                             float(self.ex.price_to_precision(s, sp * 0.995)),
-                             {"stopPrice": sp, "timeInForce": "GTC"}, act={"do": "stop", "sp": sp})["id"]
+            q = float(self.ex.amount_to_precision(s, qty))
+            try:
+                oid = self.order(s, "STOP_LOSS_LIMIT", "sell", q, float(self.ex.price_to_precision(s, sp * 0.995)),
+                                 {"stopPrice": sp, "timeInForce": "GTC"}, act={"do": "stop", "sp": sp})["id"]
+            except ccxt.InvalidOrder as e:  # borsa reddetti (or. PERCENT_PRICE_BY_SIDE): tetikte piyasa satisi yapan STOP_LOSS
+                if isinstance(e, FenceDeny):
+                    raise
+                log.warning("%s STOP_LOSS_LIMIT reddedildi, STOP_LOSS deneniyor: %s", s, e)
+                oid = self.order(s, "STOP_LOSS", "sell", q, None, {"stopPrice": sp}, act={"do": "stop", "sp": sp})["id"]
             pos["stop_px"] = sp
+            pos.pop("stop_err", None)
             return oid
         except ccxt.BaseError as e:
+            if not isinstance(e, OrderUnknown):
+                pos.setdefault("stop_err", time.time())  # fail-closed: kurulamazsa yeni alim durur (blocked)
             if isinstance(e, OrderUnknown):  # kilit bekliyor (en cok ORDER_HOLD_SEC): bu deneme ne dakikalik hakki ne 15 sn'lik kontrolu yesin
                 pos["stop_try"] = pos["stop_chk"] = 0
             if not quiet:

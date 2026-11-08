@@ -70,6 +70,22 @@ UYARI = ("Ölçüm deneyi, kâr hedefi değil. 47 kuralın hepsi geçmiş testte
          "aynı dönemde BTC +%13,3. Kârda hemen satmak kazanma oranını yükseltir ama küçük kazanç / büyük kayıp kasayı eritir. "
          "Karar 100+ işlemden sonra. Sadece sanal kasa, gerçek para yok.")
 KAR_ESIK, RADAR_STOP = 0.005, 0.03
+EMEKLI_N, EMEKLI_Z = 30, 1.0  # basarisiz kural otomatik dinlenmeye: en az 30 islem, islem basi net ust guven siniri < 0
+
+
+def dinlenme(trades, kind):
+    """Son 100 islemde islem basi net % (komisyon + kayma dahil) ortalamasi + 1 standart hata < 0 ise kural yeni islem acmaz.
+    Acik pozisyonlar kendi kuraliyla kapanir. Geri donus: kasa sifirlama (yeni deney). Donus: neden metni veya None."""
+    x = [t["pct"] for t in trades if t.get("kind") == kind][-100:]
+    if len(x) < EMEKLI_N:
+        return None
+    m = sum(x) / len(x)
+    se = (sum((v - m) ** 2 for v in x) / (len(x) - 1)) ** 0.5 / len(x) ** 0.5
+    if m + EMEKLI_Z * se < 0:
+        return f"kural dinlenmede: son {len(x)} işlemde işlem başı net %{m:+.2f} (güven sınırı %{m + EMEKLI_Z * se:+.2f} de negatif)"
+    return None
+
+
 ALTIN = ("PAXG", "XAUT")  # altina bagli token: kripto degil, radar kuralinda testte islem basi -%0,35
 GET_IZIN = {"/", "/lw.js", "/api/app", "/api/health", "/api/auth/me", "/api/state", "/api/screener", "/api/opps", "/api/trades",
             "/api/notes", "/api/decisions", "/api/candles", "/api/agresif"}
@@ -306,7 +322,7 @@ class AgresifBot(B.Bot):
             st = a.st
             acik = s in st["positions"] or s in st["pending"]
             dolu = sum(p.get("kind") == kind for p in [*st["positions"].values(), *st["pending"].values()]) >= KURAL[kind]["slot"]
-            neden = "zaten pozisyon var" if acik else "slot dolu" if dolu else a.blocked() or a.locked(s)
+            neden = "zaten pozisyon var" if acik else "slot dolu" if dolu else dinlenme(st["trades"], kind) or a.blocked() or a.locked(s)
         if neden:
             return kayit(f"atlandı: {neden}")
         try:
@@ -355,7 +371,7 @@ def karne():
         kaz = sum(x["pnl"] > 0 for x in t)
         out["kurallar"][k] = {**v, "n": len(t), "kazanan": kaz, "kazanma": kaz / len(t) * 100 if t else None, "net": sum(x["pnl"] for x in t),
                               "ort_pct": sum(x["pct"] for x in t) / len(t) if t else None, "elle": sum(x["reason"] == "ELLE_KAPATILDI" for x in t),
-                              "cikis": dict(collections.Counter(x["reason"] for x in t)), "acik": sum(p.get("kind") == k for p in poz.values())}
+                              "cikis": dict(collections.Counter(x["reason"] for x in t)), "acik": sum(p.get("kind") == k for p in poz.values()), "dinlenme": dinlenme(tr, k)}
     for s, p in poz.items():
         px = bid.get(s) or p["entry"]
         net = p.get("realized", 0) + p["qty"] * (px - p["entry"]) - p["fee"] - p["qty"] * px * C.FEE

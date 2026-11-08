@@ -483,6 +483,9 @@ IMG = {b"\x89PNG": ("png", "image/png"), b"\xff\xd8": ("jpg", "image/jpeg"), b"R
        b"GIF8": ("gif", "image/gif")}
 
 
+MAX_BODY = 2_000_000  # POST govdesi ust siniri (bayt)
+
+
 def avatar_file(user):
     key = re.sub(r"[^a-z0-9_.-]", "_", (user or "").lower())
     for ext in ("webp", "jpg", "png", "gif"):
@@ -639,7 +642,10 @@ class Handler(BaseHTTPRequestHandler):
         if not self._guard(True):
             return self._send(403, {"error": "forbidden"})
         try:
-            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            n = int(self.headers.get("Content-Length") or 0)
+            if not 0 <= n <= MAX_BODY:  # bellek tasirma / sonsuz okuma yok (en buyuk istek: 600 KB avatar)
+                return self._send(413, {"error": "istek cok buyuk"})
+            body = json.loads(self.rfile.read(n) or b"{}")
         except ValueError:
             return self._send(400, {"error": "gecersiz istek"})
         p = self.path

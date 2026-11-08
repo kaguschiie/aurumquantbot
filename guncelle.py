@@ -141,15 +141,36 @@ def restart(quit_cb):
     quit_cb()
 
 
+def _verify_git():
+    """git pull sonrasi, yeniden baslatmadan once: paketler kurulabildi mi, kod derlenip ana moduller yukleniyor mu. Hata metni/None."""
+    req = os.path.join(C.BASE_DIR, "requirements-sunucu.txt")
+    try:
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", req], capture_output=True, text=True, timeout=900)
+        if r.returncode:
+            return f"paket kurulumu başarısız: {(r.stderr or r.stdout).strip()[-200:]}"
+        r = subprocess.run([sys.executable, "-c", "import config, auth, bot, app"], cwd=C.BASE_DIR, capture_output=True,
+                           text=True, timeout=300, env={k: v for k, v in os.environ.items() if k != "KQB_UNIT"})
+        if r.returncode:
+            return f"yeni kod yüklenemedi: {r.stderr.strip()[-200:]}"
+    except (OSError, subprocess.SubprocessError) as e:
+        return f"doğrulama çalışmadı: {str(e)[:160]}"
+    return None
+
+
 def apply(quit_cb):
     """Indir -> SHA-256 dogrula -> cikar -> kapan; yardimci betik dosyalari degistirip yeniden acar. Hata metni/None.
     Sunucuda (git): git pull + paketler; kapanir, systemd yeniden baslatir (veri, oturumlar, Telegram korunur)."""
     if GIT:
+        old = _git("rev-parse", "HEAD").stdout.strip()
         p = _git("pull", "--ff-only", "-q", "origin", "main")
         if p.returncode:
             return f"git pull başarısız: {p.stderr.strip()[:200]}"
-        req = os.path.join(C.BASE_DIR, "requirements-sunucu.txt")
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", req], capture_output=True, timeout=900)
+        err = _verify_git()
+        if err:  # yeni kod calismayacak: eski surume geri don, servis yeniden baslatilmaz (calisan surum kalir)
+            if old:
+                _git("reset", "--hard", "-q", old)
+            log.warning("Guncelleme geri alindi (%s): %s", old[:7], err)
+            return f"Güncelleme geri alındı, eski sürüm çalışmaya devam ediyor: {err}"
         log.info("Sunucu guncellendi: %s", _git("log", "-1", "--format=%h %s").stdout.strip())
         try:  # ayni kodu kullanan diger botlar (melik, fatih...) da yeni surume gecer; bu bot asagida kendisi kapanir
             ls = subprocess.run(["systemctl", "list-units", "--type=service", "--plain", "--no-legend", "kriptoquantbot*"],
@@ -171,6 +192,8 @@ def apply(quit_cb):
     try:
         os.makedirs(DIR, exist_ok=True)
         pkg, new = os.path.join(DIR, "paket.zip"), os.path.join(DIR, "yeni")
+        if not lt["sha"]:  # dogrulanamayan paket kurulmaz
+            return "Yayında SHA-256 dosyası yok; güncelleme iptal edildi."
         _download(lt["zip"], pkg)
         if lt["sha"]:
             want = requests.get(lt["sha"]["url"] if C.UPDATE_TOKEN else lt["sha"]["browser_download_url"],
@@ -193,7 +216,8 @@ def apply(quit_cb):
         return f"İndirme/çıkarma hatası: {str(e)[:160]}"
     inst = os.path.dirname(sys.executable)
     log.info("Guncelleme %s -> %s uygulanıyor", C.VERSION, lt["version"])
-    _helper([f'cd /d "{inst}"', f'robocopy "{src}" "{inst}" /MIR /XD veri /R:10 /W:2 /NFL /NDL /NJH /NJS /NP >nul',
+    _helper([f'cd /d "{inst}"', f'robocopy "{inst}" "{os.path.join(DIR, "onceki")}" /MIR /XD veri /R:2 /W:1 /NFL /NDL /NJH /NJS /NP >nul',
+             f'robocopy "{src}" "{inst}" /MIR /XD veri /R:10 /W:2 /NFL /NDL /NJH /NJS /NP >nul',
              _relaunch_cmd(), f'rmdir /s /q "{new}"', f'del /q "{pkg}"'])
     quit_cb()
     return None

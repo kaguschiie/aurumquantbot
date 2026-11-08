@@ -330,7 +330,7 @@ def recompute():
     """Agirliklar ve kurallar son 60 gunun sonuclanmis orneklerinden yeniden hesaplanir. Donus: yeni kural dersleri."""
     since = time.time() - WINDOW_D * 86400
     with _LOCK, _db() as con:
-        rows = con.execute("SELECT src, sigs, r, feats, t FROM ornek WHERE done=1 AND r IS NOT NULL AND t>?", (since,)).fetchall()
+        rows = con.execute("SELECT src, sigs, r, feats, t, sym FROM ornek WHERE done=1 AND r IS NOT NULL AND t>?", (since,)).fetchall()
         old = {r["key"]: r["active"] for r in con.execute("SELECT key, active FROM kural")}
     data = [(frozenset(x for x in (r["sigs"] or "").split(",") if x), max(min(r["r"], 3.0), -1.5),
              REAL_W if r["src"] == "islem" else 1.0, r["src"]) for r in rows]
@@ -355,24 +355,27 @@ def recompute():
     STATE["wreg"] = {reg: {s: round(sr / w * n / (n + SHRINK), 3) for s, (w, sr, n) in d.items()}
                      for reg, d in racc.items()}
     acc = {}
-    for (sg, r, w, _), dy in zip(data, days):
+    for (sg, r, w, _), dy, row in zip(data, days, rows):
         for key in [(s,) for s in sg] + list(itertools.combinations(sorted(sg), 2)):
-            a = acc.setdefault(key, [0.0, 0.0, 0, 0.0, 0.0, set()])
+            a = acc.setdefault(key, [0.0, 0.0, 0, 0.0, 0.0, set(), set()])
             a[0], a[1], a[2], a[3], a[4] = a[0] + w, a[1] + r * w, a[2] + 1, a[3] + w * (r > 0), a[4] + r * r * w
             a[5].add(dy)
+            a[6].add((row["sym"], dy))  # ayni coin + ayni gun ornekleri ust uste biner (24 sa ufuk): bagimsiz sayilmaz
     weights, traps, golden = {}, [], []
-    for key, (w, sr, n, wins, sq, gun) in acc.items():
-        avg, win = sr / w, wins / w
-        se = max(sq / w - avg * avg, 0.0) ** 0.5 / max(n, 1) ** 0.5
-        rule = {"sigs": list(key), "n": n, "avg": round(avg, 3), "win": round(win, 3)}
+    for key, (w, sr, n, wins, sq, gun, kume) in acc.items():
+        avg, win, ne = sr / w, wins / w, len(kume)
+        se = max(sq / w - avg * avg, 0.0) ** 0.5 / max(ne, 1) ** 0.5  # guven siniri etkin (bagimsiz) ornek sayisiyla
+        rule = {"sigs": list(key), "n": n, "n_etkin": ne, "gun": len(gun), "avg": round(avg, 3), "win": round(win, 3),
+                "taban": round(base, 3), "guven_z": round((avg - base) / se, 2) if se > 0 else None, "t": round(time.time())}
         if len(key) == 1:
             weights[key[0]] = {"n": n, "avg": round(avg, 3), "win": round(win, 3),
-                               "w": round(avg * n / (n + SHRINK), 3)}
+                               "w": round(avg * ne / (ne + SHRINK), 3)}
         single = len(key) == 1
         if not (single and key[0] in CONTEXT):
-            if n >= TRAP["n1" if single else "n2"] and len(gun) >= TRAP["gun"] and avg <= min(TRAP["avg"], base - 0.15)                     and avg + Z * se < base:  # taban zaten negatifken "her sey kaybettirdi" tuzak sayilmaz
+            # taban zaten negatifken "her sey kaybettirdi" tuzak sayilmaz: tabana gore belirgin fark + tekrarlayan desen
+            if ne >= TRAP["n1" if single else "n2"] and len(gun) >= TRAP["gun"] and avg <= min(TRAP["avg"], base - 0.15)                     and avg + Z * se < base:
                 traps.append(dict(rule, kind="tuzak"))
-            if n >= GOLD["n1" if single else "n2"] and len(gun) >= GOLD["gun"] and avg >= max(GOLD["avg"], base + 0.15)                     and avg - Z * se > max(base, 0.0):
+            if ne >= GOLD["n1" if single else "n2"] and len(gun) >= GOLD["gun"] and avg >= max(GOLD["avg"], base + 0.15)                     and avg - Z * se > max(base, 0.0):
                 golden.append(dict(rule, kind="altin"))
     traps = sorted(traps, key=lambda x: x["avg"])[:12]
     golden = sorted(golden, key=lambda x: -x["avg"])[:12]

@@ -49,12 +49,20 @@ def users():
                 con.execute("SELECT name, role, created FROM users ORDER BY role, name")]
 
 
+def weak(pw):
+    """Yeni sifre kurali (2026-11-08): en az 10 karakter, harf ve rakam. Eski sifreler girise devam eder."""
+    pw = pw or ""
+    if len(pw) < 10 or not re.search(r"[^\W\d_]", pw) or not re.search(r"\d", pw):
+        return "Şifre en az 10 karakter olmalı, harf ve rakam içermeli."
+    return None
+
+
 def create(name, pw, role, first=False):
     """Hata metni veya None dondurur. first: ilk kurulum (sadece hic kullanici yokken, tek islemde)."""
     if not NAME_RE.match(name or ""):
         return "Kullanıcı adı 3-32 karakter olmalı (harf, rakam, _ . -)."
-    if len(pw or "") < 6:
-        return "Şifre en az 6 karakter olmalı."
+    if weak(pw):
+        return weak(pw)
     if role not in ROLES:
         return "Geçersiz rol."
     salt = os.urandom(16)
@@ -70,8 +78,8 @@ def create(name, pw, role, first=False):
 
 
 def set_password(name, pw):
-    if len(pw or "") < 6:
-        return "Şifre en az 6 karakter olmalı."
+    if weak(pw):
+        return weak(pw)
     salt = os.urandom(16)
     with _lock, _db() as con:
         if not con.execute("UPDATE users SET salt=?, hash=? WHERE name=?", (salt, _hash(pw, salt), name)).rowcount:
