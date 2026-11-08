@@ -34,6 +34,11 @@ def context(b, role):
                      f"acik K/Z (cikis komisyonu henuz dusulmez). Yeni islem: {a.blocked() or 'acik'}.")
             for s, p in st["positions"].items():
                 px = b.bid.get(s, p["entry"])
+                if p.get("kind") == "portfoy":  # portfoy.KIND
+                    L.append(f"- {s}: PORTFOY pozisyonu, ortalama giris {p['entry']:g} (eklemelerle guncellenir), simdi {px:g} "
+                             f"(%{(px / p['entry'] - 1) * 100:+.2f}). Hedef yok: her gun 00:05 UTC agirliga gore dengelenir, "
+                             f"sadece %35 felaket stopu var. Ilk acilis {time.strftime('%d.%m %H:%M', time.localtime(p['t']))}.")
+                    continue
                 L.append(f"- {s}: giris {p['entry']:g}, simdi {px:g} (%{(px / p['entry'] - 1) * 100:+.2f}), stop "
                          f"{p['sl']:.6g}, hedef {p['tp']:.6g}, kismi kar: {'alindi' if p.get('part') else 'yok'}, acilis "
                          f"{time.strftime('%d.%m %H:%M', time.localtime(p['t']))}. Gerekce: {(p.get('why') or '')[:200]}")

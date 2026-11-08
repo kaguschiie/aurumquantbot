@@ -25,8 +25,9 @@ REAL_W = 2.0           # gercek islem otopsisi radar orneginden 2 kat agir sayil
 SAMPLE_GAP_H = 2       # ayni coin icin iki radar ornegi arasi en az sure
 # tekli/ikili kombinasyon icin en az ornek ve ort R; kazanma orani olcut degil (cikis kuralinin urunu). Guven siniri:
 # tuzakta ust sinir < 0, altinda alt sinir > 0 (tek tuk sansli ornek kural olmasin)
-TRAP = {"n1": 12, "n2": 8, "avg": -0.15}
-GOLD = {"n1": 12, "n2": 8, "avg": 0.15}
+# 2026-11-08: 8-12 ornek tek gunluk rejimi kural sanıyordu; en az 30 ornek, 7 farkli gun ve TABANA gore fark sart
+TRAP = {"n1": 30, "n2": 30, "avg": -0.15, "gun": 7}
+GOLD = {"n1": 30, "n2": 30, "avg": 0.15, "gun": 7}
 Z = 1.28  # tek yonlu %90 guven
 CONTEXT = {"rejim_dusus", "rejim_trend", "makro_riskoff", "altin"}  # tek basina tuzak olamaz (her seyi engellerdi)
 REG_TR = {"trend": "yükseliş trendi", "yatay": "yatay", "dusus": "sert düşüş"}
@@ -329,10 +330,11 @@ def recompute():
     """Agirliklar ve kurallar son 60 gunun sonuclanmis orneklerinden yeniden hesaplanir. Donus: yeni kural dersleri."""
     since = time.time() - WINDOW_D * 86400
     with _LOCK, _db() as con:
-        rows = con.execute("SELECT src, sigs, r, feats FROM ornek WHERE done=1 AND r IS NOT NULL AND t>?", (since,)).fetchall()
+        rows = con.execute("SELECT src, sigs, r, feats, t FROM ornek WHERE done=1 AND r IS NOT NULL AND t>?", (since,)).fetchall()
         old = {r["key"]: r["active"] for r in con.execute("SELECT key, active FROM kural")}
     data = [(frozenset(x for x in (r["sigs"] or "").split(",") if x), max(min(r["r"], 3.0), -1.5),
              REAL_W if r["src"] == "islem" else 1.0, r["src"]) for r in rows]
+    days = [int((r["t"] or 0) // 86400) for r in rows]
     tw = sum(w for _, _, w, _ in data)
     base = sum(r * w for _, r, w, _ in data) / tw if tw else 0.0
     # adaptif katman icin: rejim x volatilite basarisi ve rejime ozel sinyal agirliklari
@@ -353,12 +355,13 @@ def recompute():
     STATE["wreg"] = {reg: {s: round(sr / w * n / (n + SHRINK), 3) for s, (w, sr, n) in d.items()}
                      for reg, d in racc.items()}
     acc = {}
-    for sg, r, w, _ in data:
+    for (sg, r, w, _), dy in zip(data, days):
         for key in [(s,) for s in sg] + list(itertools.combinations(sorted(sg), 2)):
-            a = acc.setdefault(key, [0.0, 0.0, 0, 0.0, 0.0])
+            a = acc.setdefault(key, [0.0, 0.0, 0, 0.0, 0.0, set()])
             a[0], a[1], a[2], a[3], a[4] = a[0] + w, a[1] + r * w, a[2] + 1, a[3] + w * (r > 0), a[4] + r * r * w
+            a[5].add(dy)
     weights, traps, golden = {}, [], []
-    for key, (w, sr, n, wins, sq) in acc.items():
+    for key, (w, sr, n, wins, sq, gun) in acc.items():
         avg, win = sr / w, wins / w
         se = max(sq / w - avg * avg, 0.0) ** 0.5 / max(n, 1) ** 0.5
         rule = {"sigs": list(key), "n": n, "avg": round(avg, 3), "win": round(win, 3)}
@@ -367,9 +370,9 @@ def recompute():
                                "w": round(avg * n / (n + SHRINK), 3)}
         single = len(key) == 1
         if not (single and key[0] in CONTEXT):
-            if n >= TRAP["n1" if single else "n2"] and avg <= TRAP["avg"] and avg + Z * se < 0:
+            if n >= TRAP["n1" if single else "n2"] and len(gun) >= TRAP["gun"] and avg <= min(TRAP["avg"], base - 0.15)                     and avg + Z * se < base:  # taban zaten negatifken "her sey kaybettirdi" tuzak sayilmaz
                 traps.append(dict(rule, kind="tuzak"))
-            if n >= GOLD["n1" if single else "n2"] and avg >= GOLD["avg"] and avg - Z * se > 0:
+            if n >= GOLD["n1" if single else "n2"] and len(gun) >= GOLD["gun"] and avg >= max(GOLD["avg"], base + 0.15)                     and avg - Z * se > max(base, 0.0):
                 golden.append(dict(rule, kind="altin"))
     traps = sorted(traps, key=lambda x: x["avg"])[:12]
     golden = sorted(golden, key=lambda x: -x["avg"])[:12]

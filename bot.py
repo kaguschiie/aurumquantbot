@@ -1245,7 +1245,7 @@ class Account:
         if not self.live:
             if stop:  # gercek hesaptaki borsa STOP_LOSS_LIMIT emri (limit = stop x 0,995) ile ayni dolum mantigi:
                 bid = pos["sl"] if bid >= pos["sl"] * 0.995 else bid  # bant icinde stoptan dolar, bosluk buyukse fiyattan
-            return self.book(s, pos, bid * (1 - C.SLIPPAGE) if stop else bid, reason)
+            return self.book(s, pos, bid * (1 - C.SLIPPAGE) if stop or pos.get("kind") == PF.KIND else bid, reason)
         if not stop:  # tek seferlik karar (haber, elle, dengeleme): satis gitmezse _manage yeniden dener (stopu _manage zaten her saniye bakar)
             pos["exit_want"] = reason
         pos["exit_try"] = time.time()
@@ -1579,13 +1579,16 @@ class Account:
         self.say(f"{s} SATILDI ({reason}) @ {price:g} | net {pnl:+.2f} USDT ({pct:+.2f}%, {r_mult:+.2f}R)", True)
         try:  # otopsi: Ders Defteri'ne yaz + trading_memory.md (hata islem kaydini engellemesin)
             btc0, btc = pos.get("btc0"), self.bid.get(C.BTC)
-            txt = L.autopsy(self.mode, s, pos, price, reason, pnl, pct, self.b.market.get(s),
-                            (btc / btc0 - 1) * 100 if btc and btc0 else None)
             mct = MC.record(self.mode, s, pos.get("mc"), reason, r_mult)  # Monte Carlo tahmini vs gerceklesen
-            if mct:
-                txt += " " + mct
-            self.say("Otopsi: " + txt, kind="oz")
-            HF.record_trade(self.mode, s, pos, price, reason, pnl, r_mult, txt)
+            if pos.get("kind") != PF.KIND and not pos.get("manual") and not pos.get("ai"):  # portfoy/elle/agresif ders ornegi olmaz
+                txt = L.autopsy(self.mode, s, pos, price, reason, pnl, pct, self.b.market.get(s),
+                                (btc / btc0 - 1) * 100 if btc and btc0 else None)
+                if mct:
+                    txt += " " + mct
+                self.say("Otopsi: " + txt, kind="oz")
+                HF.record_trade(self.mode, s, pos, price, reason, pnl, r_mult, txt)
+            elif mct:
+                self.say("Otopsi: " + mct, kind="oz")
         except Exception as e:
             log.warning("otopsi %s: %s", s, e)
         if self.live:
@@ -2071,7 +2074,8 @@ class Bot:
             out += ["OLAYLAR:"] + [f"- {e}" for e in events]
         why = acct.blocked()
         out.append(f"\nHESAP ({acct.mode}): kasa {eq:.2f} USDT, bos nakit {acct.usdt_free if acct.live else acct.free_cash():.2f}, "
-                 f"bugun %{acct.day_pct():+.2f}, acik {len(st['positions'])}/{C.MAX_POSITIONS}, "
+                 f"bugun %{acct.day_pct():+.2f}, acik {sum(p.get('kind') != PF.KIND for p in st['positions'].values())}/{C.MAX_POSITIONS}"
+                 f" + {sum(p.get('kind') == PF.KIND for p in st['positions'].values())} portfoy (limit disi), "
                  f"toplam {st['wins'] + st['losses']} islem net {st['pnl']:+.2f} USDT. "
                  f"Sinirlar: islem basi risk <= %{C.RISK_PCT:g}, tek pozisyon <= kasanin %{C.MAX_POS_PCT:g}'i, "
                  f"gunluk zarar limiti %{C.DAILY_LOSS_PCT:g}, ayni coine cikistan sonra {C.COOLDOWN_MIN} dk bekleme. "
@@ -2088,6 +2092,10 @@ class Bot:
         out.append("ACIK POZISYONLAR:" if st["positions"] or st["pending"] else "ACIK POZISYON YOK.")
         for s, p in st["positions"].items():
             bid = self.bid.get(s, p["entry"])
+            if p.get("kind") == PF.KIND:  # portfoy: stop/hedef yer tutucu, Claude'un isi degil
+                out.append(f"- {s}: PORTFOY (gunluk dengeleme yonetir, close/adjust gonderme), ortalama giris "
+                           f"{p['entry']:.6g}, simdi {bid:.6g} (%{(bid / p['entry'] - 1) * 100:+.2f}), sadece %35 felaket stopu.")
+                continue
             tp1 = "alindi" if p["part"] else (f"{p['partial_at']:.6g}" if p.get("partial_at") else "-")
             shield = "MANUEL KILIT - kullanici yonetiyor, close/adjust gonderme" if p.get("manual") else (
                 "iz suruyor (kar kilitli)" if p["sl"] > L.be_price(p["entry"], p.get("atr")) * 1.001 else (

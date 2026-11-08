@@ -70,6 +70,7 @@ UYARI = ("Ölçüm deneyi, kâr hedefi değil. 47 kuralın hepsi geçmiş testte
          "aynı dönemde BTC +%13,3. Kârda hemen satmak kazanma oranını yükseltir ama küçük kazanç / büyük kayıp kasayı eritir. "
          "Karar 100+ işlemden sonra. Sadece sanal kasa, gerçek para yok.")
 KAR_ESIK, RADAR_STOP = 0.005, 0.03
+ALTIN = ("PAXG", "XAUT")  # altina bagli token: kripto degil, radar kuralinda testte islem basi -%0,35
 GET_IZIN = {"/", "/lw.js", "/api/app", "/api/health", "/api/auth/me", "/api/state", "/api/screener", "/api/opps", "/api/trades",
             "/api/notes", "/api/decisions", "/api/candles", "/api/agresif"}
 POST_IZIN = {"/api/auth/login", "/api/auth/logout", "/api/pause", "/api/close", "/api/paper/reset"}
@@ -182,10 +183,13 @@ class AgresifBot(B.Bot):
     def pf_tick(self):
         """Ana dongu saniyede cagirir, ag yapmaz: yeni saatin radari gelince kurallar bir kez."""
         saat = int(time.time() // 3600)
-        if self.ag["agr"].get("saat") == saat or self.tech.t_opps <= saat * 3600 + 30:
+        if self.ag["agr"].get("saat") == saat:
             return False
-        if time.time() - saat * 3600 > 900:  # acilis/kesinti saat ortasina denk geldi: test girisi mum acilisinda, bu saat atlanir
-            self.ag["agr"]["saat"] = saat
+        if time.time() - saat * 3600 > 900:  # acilis/kesinti/radar gecikmesi: test girisi mum acilisinda, bu saat yeni giris yok
+            if self._background("Agresif kar", lambda: self._kar(self.accounts["PAPER"], saat, {}, [])):  # kar alma yine calisir
+                self.ag["agr"]["saat"] = saat
+            return False
+        if self.tech.t_opps <= saat * 3600 + 30:
             return False
         if self._background("Agresif kurallar", lambda: self.agr_saat(saat)):
             self.ag["agr"]["saat"] = saat
@@ -196,15 +200,16 @@ class AgresifBot(B.Bot):
         """Adi B ile biten ve Bybit vadelisi olmayan parite tokenize hisse sayilir (BNB, ARB, SHIB gibi gercek coinlerin vadelisi var).
         Bybit listesi gunde bir okunur; okunamazsa sadece bilinen hisse listesi (PF.STOCK) uygulanir."""
         base = s.split("/")[0]
-        if base.startswith(PF.STOCK):
+        if base in PF.STOCK or base in ALTIN:  # tam eslesme: MUB oneki MUBARAK'i yakalamasin
             return True
         if time.time() - getattr(self, "_perps_t", 0) > 86400:
-            self._perps_t = time.time()
             try:
                 self._perps = __import__("data").bybit_perps()
-            except Exception as e:
+                self._perps_t = time.time()
+            except Exception as e:  # okunamazsa 10 dk sonra yeniden denenir
+                self._perps_t = time.time() - 86400 + 600
                 log.warning("bybit vadeli listesi: %s", e)
-        return base.endswith("B") and bool(getattr(self, "_perps", None)) and base + "USDT" not in self._perps
+        return base.endswith("B") and bool(getattr(self, "_perps", None)) and             not {base + "USDT", "1000" + base + "USDT", base + "1000USDT"} & self._perps  # SHIB: Bybit'te SHIB1000USDT
 
     def _temizle(self):
         """scan kapali: islemi biten coinler izlemeden dussun (akis listesi buyumesin)."""
@@ -212,6 +217,24 @@ class AgresifBot(B.Bot):
             busy = {s for a in self.accounts.values() for s in a.st["positions"].keys() | a.st["pending"].keys()}
             self.extra = {s for s in self.extra if s in busy} | set(C.EXTRA_SYMBOLS)
             self.market = {s: r for s, r in self.market.items() if s in self.symbols or s in busy or s in self.extra}
+
+    def _kar(self, a, saat, mum, hata):
+        """Hizli kar: giris son kapanan mumdan once (o mum tutuldu) ve kapanis girisin %0,5 ustunde (test: k_1s_kar0.5_sl3_12s).
+        Sadece yeni kural (en cok 12 sa) pozisyonlari; eski 48 sa kurallilar kendi kuraliyla biter."""
+        with self.lock:
+            radar_poz = [s for s, p in a.st["positions"].items() if p.get("kind") == "agr_radar"
+                         and p.get("max_hours", 99) <= 12]
+        for s in radar_poz:
+            try:
+                if s not in mum:
+                    mum[s] = self.tech._klines(s, "1h").iloc[:-1]
+                d = mum[s]
+                with self.lock:
+                    p = a.st["positions"].get(s)
+                    if p and len(d) and p["t"] < saat * 3600 and float(d["close"].iloc[-1]) >= p["entry"] * (1 + KAR_ESIK):
+                        a.close(s, "AGRESIF_KAR")
+            except Exception as e:
+                hata.append(f"{s}: {str(e)[:80]}")
 
     def agr_saat(self, saat=None):
         saat = saat or int(time.time() // 3600)
@@ -223,22 +246,12 @@ class AgresifBot(B.Bot):
                 mum[s] = self.tech._klines(s, "1h").iloc[:-1]
             return mum[s]
         self._temizle()
-        with self.lock:
-            radar_poz = [s for s, p in a.st["positions"].items() if p.get("kind") == "agr_radar"]
-        for s in radar_poz:  # hizli kar: en az bir kapanmis mum tutuldu ve son kapanis girisin %0,5 ustunde (test: k_1s_kar0.5_sl3_12s)
-            try:
-                d = kapali(s)
-                with self.lock:
-                    p = a.st["positions"].get(s)
-                    if p and len(d) and time.time() - p["t"] >= 3000 and float(d["close"].iloc[-1]) >= p["entry"] * (1 + KAR_ESIK):
-                        a.close(s, "AGRESIF_KAR")
-            except Exception as e:
-                hata.append(f"{s}: {str(e)[:80]}")
+        self._kar(a, saat, mum, hata)
         rows = sorted((r for r in self.tech.opps if (r.get("qvol") or 0) >= C.RADAR_MIN_VOL), key=lambda r: -(r.get("score") or 0))
         radar_sym = {r["sym"] for r in rows}
         # senaryo testte (h_24_2R_btc) radar sarti olmadan tum likit coinlerde olculdu: radar disi likitler hacim sirasiyla sona
         rows += sorted((r for r in self.tech.liquid if r["sym"] not in radar_sym and (r.get("qvol") or 0) >= C.RADAR_MIN_VOL), key=lambda r: -r["qvol"])
-        rows = [r for r in rows if not self._hisse(r["sym"])]  # tokenize hisse/ETF (SOXSB gibi) kripto degil: test evreninde de yoktu
+        rows = [r for r in rows if not self._hisse(r["sym"])]  # tokenize hisse/ETF ve altin kripto degil (testte ~%4 sinyaldi; altinda kural zarar)
         try:
             btc_ust = btc_rejim(self.tech._klines(C.BTC, "1d", limit=103), saat)
         except Exception as e:  # rejim bilinmiyorsa senaryo acilmaz
@@ -347,7 +360,7 @@ def karne():
         px = bid.get(s) or p["entry"]
         net = p.get("realized", 0) + p["qty"] * (px - p["entry"]) - p["fee"] - p["qty"] * px * C.FEE
         out["acik"].append({"sym": s, "kind": p.get("kind"), "kural": (KURAL.get(p.get("kind")) or {}).get("ad", "-"), "giris": p["entry"], "fiyat": px, "stop": p["sl"],
-                            "hedef": p["tp"], "net": net, "net_pct": net / (p["qty0"] * p["entry"]) * 100, "kalan": max(p["sure_t"] - time.time(), 0) if p.get("sure_t") else None,
+                            "hedef": None if p.get("kind") == "agr_radar" and p["tp"] >= p["entry"] * 1.4 else p["tp"], "net": net, "net_pct": net / (p["qty0"] * p["entry"]) * 100, "kalan": max(p["sure_t"] - time.time(), 0) if p.get("sure_t") else None,
                             "why": p.get("why", "")})
     kom = sum(x.get("qty", 0) * (x.get("entry", 0) + x.get("exit", 0)) * C.FEE for x in tr) + sum(p["fee"] for p in poz.values())  # Binance spot: her yon %0,1
     out.update(komisyon=kom, fee=C.FEE * 100, kayma=C.SLIPPAGE * 100, hazir=True, kasa=eq, baslangic=bas, kasa_pct=(eq / bas - 1) * 100 if bas else None, btc_pct=(btc1 / btc0 - 1) * 100 if btc0 and btc1 else None,
