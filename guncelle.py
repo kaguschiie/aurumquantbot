@@ -36,6 +36,7 @@ def _headers(raw=False):
 
 
 GIT = not getattr(sys, "frozen", False) and os.path.isdir(os.path.join(C.BASE_DIR, ".git"))  # sunucu: git ile kurulu
+DAL = os.environ.get("KQB_KOD_DALI")  # kendi kod dali olan bot (gelistir.py): ana surum bu dala birlestirilir
 
 
 def _git(*a):
@@ -162,9 +163,19 @@ def apply(quit_cb):
     Sunucuda (git): git pull + paketler; kapanir, systemd yeniden baslatir (veri, oturumlar, Telegram korunur)."""
     if GIT:
         old = _git("rev-parse", "HEAD").stdout.strip()
-        p = _git("pull", "--ff-only", "-q", "origin", "main")
-        if p.returncode:
-            return f"git pull başarısız: {p.stderr.strip()[:200]}"
+        if DAL:  # bu botun kendi degisiklikleri var: ana surum dala birlestirilir, cakisirsa hic uygulanmaz
+            p = _git("fetch", "-q", "origin")
+            if p.returncode:
+                return f"git fetch başarısız: {p.stderr.strip()[:200]}"
+            p = _git("-c", "user.name=KQB Guncelleme", "-c", "user.email=guncelleme@kqb.local", "merge", "--no-edit", "-q", "origin/main")
+            if p.returncode:
+                _git("merge", "--abort")
+                return ("Ana sürüm bu botun kendi değişiklikleriyle çakışıyor; güncelleme uygulanmadı, bot eski haliyle çalışıyor. "
+                        "Çakışan değişikliği Geliştirme sayfasından geri alıp tekrar deneyin.")
+        else:
+            p = _git("pull", "--ff-only", "-q", "origin", "main")
+            if p.returncode:
+                return f"git pull başarısız: {p.stderr.strip()[:200]}"
         err = _verify_git()
         if err:  # yeni kod calismayacak: eski surume geri don, servis yeniden baslatilmaz (calisan surum kalir)
             if old:
@@ -173,6 +184,8 @@ def apply(quit_cb):
             return f"Güncelleme geri alındı, eski sürüm çalışmaya devam ediyor: {err}"
         log.info("Sunucu guncellendi: %s", _git("log", "-1", "--format=%h %s").stdout.strip())
         try:  # ayni kodu kullanan diger botlar (melik, fatih...) da yeni surume gecer; bu bot asagida kendisi kapanir
+            if DAL:  # kendi kod kopyasindaki bot digerlerini yeniden baslatmaz (onlar baska klasorden calisir)
+                raise OSError
             ls = subprocess.run(["systemctl", "list-units", "--type=service", "--plain", "--no-legend", "kriptoquantbot*"],
                                 capture_output=True, text=True, timeout=30).stdout.split("\n")
             others = [x.split()[0] for x in ls if x.strip() and x.split()[0] != os.environ.get("KQB_UNIT")]

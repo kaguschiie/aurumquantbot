@@ -629,7 +629,7 @@ function layout() {
 }
 function show(t) {
   ({home: () => { if (S) renderHome(S); loadPF().catch(() => {}); }, agresif: loadAgr, settings: loadSettings, chartp: () => { loadCandles(true).finally(tvLoad); }, screen: loadScreener, opps: loadOpps, macro: loadMacro, lessons: loadLessons, notes: loadNotes, trades: loadTrades,
-    news: loadNews, decisions: loadDecisions, bt: renderBT, hazirlik: loadHazirlik, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
+    news: loadNews, decisions: loadDecisions, bt: renderBT, hazirlik: loadHazirlik, gelistir: loadGel, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
 }
 (() => { // sag panel genisligi: surukle
   const r = $("#resizer"); let x0 = 0, w0 = 0;
@@ -1351,6 +1351,50 @@ async function saveGroup(id) {
   const r = await api("/api/settings", body); $("#m-" + id).textContent = r.msg; $("#m-" + id).className = r.ok ? "up" : "down";
   toast(r.msg, r.ok ? "up" : "down"); if (r.ok) setTimeout(loadSettings, 400);
 }
+/* ---------- uygulama ici gelistirme (gelistir.py) ---------- */
+let GEL_CALIS = false;
+const GEL_DURUM = {calisiyor: ["Claude kodu düzenliyor", "warn"], test: ["Testler çalışıyor", "warn"], hazir: ["Onayınızı bekliyor", "ok"],
+  hata: ["Hata", "bad"], degisiklik_yok: ["Değişiklik yapılmadı", "info"], iptal: ["Durduruldu", "info"]};
+async function loadGel() {
+  const d = await api("/api/gelistir"), j = d.is, w = $("#gelwrap");
+  GEL_CALIS = !!(j && ["calisiyor", "test"].includes(j.durum));
+  const ust = `<div class="banner info" style="display:block"><b>Kendi botunuzu kendiniz geliştirin.</b> Ne istediğinizi yazın; Claude kodu ayrı bir kopyada değiştirir, testler otomatik çalışır. Testler geçerse özeti okuyup <b>Uygula</b> derseniz bot yeni haliyle yeniden başlar (birkaç saniye). Beğenmezseniz aşağıdan tek tuşla geri alırsınız. Değişiklikler sadece bu botu etkiler.<br><span class="dim" style="font-size:12px">Dal: ${esc(d.dal || "-")} · Bugün harcanan: ${fmt(d.bugun_usd, 2)} / ${fmt(d.gunluk_usd, 2)} $ · İstek başı en çok ${fmt(d.is_usd, 2)} $ · ${esc(d.model)}${d.anahtar ? "" : ' · <b class="down">Claude API anahtarı yok (Ayarlar → Claude)</b>'}</span></div>`;
+  let orta = "";
+  if (!j) orta = `<div class="card"><h3>Yeni istek</h3><div class="form"><textarea id="gelistek" style="min-height:120px" placeholder="Örnek: Komuta merkezindeki kasa kartına son 7 günün kâr/zararını ekle. / Telegram mesajlarında coin adının yanına 24 saatlik değişimi yaz."></textarea></div>
+      <p style="margin:10px 0 0"><button class="btn pri" onclick="gelBaslat()">Gönder</button> <span class="dim" style="font-size:12px">Ne kadar açık yazarsanız o kadar iyi olur. Gerçek para, emir ve stop kodu korunur: Claude bunları değiştirirse ayrıca yönetici onay kodu istenir.</span></p></div>`;
+  else {
+    const ad = (GEL_DURUM[j.durum] || [j.durum])[0], tst = j.testler || [];
+    orta = `<div class="card"><h3>${esc(ad)}${GEL_CALIS ? ' <i class="dot busy" style="display:inline-block;margin-left:6px"></i>' : ""}<span class="grow"></span><span class="dim" style="font-size:12px">${fmt(j.usd, 2)} $ · ${ago(j.t)} önce</span></h3>
+      <div class="dim" style="white-space:pre-line;margin-bottom:10px">İstek: ${esc(j.istek)}</div>
+      ${j.hata ? `<div class="banner bad" style="display:block">${esc(j.hata)}</div>` : ""}
+      ${j.ozet ? `<h3>Claude'un özeti</h3><div style="white-space:pre-line;user-select:text">${esc(j.ozet)}</div>` : ""}
+      ${j.dosyalar?.length ? `<p class="dim" style="margin:10px 0 0">Değişen dosyalar: ${j.dosyalar.map(esc).join(", ")}</p>` : ""}
+      ${j.korunan?.length ? `<div class="banner warn" style="display:block;margin-top:10px"><b>Korunan koda dokunuyor:</b> ${j.korunan.map(esc).join(", ")}. Uygulamak için yönetici onay kodu gerekir.<div class="form" style="max-width:260px;margin-top:6px"><input id="gelkod" type="password" placeholder="Onay kodu" autocomplete="off"></div></div>` : ""}
+      ${tst.length ? `<h3 style="margin-top:12px">Testler ${j.gecti ? '<span class="up">geçti</span>' : j.durum === "hazir" ? '<span class="down">GEÇMEDİ</span>' : ""}</h3><table>${tst.map(t => `<tr><td>${esc(t.takim)}</td><td class="r">${t.ok} kontrol</td><td>${t.rc === 0 && !t.hata ? '<span class="up">✓</span>' : `<span class="down">HATA</span> <span class="dim" style="font-size:11.5px">${esc((t.hatalar || []).join(" | ").slice(0, 300))}</span>`}</td></tr>`).join("")}</table>` : ""}
+      ${j.fark ? `<details style="margin-top:10px"><summary class="dim" style="cursor:pointer">Kod farkını göster (teknik)</summary><pre style="white-space:pre-wrap;font-size:11.5px;max-height:420px;overflow:auto;user-select:text">${esc(j.fark)}</pre></details>` : ""}
+      <p style="margin:12px 0 0">${j.durum === "hazir" && j.gecti ? '<button class="btn pri" onclick="gelUygula()">Uygula ve yeniden başlat</button> ' : ""}<button class="btn" onclick="gelVazgec()">${GEL_CALIS ? "Durdur" : j.durum === "hazir" ? "Vazgeç" : "Kapat"}</button></p>
+      <details style="margin-top:10px" ${GEL_CALIS ? "open" : ""}><summary class="dim" style="cursor:pointer">Adımlar (${(j.adimlar || []).length})</summary><div style="font-size:12px;max-height:300px;overflow:auto">${(j.adimlar || []).slice(-60).reverse().map(a => `<div><span class="dim">${tm(a.t)}</span> ${esc(a.m)}</div>`).join("")}</div></details></div>`;
+  }
+  const gec = (d.gecmis || []).map(g => `<tr><td class="dim" style="white-space:nowrap">${tm(g.t)}</td><td>${g.tur === "geri_alindi" ? '<span class="dim">' + esc(g.istek) + "</span>" : `<details><summary style="cursor:pointer">${esc(g.istek.slice(0, 140))}</summary><div class="dim" style="white-space:pre-line;font-size:12px">${esc(g.ozet)}</div><div class="dim" style="font-size:11.5px">${(g.dosyalar || []).map(esc).join(", ")} · ${esc((g.sha || "").slice(0, 7))}</div></details>`}</td><td class="r">${g.tur === "uygulandi" && !g.geri ? `<button class="btn sm" onclick="gelGeriAl('${esc(g.sha)}')">Geri al</button>` : g.geri ? '<span class="dim">geri alındı</span>' : ""}</td></tr>`).join("");
+  w.innerHTML = ust + orta + `<div class="card"><h3>Geçmiş</h3>${gec ? `<table>${gec}</table>` : '<div class="dim">Henüz uygulanan değişiklik yok.</div>'}</div>`;
+}
+async function gelBaslat() {
+  const r = await post("/api/gelistir/baslat", {istek: $("#gelistek").value});
+  toast(r.ok ? "İstek gönderildi; Claude çalışıyor." : r.msg, r.ok ? "up" : "warn"); loadGel();
+}
+async function gelUygula() {
+  if (!confirm("Değişiklik uygulanacak ve bot birkaç saniyeliğine yeniden başlayacak. Devam?")) return;
+  const r = await post("/api/gelistir/uygula", {kod: $("#gelkod")?.value || ""});
+  toast(r.ok ? "Uygulandı; bot yeniden başlıyor, sayfa birazdan yenilenecek." : r.msg, r.ok ? "up" : "warn", 6000);
+  if (r.ok) setTimeout(() => location.reload(), 9000); else loadGel();
+}
+async function gelVazgec() { await post("/api/gelistir/vazgec"); loadGel(); }
+async function gelGeriAl(sha) {
+  if (!confirm("Bu değişiklik geri alınacak ve bot yeniden başlayacak. Devam?")) return;
+  const r = await post("/api/gelistir/geri_al", {sha});
+  toast(r.ok ? "Geri alındı; bot yeniden başlıyor." : r.msg, r.ok ? "up" : "warn", 6000);
+  if (r.ok) setTimeout(() => location.reload(), 9000); else loadGel();
+}
 async function loadHazirlik() {
   const d = await api("/api/hazirlik"), g = d.gozlem, K = d.kontrol, A = d.ayar || {};
   if (d.motor === false) return $("#hzwrap").innerHTML = '<div class="big-empty">Motor başlıyor, birkaç saniye sonra yeniden açın.</div>';
@@ -1559,6 +1603,11 @@ async function boot() {
     ["#pfbody", "#kasa", "#tpanel"].forEach(s => { $(s).closest(".card").style.display = "none"; });
     $("#regime").style.display = "none";
   }
+  if (me.gelistir && !PAGES.some(p => p[0] === "gelistir")) {  // sadece kendi kod kopyasi olan sunucu botunda (gelistir.py)
+    PAGES.splice(PAGES.length - 1, 0, ["gelistir", "Geliştirme", 1]);
+    ICON.gelistir = '<path d="M8 6l-6 6 6 6M16 6l6 6-6 6M14 4l-4 16"/>';
+    const sec = document.createElement("section"); sec.id = "gelistir"; sec.className = "page"; sec.innerHTML = '<div id="gelwrap"></div>'; $("#pages").appendChild(sec);
+  }
   buildNav(); DOCK = load("kqb.dock." + me.user, []); TAB = load("kqb.tab." + me.user, "home"); if (!allowed(TAB) || DOCK.includes(TAB)) TAB = "home";
   layout(); await tick(); loadScreener().catch(() => {}); if (!AGR) { loadChat().catch(() => {}); loadPF().catch(() => {}); } $$("section.page").forEach(s => visible(s.id) && s.id !== "home" && show(s.id));
   toast(`Hoş geldin, ${me.user}.`, "up", 2500);
@@ -1573,6 +1622,7 @@ every(20000, () => visible("news") && loadNews());
 every(15000, () => visible("opps") && loadOpps());
 every(30000, () => visible("macro") && loadMacro());
 every(15000, () => visible("lessons") && loadLessons());
+every(3000, () => visible("gelistir") && GEL_CALIS && loadGel());
 every(30000, () => !AGR && visible("home") && loadPF().catch(() => {}));
 every(5000, () => AGR && visible("agresif") && loadAgr());
 every(3000, () => visible("settings") && loadTelegram());

@@ -96,6 +96,9 @@ MAX_BARS = 36
 RISK_PCT = 1.0            # Islem basi en fazla risk: stop olunursa kaybedilecek kasa %
 MAX_POS_PCT = 30.0        # Tek pozisyon ust siniri (kasa %)
 MAX_POSITIONS = 5
+GELISTIRME_MODEL = "claude-opus-5-5"   # uygulama ici gelistirme (gelistir.py, sadece KQB_GELISTIRME=1 sunucu botu)
+GELISTIRME_GUNLUK_USD = 5.0             # gunluk gelistirme butcesi (USD)
+GELISTIRME_IS_USD = 2.0                 # tek istek ust siniri (USD)
 MAX_OPEN_RISK_PCT = 5.0  # portfoy disi tum pozisyonlarin stoplari dolarsa en cok kasanin bu kadari (2026-11-09)
 PX_STALE_SEC = 30        # fiyat bundan eskiyse yeni alim yok, yerel cikis karari ertelenir (baglanti kesik)
 DD_PAUSE_PCT = 5.0        # 24 saatte kasa bu kadar duserse 12 saat yeni islem yok

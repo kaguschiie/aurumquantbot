@@ -606,7 +606,9 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/auth/me":
                 f = sess and avatar_file(sess["user"])
                 return self._send(200, {"user": sess and sess["user"], "role": sess and sess["role"],
-                                        "setup": not auth.has_users(), "avatar": int(os.path.getmtime(f)) if f else 0})
+                                        "setup": not auth.has_users(), "avatar": int(os.path.getmtime(f)) if f else 0,
+                                        "gelistir": bool(sess and sess["role"] == "admin" and os.environ.get("KQB_GELISTIRME") == "1"
+                                                         and __import__("gelistir").etkin())})
             if not sess:
                 return self._send(401, {"error": "giris gerekli"})
             admin = sess["role"] == "admin"
@@ -630,6 +632,8 @@ class Handler(BaseHTTPRequestHandler):
                 routes["/api/server"] = lambda: __import__("sunucu").status()
                 routes["/api/history"] = history
                 routes["/api/hazirlik"] = hazirlik_rapor
+                if os.environ.get("KQB_GELISTIRME") == "1":  # exe'de modul yuklenmez
+                    routes["/api/gelistir"] = lambda: __import__("gelistir").durum()
                 routes["/api/memory"] = lambda: {"text": __import__("hafiza").tail(60000)}
             if u.path in routes:
                 return self._send(200, routes[u.path]())
@@ -677,6 +681,20 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(401, {"ok": False, "msg": "Oturum kapandı, tekrar giriş yapın."})
         admin, b = sess["role"] == "admin", ENGINE.bot
         mode = mode_for(sess, body)
+        if p.startswith("/api/gelistir/"):  # uygulama ici gelistirme: sadece admin, sadece KQB_GELISTIRME=1 sunucu botu
+            if not admin or os.environ.get("KQB_GELISTIRME") != "1" or not __import__("gelistir").etkin():
+                return self._send(403, {"ok": False, "msg": "Geliştirme bu botta kapalı ya da yetkiniz yok."})
+            import gelistir as G
+            if not G.etkin():
+                return self._send(403, {"ok": False, "msg": "Geliştirme bu botta kapalı ya da yetkiniz yok."})
+            islem = {"/api/gelistir/baslat": lambda: G.baslat(body.get("istek"), sess["user"]),
+                     "/api/gelistir/uygula": lambda: G.uygula(body.get("kod"), quit_app),
+                     "/api/gelistir/vazgec": G.vazgec,
+                     "/api/gelistir/geri_al": lambda: G.geri_al(str(body.get("sha", "")), quit_app)}.get(p)
+            if not islem:
+                return self._send(404, {"ok": False, "msg": "yok"})
+            err = islem()
+            return self._send(200, {"ok": not err, "msg": err or "Tamam."})
         if p == "/api/hazirlik/binance":  # gercek emir gitmez (order/test)
             if not admin:
                 return self._send(403, {"ok": False, "msg": "Sadece admin."})
