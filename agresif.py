@@ -86,6 +86,12 @@ def dinlenme(trades, kind):
     return None
 
 
+def karne_ozet(trades, kind):
+    """Kuralin canli islem sayisi ve islem basi net % ortalamasi."""
+    x = [t["pct"] for t in trades if t.get("kind") == kind]
+    return len(x), (sum(x) / len(x) if x else 0.0)
+
+
 ALTIN = ("PAXG", "XAUT")  # altina bagli token: kripto degil, radar kuralinda testte islem basi -%0,35
 GET_IZIN = {"/", "/lw.js", "/api/app", "/api/health", "/api/auth/me", "/api/state", "/api/screener", "/api/opps", "/api/trades",
             "/api/notes", "/api/decisions", "/api/candles", "/api/agresif"}
@@ -341,7 +347,15 @@ class AgresifBot(B.Bot):
             plan = {"stop": stop, "tp1": 0.0, "tp2": hedef, "risk_pct": C.RISK_PCT, "max_hours": KURAL[kind]["saat"], "entry": "taker", "kind": kind, "manual": True,
                     "sure_h": KURAL[kind]["saat"], "atr_pct": at, "conviction": None, "p": None, "reason": metin}
             with self.lock:
+                self.px_t[s] = time.time()
                 plan["usdt"] = max(a.equity() / 8, en_az)
+                eq, n, ort = a.equity(), *karne_ozet(a.st["trades"], kind)
+                if t["ask"] > stop:
+                    plan["reason"] = metin = metin + (  # islem oncesi karar raporu
+                        f" Boyut {plan['usdt']:.0f} USDT, stop olursa kasanın %{plan['usdt'] * (1 - stop / t['ask']) / eq * 100:.2f}'i; "
+                        + (f"ödül/risk {(hedef - t['ask']) / (t['ask'] - stop):.1f}; " if hedef < t['ask'] * 1.4 else "")
+                        + f"tahmini maliyet %{2 * (C.FEE + C.SLIPPAGE) * 100:.2f} (komisyon + kayma). Kural güvenilirliği: geçmiş testte "
+                        f"%{KURAL[kind]['test']:+.1f}" + (f", canlı {n} işlemde işlem başı %{ort:+.2f}." if n else ", canlıda henüz işlem yok."))
                 err = a.enter(s, plan)
         except Exception as e:
             hata.append(f"{s}: {str(e)[:80]}")
@@ -463,6 +477,7 @@ def log_kur():
     """app.main icindeki basicConfig kok gunlukte isleyici varsa bir sey yapmaz."""
     h = logging.handlers.RotatingFileHandler(C.LOG_FILE, maxBytes=5_000_000, backupCount=3, encoding="utf-8")
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    h.addFilter(C.Maske())
     root = logging.getLogger()
     root.addHandler(h)
     root.setLevel(logging.INFO)

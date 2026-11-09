@@ -1163,6 +1163,8 @@ def main():
     migrate_old_files()
     logging.basicConfig(filename=C.LOG_FILE, level=logging.INFO, encoding="utf-8",
                         format="%(asctime)s %(levelname)s %(message)s")
+    for h in logging.getLogger().handlers:
+        h.addFilter(C.Maske())
     if not os.path.exists(ICON):
         make_icon()
     ThreadingHTTPServer.allow_reuse_address = False  # Windows'ta ikinci kopya ayni portu alamasin

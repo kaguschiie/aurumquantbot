@@ -1,5 +1,7 @@
 """KriptoQuantBot ayarlari. Arayuzdeki Ayarlar sayfasi bu degerleri settings.json uzerinden ezer."""
+import logging
 import os
+import re
 import sys
 
 # Iki hesap ayni anda calisir: PAPER (admin'in sanal kasasi, her zaman) ve LIVE (kullanicinin gercek Binance hesabi).
@@ -94,6 +96,8 @@ MAX_BARS = 36
 RISK_PCT = 1.0            # Islem basi en fazla risk: stop olunursa kaybedilecek kasa %
 MAX_POS_PCT = 30.0        # Tek pozisyon ust siniri (kasa %)
 MAX_POSITIONS = 5
+MAX_OPEN_RISK_PCT = 5.0  # portfoy disi tum pozisyonlarin stoplari dolarsa en cok kasanin bu kadari (2026-11-09)
+PX_STALE_SEC = 30        # fiyat bundan eskiyse yeni alim yok, yerel cikis karari ertelenir (baglanti kesik)
 DD_PAUSE_PCT = 5.0        # 24 saatte kasa bu kadar duserse 12 saat yeni islem yok
 DAILY_LOSS_PCT = 3.0      # Gun icinde (UTC) kasa bu kadar duserse o gun yeni islem yok; portfoy alimlarinda son 24 saat
 COOLDOWN_MIN = 60         # Ayni coine cikistan sonra tekrar girmeden once bekleme
@@ -188,3 +192,22 @@ def save_settings(new):
 
 
 load_settings()
+
+
+class Maske(logging.Filter):
+    """Gunluge hassas bilgi yazilmasin: imzali istek URL'si (signature=), Telegram jetonu (bot123:ABC), Anthropic anahtari."""
+    RE = re.compile(r"(signature=)[0-9a-fA-F]+|(/bot)\d+:[\w-]+|(sk-ant-)[\w-]+|(X-MBX-APIKEY['\"]?:\s*['\"]?)[\w]+")
+
+    def filter(self, record):
+        try:
+            msg = record.getMessage()
+        except Exception:  # bicim hatasi: kaydi oldugu gibi birak
+            return True
+        sub = lambda t: self.RE.sub(lambda x: (x.group(1) or x.group(2) or x.group(3) or x.group(4)) + "***", t)
+        m = sub(msg)
+        if m != msg:
+            record.msg, record.args = m, None
+        if record.exc_info and not record.exc_text:  # traceback'teki istisna metni (ccxt URL'si) de maskelenir
+            record.exc_text = sub(logging.Formatter().formatException(record.exc_info))
+        return True
+

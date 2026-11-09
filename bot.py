@@ -930,6 +930,15 @@ class Account:
         why = HB.buy_block(s)  # elle alim dahil her yeni pozisyonun yolu
         if why:
             return why
+        pt = getattr(self.b, "px_t", {}).get(s)
+        if pt and time.time() - pt > C.PX_STALE_SEC:  # izlemeden dusmus coin ya da akis durdu: once borsadan oku, okunamazsa alim yok
+            try:
+                t = self.ex.fetch_ticker(s)
+                if not (t.get("bid") and t.get("ask")):
+                    raise ValueError("fiyat yok")
+                self.b.bid[s], self.b.ask[s], self.b.px_t[s] = t["bid"], t["ask"], time.time()
+            except Exception as e:
+                return f"fiyat {int(time.time() - pt)} sn'dir güncellenmiyor ve borsadan okunamadı ({str(e)[:60]}), yeni alım yapılmadı"
         taker = plan["entry"] == "taker"
         price = float(self.ex.price_to_precision(s, self.ask[s] if taker else self.bid[s]))
         if price <= plan["stop"]:
@@ -943,6 +952,13 @@ class Account:
         if plan.get("usdt"):  # elle alim: kullanicinin girdigi tutar (bos nakitle sinirli)
             qty = min(plan["usdt"] / price, self.free_cash() * 0.98 / price)
         qty = float(self.ex.amount_to_precision(s, max(qty, 0)))
+        oto = lambda p: p.get("kind") != PF.KIND and not p.get("manual") and not p.get("ai")
+        if oto(plan):  # toplam acik risk: otomatik strateji alimlari (Claude, haber, trend kolu). Portfoy (%35 felaket stopu), elle/AI ve agresif haric
+            acik = sum(p["qty"] * max(p["entry"] - p["sl"], 0.0) for p in self.st["positions"].values() if oto(p)) +                 sum(p["qty"] * max(p["price"] - p.get("stop", p["price"]), 0.0) for p in self.st["pending"].values() if oto(p)) +                 sum(r["act"]["p"]["qty"] * max(r["act"]["p"]["price"] - r["act"]["p"].get("stop", 0.0), 0.0) for r in self.st["orders"].values()
+                    if r["side"] == "buy" and (r.get("act") or {}).get("do") in ("enter", "limit") and oto(r["act"]["p"]))  # sonucu bekleyen alim
+            if (acik + qty * (price - plan["stop"])) > eq * C.MAX_OPEN_RISK_PCT / 100:
+                return (f"toplam açık risk sınırı: açık pozisyonlarda %{acik / eq * 100:.2f}, bu işlemle "
+                        f"%{(acik + qty * (price - plan['stop'])) / eq * 100:.2f} olurdu (sınır %{C.MAX_OPEN_RISK_PCT:g})")
         if qty * price < (self.ex.market(s)["limits"]["cost"]["min"] or 5):
             return f"tutar borsa alt sınırının altında ({qty * price:.2f} USDT)"
         p = {"id": None, "qty": qty, "price": price, "t": time.time(), **plan, "risk_pct": round(risk, 3)}
@@ -1126,7 +1142,10 @@ class Account:
         bid = self.bid.get(s)
         if not bid:
             return
-        pos["seen"] = time.time()
+        pt = getattr(self.b, "px_t", {}).get(s)
+        stale = pt and time.time() - pt > C.PX_STALE_SEC
+        if not stale:  # kesintide seen ilerlemez: yeniden baslatmada replay_gap bosluktaki stop/hedefi oynatir
+            pos["seen"] = time.time()
         if self.live and time.time() - pos.get("stop_chk", 0) > 15:
             pos["stop_chk"] = time.time()
             if not pos.get("stop_id") and time.time() - pos.get("stop_try", 0) > 60:
@@ -1139,6 +1158,8 @@ class Account:
                 if o["status"] in ("canceled", "expired", "rejected"):  # borsa stopu dustu: yeniden kur
                     self._fill_part(s, pos, o)
                     pos["stop_id"], pos["stop_try"] = None, 0
+        if stale:  # bayat fiyatla yerel stop/hedef/sure karari yok (gercekte borsa stopu korur)
+            return
         want = pos.get("exit_want")
         if want and time.time() - pos.get("exit_try", 0) > ORDER_CHECK_SEC:  # tek seferlik cikis karari tamamlanmadi: satis yeniden denenir
             try:
@@ -1627,6 +1648,7 @@ class Bot:
         self.lock = threading.RLock()
         self.status, self.force_retrain, self.busy, self.on_notify = "Baslatiliyor", False, None, None
         self.bid, self.ask, self.brain, self.symbols = {}, {}, None, list(C.SYMBOLS)
+        self.px_t = {}  # coin -> bid/ask'in en son tazelendigi an (bayat fiyatla alim ve yerel cikis yok)
         self.market, self.regime, self.last_scan, self.extra = {}, "yatay", {}, set()
         self.stream, self.tech, self.macro, self._last_rest = Stream.shared(), Teknik.shared(), Makro.shared(), 0.0
         self._tv_prev, self._ref_px, self._btc_hist, self._brief_px, self.updated = {}, {}, [], {}, time.time()
@@ -1934,9 +1956,11 @@ class Bot:
                 row = self.market.setdefault(s, {"sym": s})
                 if bk and now - bk["t"] < 10:
                     self.bid[s], self.ask[s] = bk["bid"], bk["ask"]
+                    self.px_t[s] = bk["t"]
                     row.update(ob=round(bk["imb"], 3), spread=round(bk["spread"], 4), ob_t=bk["t"])
                 elif s in fallback:
                     self.bid[s], self.ask[s] = fallback[s]["bid"], fallback[s]["ask"]
+                    self.px_t[s] = now
                 if tk and now - tk["t"] < 10:
                     row.update(price=tk["last"], chg24=tk["chg24"], qvol=tk["qvol"], px_t=tk["t"])
                 elif s in fallback:
@@ -2308,10 +2332,11 @@ class Bot:
             return "Binance'te aktif spot USDT paritesi değil."
         if s in acct.st["positions"] or s in acct.st["pending"]:
             return "Bu coinde zaten pozisyon/emir var; stop ve hedefi grafikteki panelden değiştirin."
-        if s not in self.bid:
+        if s not in self.bid or time.time() - self.px_t.get(s, 0) > C.PX_STALE_SEC:
             t = self.ex.fetch_ticker(s)
             with self.lock:
                 self.bid[s], self.ask[s] = t["bid"], t["ask"]
+                self.px_t[s] = time.time()
                 self.market.setdefault(s, {"sym": s}).update(price=t["last"], chg24=t.get("percentage"),
                                                              qvol=t.get("quoteVolume"), px_t=time.time())
                 self.extra.add(s)
