@@ -114,8 +114,10 @@ def decide(bot):
             actions.append(_act("close", s, reason=f"Teknik özet tersine döndü (1s {te['1h']:+.2f}, 15dk {te['15m']:+.2f}); "
                                                    f"kâr/zarar beklemeden çıkıyorum."))
     busy = st["positions"].keys() | st["pending"].keys()
-    cands = []
+    cands, noml = [], not bot.brain or bot.brain.get("thr") is None  # saatlik ML avantajsizsa olasiligi puana girmez
     for s, r in rows.items():
+        if noml:
+            r = dict(r, p=None)
         if s in busy or not r.get("price") or acct.locked(s) or (r.get("qvol") or 0) < C.MIN_QUOTE_VOL:
             continue
         te, kind = r.get("tech") or {}, "trend"

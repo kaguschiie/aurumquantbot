@@ -1,10 +1,12 @@
 """Sunucu bakimi (sadece standart kutuphane; botlardan bagimsiz calisir).
   bekci: dakikada bir botlari yoklar; 3 dakika cevap yoksa Telegram'dan haber verir, duzelince de bildirir.
   yedek: gunluk veri yedegi (kasa, ayarlar, hesaplar, Ders Defteri; indirilebilir veri onbellekleri haric), 14 gun saklanir."""
+import glob
 import json
 import os
 import shutil
 import sqlite3
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -115,6 +117,17 @@ def _copy(src, dst):
                 print("atlandi:", f, type(e).__name__)
 
 
+def _kod(dst):
+    """Kendi kod dali olan botlarin (gelistir.py) kod kopyasi: sadece sunucuda duran degisiklikler kaybolmasin (git bundle)."""
+    for d in sorted(glob.glob(f"{ROOT}/aurumquantbot-*")):
+        if os.path.isdir(os.path.join(d, ".git")):
+            os.makedirs(dst, exist_ok=True)
+            r = subprocess.run(["git", "-C", d, "bundle", "create", os.path.join(dst, os.path.basename(d) + ".bundle"), "--all"],
+                               capture_output=True, text=True, timeout=300)
+            if r.returncode:
+                print("kod yedegi atlandi:", os.path.basename(d), r.stderr.strip()[:120])
+
+
 def yedek(bots=None, out=BACKUP, keep=KEEP):
     bots = bots or BOTS
     os.umask(0o077)  # yedekte anahtarlar var: sadece root okur
@@ -125,6 +138,7 @@ def yedek(bots=None, out=BACKUP, keep=KEEP):
         for bot, (_, data) in bots.items():
             if os.path.isdir(data):
                 _copy(data, os.path.join(tmp, bot))
+        _kod(os.path.join(tmp, "kod"))
         part = os.path.join(out, "yeni.part")
         with tarfile.open(part, "w:gz") as tar:
             tar.add(tmp, arcname="kqb_yedek")

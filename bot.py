@@ -1468,6 +1468,10 @@ class Account:
                         self.pf_err += not isinstance(e, FenceDeny)
                         r = str(e)[:200]
             out.append(f"{s} al: {r or why}")
+        devir = sum(held[s]["qty"] * px[s] if u is None else u for s, u, _ in sells) + sum(u for _, u, _ in buys)
+        if out and devir > 0:  # karar raporu: islem maliyeti (komisyon + kayma) tahmini
+            out.append(f"tahmini maliyet ~{devir * (C.FEE + C.SLIPPAGE):.2f} USDT (devir {devir:.0f} USDT, kasanın "
+                       f"%{devir / base * 100:.1f}'i; komisyon %{C.FEE * 100:g} + kayma %{C.SLIPPAGE * 100:g})")
         return out or ["değişiklik yok (ağırlıklar hedefe yakın)"]
 
     def set_levels(self, s, sl=None, tp=None, who="kullanıcı"):
@@ -2162,9 +2166,11 @@ class Bot:
             out.append(mk)
         out += self.chain.brief_line([C.BTC, "ETH/USDT"] + [o["sym"] for o in self.tech.opps[:12]] + list(st["positions"]))
         edge = lambda r: f(L.edge(L.signals(r, ctx), ctx.get("regime")))
+        noml = not self.brain or self.brain.get("thr") is None  # saatlik ML'in esigi yok = gecmis testte avantaj yok
         out.append("COINLER (sym | fiyat | 24s% | son 1s mum% | ATR% | RSI | EMA50/200 uzaklik% | teknik ozet "
                    "15dk/1s/4s/1g [-1 guclu sat..+1 guclu al] | alici akisi 24s | fonlama% | OI 24s% | "
-                   "defter alici% (ilk 20 kademe) / spread% | hacim M$ | ML p | ders R):")
+                   "defter alici% (ilk 20 kademe) / spread% | hacim M$ | ML p | ders R):"
+                   + (" [ML p: model gecmis testte avantaj gostermedi, '-' yazilir, karar verirken kullanma]" if noml else ""))
         self._brief_px = {}
         for r in sorted(self.market.values(), key=lambda r: -(r.get("qvol") or 0)):
             te = r.get("tech") or {}
@@ -2174,7 +2180,7 @@ class Bot:
                        + "/".join(f(te.get(k)) for k in ("15m", "1h", "4h", "1d")) +
                        f" | {f(r.get('flow24'))} | {f((r.get('funding') or 0) * 100, 4)} | {pc(r.get('oi24'))} | "
                        f"{f((r.get('ob') or 0) * 100, 0)}/{f(r.get('spread'), 3)} | {f((r.get('qvol') or 0) / 1e6, 0)} | "
-                       f"{f(r.get('p'))} | {edge(rows.get(r['sym'], r))}")
+                       f"{'-' if noml else f(r.get('p'))} | {edge(rows.get(r['sym'], r))}")
         radar = [o for o in self.tech.opps if o["sym"] not in self.market][:15]
         if radar:
             out.append(f"\nRADAR (tum Binance USDT: {self.tech.n_all} parite tarandi, {self.tech.n_liquid} likit; ML/vadeli "

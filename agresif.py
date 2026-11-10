@@ -348,7 +348,8 @@ class AgresifBot(B.Bot):
                     "sure_h": KURAL[kind]["saat"], "atr_pct": at, "conviction": None, "p": None, "reason": metin}
             with self.lock:
                 self.px_t[s] = time.time()
-                plan["usdt"] = max(a.equity() / 8, en_az)
+                eq0 = a.equity()  # kasa/8; stop olursa kayip kasanin RISK_PCT'sini gecmesin (genis senaryo stopu)
+                plan["usdt"] = max(min(eq0 / 8, eq0 * C.RISK_PCT / 100 * t["ask"] / (t["ask"] - stop)) if t["ask"] > stop else eq0 / 8, en_az)
                 eq, n, ort = a.equity(), *karne_ozet(a.st["trades"], kind)
                 if t["ask"] > stop:
                     plan["reason"] = metin = metin + (  # islem oncesi karar raporu
