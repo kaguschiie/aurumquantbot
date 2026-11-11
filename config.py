@@ -96,17 +96,6 @@ MAX_BARS = 36
 RISK_PCT = 1.0            # Islem basi en fazla risk: stop olunursa kaybedilecek kasa %
 MAX_POS_PCT = 30.0        # Tek pozisyon ust siniri (kasa %)
 MAX_POSITIONS = 5
-# Borsa (BIST) modulu: analiz + SANAL portfoy (borsa.py). Gercek emir yolu yok.
-BORSA_BASLANGIC_TL = 100_000.0  # sanal portfoy baslangic nakdi
-BORSA_KOMISYON = 0.002          # tek yon komisyon (binde 2; araci kuruma gore degisir)
-BORSA_KAYMA = 0.001             # sanal dolumda kayma
-BORSA_TEK_HISSE_PCT = 20.0      # bir hisse portfoyun en cok bu kadari
-BORSA_MIN_TUTAR = 500.0         # en kucuk alim (TL)
-BORSA_MIN_HACIM_TL = 20e6       # firsat listesi icin gunluk ortalama islem hacmi alt siniri (TL)
-BORSA_TARAMA_SAAT = 20          # tum hisselerin yeniden taranma araligi (saat)
-BORSA_OTO = False               # otomatik alim: gecmis testi gecen strateji olmadan acilmaz
-BORSA_AI_MODEL = "claude-opus-5-5"
-BORSA_AI_GUNLUK_USD = 2.0       # yapay zeka degerlendirmesi gunluk butcesi
 GELISTIRME_MODEL = "claude-opus-5-5"   # uygulama ici gelistirme (gelistir.py, sadece KQB_GELISTIRME=1 sunucu botu)
 GELISTIRME_GUNLUK_USD = 5.0             # gunluk gelistirme butcesi (USD)
 GELISTIRME_IS_USD = 2.0                 # tek istek ust siniri (USD)
