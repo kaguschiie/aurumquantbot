@@ -427,6 +427,9 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
 
   <!-- AYARLAR -->
   <section id="hazirlik" class="page"><div id="hzwrap"></div></section>
+  <section id="borsa" class="page"><div id="brsust"></div><div id="brsdetay"></div>
+    <div class="card"><h3>Tüm hisseler</h3><div class="form" style="display:grid;grid-template-columns:1fr 240px auto;gap:8px;align-items:center;margin-bottom:8px"><input id="brsara" placeholder="Hisse kodu veya şirket adı ara" oninput="BRS.ara=this.value;brsTablo()"><select id="brssek" onchange="BRS.sektor=this.value;brsTablo()"></select><label style="white-space:nowrap;font-size:12.5px"><input type="checkbox" onchange="BRS.sadecePuan=this.checked;brsTablo()"> sadece puanı olanlar</label></div><div id="brstablo"><div class="dim">Yükleniyor...</div></div></div></section>
+  <section id="borsapf" class="page"><div id="brspf"></div></section>
   <section id="settings" class="page"><div id="setwrap"></div></section>
   </div>
 
@@ -456,7 +459,7 @@ const base = s => s.split("/")[0];
 const REG = {trend: ["Yükseliş trendi", "up"], yatay: ["Yatay", "warn"], dusus: ["Sert düşüş", "down"]};
 const KINDS = {hepsi: "Hepsi", karar: "Kararlar", bekleme: "Beklemeler", islem: "İşlemler", kalkan: "Kalkan", radar: "Radar", oz: "Öz-değerlendirme", egitim: "Eğitim", uyari: "Uyarılar", sistem: "Sistem"};
 const REASON = {HEDEF: "Hedef", STOP: "Stop", IZ_STOP: "İz süren stop", BASABAS: "Başabaş", SURE_DOLDU: "Süre doldu", AGRESIF_SAT: "1s güçlü sat", AGRESIF_KAR: "Hızlı kâr", CLAUDE_KAPATTI: "Claude kapattı", ELLE_KAPATILDI: "Elle kapatıldı", ZAMAN_ASIMI: "Zaman aşımı", ZAMAN_STOPU: "Zaman stopu", BALINA_SATIS: "Balina satışı", PORTFOY_CIKIS: "Portföy dengeleme", HABER_ACIL: "Haber: acil satış", KESINTI: "Uygulama kapalıyken", GUNLUK_CIKIS: "10 günlük dip"};
-const ICON = {home: '<path d="M3 12l9-8 9 8M5 10v10h14V10"/>', chartp: '<path d="M6 4v16M6 8h-2v6h2M12 6v14M12 10h-2v4h2M18 3v18M18 7h-2v8h2"/>',
+const ICON = {borsa: '<path d="M3 20h18M6 16V9M11 16V5M16 16v-4M21 16V7"/>', borsapf: '<path d="M3 7h18v13H3zM8 7V4h8v3M3 12h18"/>', home: '<path d="M3 12l9-8 9 8M5 10v10h14V10"/>', chartp: '<path d="M6 4v16M6 8h-2v6h2M12 6v14M12 10h-2v4h2M18 3v18M18 7h-2v8h2"/>',
   screen: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>', opps: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6.5-6.5"/>',
   macro: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   lessons: '<path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/>',
@@ -464,7 +467,7 @@ const ICON = {home: '<path d="M3 12l9-8 9 8M5 10v10h14V10"/>', chartp: '<path d=
   trades: '<path d="M4 6h16M4 12h16M4 18h10"/>', decisions: '<path d="M12 3a6 6 0 0 0-6 6c0 2.2 1.2 3.6 2.4 4.8.8.8 1.1 1.6 1.1 2.7V18h5v-1.5c0-1.1.3-1.9 1.1-2.7C16.8 12.6 18 11.2 18 9a6 6 0 0 0-6-6zM10 21h4"/>',
   notes: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>', bt: '<path d="M3 20h18M5 16l4-5 4 3 6-8"/>', hazirlik: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/>'};
-const PAGES = [["home", "Komuta Merkezi"], ["chartp", "Grafik"], ["screen", "Piyasa Tarayıcı"], ["opps", "Radar (tüm piyasa)"], ["macro", "Borsa / Makro"],
+const PAGES = [["home", "Komuta Merkezi"], ["chartp", "Grafik"], ["screen", "Piyasa Tarayıcı"], ["opps", "Radar (tüm piyasa)"], ["macro", "Makro (kripto)"], ["borsa", "Borsa"], ["borsapf", "Borsa Portföyü"],
   ["news", "Haberler"], ["trades", "İşlemler"], ["decisions", "Kararlar"], ["lessons", "Ders Defteri"], ["notes", "Karar Günlüğü"], ["bt", "ML Geçmiş Test", 1], ["hazirlik", "Gerçek Paraya Hazırlık", 1], ["chat", "Sohbet"], ["settings", "Ayarlar"]];
 if (AGR) {
   PAGES.push(["agresif", "Agresif Karne"]);
@@ -629,7 +632,7 @@ function layout() {
 }
 function show(t) {
   ({home: () => { if (S) renderHome(S); loadPF().catch(() => {}); }, agresif: loadAgr, settings: loadSettings, chartp: () => { loadCandles(true).finally(tvLoad); }, screen: loadScreener, opps: loadOpps, macro: loadMacro, lessons: loadLessons, notes: loadNotes, trades: loadTrades,
-    news: loadNews, decisions: loadDecisions, bt: renderBT, hazirlik: loadHazirlik, gelistir: loadGel, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
+    news: loadNews, decisions: loadDecisions, bt: renderBT, hazirlik: loadHazirlik, gelistir: loadGel, borsa: () => loadBorsa(), borsapf: loadBorsaPf, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
 }
 (() => { // sag panel genisligi: surukle
   const r = $("#resizer"); let x0 = 0, w0 = 0;
@@ -1351,6 +1354,129 @@ async function saveGroup(id) {
   const r = await api("/api/settings", body); $("#m-" + id).textContent = r.msg; $("#m-" + id).className = r.ok ? "up" : "down";
   toast(r.msg, r.ok ? "up" : "down"); if (r.ok) setTimeout(loadSettings, 400);
 }
+/* ---------- Borsa (BIST): analiz + sanal portfoy + kara liste (borsa.py). Gercek emir yok ---------- */
+let BRS = {liste: null, sirala: "puan", yon: -1, ara: "", sektor: "", sadecePuan: false, kod: null, chart: null};
+const mlr = v => v == null ? "-" : fmt(v / 1e9, 2) + " mlr";
+const pct = (v, d = 1) => v == null ? "-" : sg(v * 100, d);
+const orn = v => v == null ? "-" : fmt(v, 1);
+const puanRenk = p => p == null ? "var(--mute)" : p >= 65 ? "var(--up)" : p >= 45 ? "var(--warn)" : "var(--down)";
+const TEKNIK_TR = {"GUCLU AL": "Güçlü al", AL: "Al", NOTR: "Nötr", SAT: "Sat", "GUCLU SAT": "Güçlü sat"};
+const brsNot = '<div class="dim" style="font-size:11.5px;margin:8px 0">Fiyatlar yaklaşık 15 dakika gecikmelidir. Puanlar sektör içi sıralama aracıdır; yatırım tavsiyesi değildir. Portföy sanaldır, gerçek emir gönderilmez.</div>';
+async function loadBorsa(sessiz) {
+  const [o, l] = await Promise.all([api("/api/borsa/ozet"), api("/api/borsa/liste")]);
+  BRS.liste = l;
+  const M = o.makro || {}, il = o.ilerleme || {};
+  const kpi = (ad, k, d = 2) => { const x = M[k]; if (!x || x.son == null) return `<div class="kpi"><small>${ad}</small><b>-</b><span>veri yok</span></div>`;
+    return `<div class="kpi"><small>${ad}${x.hesaplanan ? " (hesaplanan)" : ""}</small><b>${fmt(x.son, d)}</b><span>${x.onceki ? "gün " + sg((x.son / x.onceki - 1) * 100) : ""} ${x.ay ? "· ay " + sg((x.son / x.ay - 1) * 100, 1) : ""}</span></div>`; };
+  const tarama = il.durum === "taranıyor" ? `Hisseler taranıyor: ${il.n} / ${il.toplam}${il.hata ? ` (${il.hata} hata)` : ""}. İlk tarama yaklaşık 30-40 dakika sürer; puanlar tarama bitince oluşur.`
+    : o.ozet_t ? `Son tam tarama: ${tm(o.ozet_t)} (${ago(o.ozet_t)} önce)` : "Henüz tarama yapılmadı; birazdan başlayacak.";
+  $("#brsust").innerHTML = `<div class="kpis">${kpi("BIST 100", "XU100", 0)}${kpi("BIST 30", "XU030", 0)}${kpi("USD/TRY", "USDTRY")}${kpi("EUR/TRY", "EURTRY")}${kpi("Gram altın (TL)", "GRAM_ALTIN", 0)}${kpi("Ons altın ($)", "ONS_ALTIN", 0)}</div>
+    <div class="banner ${il.durum === "taranıyor" ? "warn" : "info"}" style="display:block">${o.seans ? "Seans açık." : "Seans kapalı."} ${esc(tarama)}${o.makro_hata ? " · Piyasa verisi hatası: " + esc(o.makro_hata) : ""}${l.evren_hata ? " · Hisse listesi hatası: " + esc(l.evren_hata) : ""} <button class="btn sm" style="margin-left:8px" onclick="brsTara()">Şimdi tara</button></div>
+    <div class="g2 g11"><div class="card"><h3>Öne çıkanlar <span class="dim" style="font-weight:400;font-size:12px">(en yüksek puan; kara liste ve düşük hacim hariç)</span></h3>${(o.firsatlar || []).length ? `<table><tr><th>Hisse</th><th>Sektör</th><th class="r">Puan</th><th class="r">F/K</th><th class="r">12 ay</th><th>Teknik</th></tr>${o.firsatlar.map(x => `<tr class="click" onclick="brsAc('${x.kod}')"><td><b>${x.kod}</b> <span class="dim">${esc(x.ad)}</span></td><td class="dim">${esc(x.sektor)}</td><td class="r"><b style="color:${puanRenk(x.puan)}">${x.puan}</b></td><td class="r">${orn(x.fk)}</td><td class="r">${pct(x.getiri_12a, 0)}</td><td>${TEKNIK_TR[x.teknik] || "-"}</td></tr>`).join("")}</table>` : '<div class="dim">Tarama bitince burada görünür.</div>'}</div>
+    <div class="card"><h3>Önemli KAP bildirimleri <span class="dim" style="font-weight:400;font-size:12px">(mali rapor ve özel durum)</span></h3><div style="max-height:330px;overflow:auto">${(o.kap || []).map(k => `<div style="padding:5px 0;border-bottom:1px solid var(--line)"><span class="dim" style="font-size:11.5px">${tm(k.t)}</span> ${k.kodlar.slice(0, 3).map(c => `<b class="click" onclick="brsAc('${esc(c)}')">${esc(c)}</b>`).join(" ")} <span class="tag">${k.sinif === "FR" ? "mali rapor" : "özel durum"}</span><div style="font-size:12.5px">${esc(k.konu)}${k.ozet && k.ozet !== k.konu ? ": " + esc(k.ozet.slice(0, 160)) : ""} <a href="${esc(k.url)}" target="_blank" rel="noopener" style="color:var(--acc)">KAP</a></div></div>`).join("") || `<div class="dim">${o.kap_hata ? "KAP verisi alınamadı: " + esc(o.kap_hata) : "Son günlerde bildirim yok."}</div>`}</div></div></div>`;
+  if (!$("#brssek").options.length || $("#brssek").options.length !== (l.sektorler || []).length + 1)
+    $("#brssek").innerHTML = '<option value="">Tüm sektörler</option>' + (l.sektorler || []).map(s => `<option>${esc(s)}</option>`).join("");
+  $("#brssek").value = BRS.sektor;
+  brsTablo();
+  if (BRS.kod && !sessiz) brsAc(BRS.kod, true);
+}
+function brsTablo() {
+  const l = BRS.liste; if (!l) return;
+  const q = BRS.ara.trim().toLocaleLowerCase("tr");
+  let s = l.satirlar.filter(x => (!q || x.kod.toLowerCase().includes(q) || x.ad.toLocaleLowerCase("tr").includes(q)) && (!BRS.sektor || x.sektor === BRS.sektor) && (!BRS.sadecePuan || x.puan != null));
+  const k = BRS.sirala;
+  s.sort((a, b) => { const x = a[k], y = b[k]; if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return (typeof x === "string" ? x.localeCompare(y, "tr") : x - y) * BRS.yon; });
+  const th = (ad, key, r = true) => `<th class="${r ? "r" : ""} click" onclick="brsSirala('${key}')">${ad}${BRS.sirala === key ? (BRS.yon > 0 ? " ▲" : " ▼") : ""}</th>`;
+  $("#brstablo").innerHTML = `<div class="dim" style="font-size:12px;margin-bottom:6px">${s.length} hisse${s.length > 300 ? " (ilk 300 gösteriliyor)" : ""}</div><div style="overflow:auto"><table><tr>${th("Hisse", "kod", false)}${th("Sektör", "sektor", false)}${th("Fiyat", "fiyat")}${th("Piyasa değeri", "pd_mn")}${th("Puan", "puan")}${th("F/K", "fk")}${th("PD/DD", "pd_dd")}${th("FD/FAVÖK", "fd_favok")}${th("Özk. kârlılığı", "roe")}${th("Temettü", "temettu")}${th("1 ay", "getiri_1a")}${th("12 ay", "getiri_12a")}<th>Teknik</th></tr>${s.slice(0, 300).map(x => `<tr class="click" onclick="brsAc('${x.kod}')" ${x.kara ? 'style="opacity:.55"' : ""}><td><b>${x.kod}</b>${x.kara ? ` <span class="tag" style="color:var(--down)" title="${esc(x.kara)}">kara liste</span>` : ""}<div class="dim" style="font-size:11.5px">${esc(x.ad)}</div></td><td class="dim" style="font-size:12px">${esc(x.sektor)}</td><td class="r">${fmt(x.fiyat)}</td><td class="r">${x.pd_mn == null ? "-" : fmt(x.pd_mn / 1000, 1) + " mlr"}</td><td class="r">${x.puan == null ? '<span class="dim">-</span>' : `<b style="color:${puanRenk(x.puan)}">${x.puan}</b>${x.guven === "düşük" ? ' <span class="dim" title="Az veriyle hesaplandı">?</span>' : ""}`}</td><td class="r">${orn(x.fk)}</td><td class="r">${orn(x.pd_dd)}</td><td class="r">${orn(x.fd_favok)}</td><td class="r">${pct(x.roe, 0)}</td><td class="r">${x.temettu ? "%" + fmt(x.temettu * 100, 1) : "-"}</td><td class="r">${pct(x.getiri_1a, 0)}</td><td class="r">${pct(x.getiri_12a, 0)}</td><td>${TEKNIK_TR[x.teknik] || "-"}</td></tr>`).join("")}</table></div>`;
+}
+function brsSirala(k) { if (BRS.sirala === k) BRS.yon *= -1; else { BRS.sirala = k; BRS.yon = ["kod", "sektor"].includes(k) ? 1 : -1; } brsTablo(); }
+async function brsTara() { const r = await post("/api/borsa/tara"); toast(r.msg, r.ok ? "up" : "warn"); setTimeout(loadBorsa, 1500); }
+async function brsAc(kod, sessiz) {
+  BRS.kod = kod;
+  const w = $("#brsdetay"); if (!sessiz) { w.innerHTML = '<div class="card"><div class="dim">Yükleniyor...</div></div>'; w.scrollIntoView({behavior: "smooth", block: "start"}); }
+  const d = await api("/api/borsa/detay?kod=" + encodeURIComponent(kod));
+  if (d.hata) return w.innerHTML = `<div class="card"><div class="banner bad" style="display:block">${esc(d.hata)}</div></div>`;
+  const o = d.oran || {}, t = d.teknik || {}, p = d.puan || {}, Y = d.yuzde || {}, A = d.adlar || {};
+  const deger = k => ["getiri_12_1", "sma200_fark"].includes(k) ? t[k] : k === "teknik" ? t.rec : o[k];
+  const yaz = (k, v) => v == null ? "-" : ["fk", "pd_dd", "fd_favok", "fd_satis", "net_borc_favok", "cari_oran", "borc_ozkaynak"].includes(k) ? fmt(v, 1) : k === "teknik" ? (v >= 0 ? "+" : "") + fmt(v, 2) : "%" + fmt(v * 100, 1);
+  const satir = k => { const v = deger(k), y = Y[k]; return `<tr><td>${esc(A[k] || k)}</td><td class="r"><b>${yaz(k, v)}</b></td><td style="width:42%">${y ? `<div class="wbar" style="height:8px;position:relative;background:var(--panel2);border-radius:6px" title="${esc(y.kapsam)} içinde ${y.n} şirket arasında"><i style="left:0;width:${Math.round(y.y * 100)}%"></i></div><span class="dim" style="font-size:11px">${esc(y.kapsam)} içinde %${Math.round(y.y * 100)} (${y.n} şirket)</span>` : '<span class="dim" style="font-size:11px">karşılaştırma yok</span>'}</td></tr>`; };
+  const bil = p.bilesen || {}, BIL = {deger: "Değerleme (ucuzluk)", kalite: "Kalite (kârlılık, borç)", buyume: "Büyüme", momentum: "Momentum (fiyat gücü)"};
+  w.innerHTML = `<div class="card"><h3>${esc(d.kod)} · ${esc(d.ev.ad)} <span class="dim" style="font-weight:400;font-size:12px">${esc(d.ev.sektor)} · son ${fmt(t.son ?? d.ev.kapanis)} TL · piyasa değeri ${mlr(o.pd)} TL</span><span class="grow"></span><button class="btn sm" onclick="BRS.kod=null;$('#brsdetay').innerHTML=''">Kapat</button></h3>
+    ${d.kara ? `<div class="banner bad" style="display:block"><b>Kara listede:</b> ${esc(d.kara)}. Bu hisse için alım yapılamaz ve öneri üretilmez; veriler sadece bilgi amaçlı gösterilir.</div>` : ""}
+    ${(d.kaynak || []).some(k => k.bayat || k.hata) ? `<div class="banner warn" style="display:block">Veri uyarısı: ${d.kaynak.filter(k => k.bayat || k.hata).map(k => `${esc(k.ad)} ${k.bayat ? "eski" : "güncellenemedi"}${k.hata ? " (" + esc(k.hata) + ")" : ""}`).join(" · ")}. Kesin sonuç çıkarmayın.</div>` : ""}
+    <p style="margin:0 0 10px">${d.kara ? "" : `<button class="btn pri sm" onclick="brsAl('${d.kod}')">Sanal al</button> `}<button class="btn sm" onclick="brsAI('${d.kod}')">Yapay zekâ değerlendirmesi</button> ${d.kara ? "" : `<button class="btn sm" onclick="brsKara('${d.kod}')">Kara listeye ekle</button>`}</p>
+    <div id="brsai"></div>
+    <div class="g2 g11"><div><h3>Puan ${p.puan == null ? '<span class="dim">yok (yetersiz veri)</span>' : `<b style="color:${puanRenk(p.puan)}">${p.puan}</b> / 100 <span class="dim" style="font-weight:400;font-size:12px">güven: ${esc(p.guven)}</span>`}</h3>
+      <table>${Object.entries(BIL).map(([k, ad]) => `<tr><td>${ad}</td><td class="r"><b style="color:${puanRenk(bil[k])}">${bil[k] ?? "-"}</b></td></tr>`).join("")}</table>
+      ${(p.arti || []).length ? `<div style="margin-top:8px"><b class="up">Güçlü yanlar</b>${p.arti.map(x => `<div style="font-size:12.5px">+ ${esc(x)}</div>`).join("")}</div>` : ""}
+      ${(p.eksi || []).length ? `<div style="margin-top:8px"><b class="down">Zayıf yanlar</b>${p.eksi.map(x => `<div style="font-size:12.5px">− ${esc(x)}</div>`).join("")}</div>` : ""}
+      ${(d.eksik || []).length ? `<div class="dim" style="margin-top:8px;font-size:12px">Hesaplanamayan: ${d.eksik.map(esc).join(", ")}</div>` : ""}
+      ${(d.uyari || []).map(u => `<div class="dim" style="margin-top:6px;font-size:12px">⚠ ${esc(u)}</div>`).join("")}</div>
+    <div><h3>Teknik görünüm <span class="dim" style="font-weight:400;font-size:12px">(günlük)</span></h3>${d.teknik ? `<table><tr><td>Trend</td><td class="r"><b>${esc(t.trend)}</b></td></tr><tr><td>Teknik özet</td><td class="r">${TEKNIK_TR[t.etiket] || "-"} (${fmt(t.rec, 2)})</td></tr><tr><td>RSI</td><td class="r">${fmt(t.rsi, 0)}</td></tr><tr><td>1 ay / 3 ay / 12 ay</td><td class="r">${pct(t.getiri_1a, 0)} / ${pct(t.getiri_3a, 0)} / ${pct(t.getiri_12a, 0)}</td></tr><tr><td>50 / 200 günlük ortalama</td><td class="r">${fmt(t.sma50)} / ${fmt(t.sma200)}</td></tr><tr><td>52 hafta en yüksek / en düşük</td><td class="r">${fmt(t.zirve_52h)} / ${fmt(t.dip_52h)}</td></tr><tr><td>Destekler</td><td class="r">${(t.destek || []).map(x => fmt(x)).join(" · ") || "-"}</td></tr><tr><td>Dirençler</td><td class="r">${(t.direnc || []).map(x => fmt(x)).join(" · ") || "-"}</td></tr><tr><td>Yıllık oynaklık</td><td class="r">%${fmt((t.oynaklik || 0) * 100, 0)}</td></tr><tr><td>Günlük ort. işlem hacmi</td><td class="r">${fmt((t.hacim_tl || 0) / 1e6, 0)} mn TL</td></tr></table>` : '<div class="dim">Yeterli fiyat geçmişi yok.</div>'}</div></div>
+    <div class="chart" id="brschart" style="height:340px;margin-top:10px"></div>
+    <h3 style="margin-top:14px">Oranlar ve sektör karşılaştırması <span class="dim" style="font-weight:400;font-size:12px">son mali tablo: ${esc(o.donem || "yok")}</span></h3>
+    <table>${Object.keys(A).map(satir).join("")}<tr><td>Son 12 ay satış / FAVÖK / net kâr</td><td class="r" colspan="2">${mlr(o.satis_ttm)} / ${mlr(o.favok_ttm)} / ${mlr(o.net_kar_ttm)} TL</td></tr><tr><td>Net finansal borç / özkaynak</td><td class="r" colspan="2">${mlr(o.net_borc)} / ${mlr(o.ozkaynak)} TL</td></tr></table>
+    ${d.tablo ? `<details style="margin-top:12px"><summary style="cursor:pointer"><b>Mali tablo özeti</b> <span class="dim" style="font-size:12px">(milyar TL; "kümülatif" kalemler yılbaşından o döneme kadardır)</span></summary><div style="overflow:auto"><table><tr><th>Kalem</th>${d.tablo.donemler.map(x => `<th class="r">${x}</th>`).join("")}</tr>${d.tablo.satirlar.map(s => `<tr><td>${esc(s.ad)}${s.kumulatif ? ' <span class="dim" style="font-size:11px">küm.</span>' : ""}</td>${s.v.map(v => `<td class="r">${v == null ? "-" : fmt(v / 1e9, 2)}</td>`).join("")}</tr>`).join("")}</table></div></details>` : ""}
+    ${(d.temettu || []).length ? `<div style="margin-top:10px"><b>Temettüler</b> <span class="dim" style="font-size:12.5px">${d.temettu.slice(-8).map(([ts, a]) => `${new Date(ts * 1000).toLocaleDateString("tr-TR", {month: "2-digit", year: "numeric"})}: ${fmt(a)} TL`).join(" · ")}</span></div>` : ""}
+    <h3 style="margin-top:14px">Son KAP bildirimleri</h3>${(d.kap || []).map(k => `<div style="padding:4px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span class="dim">${tm(k.t)}</span> ${esc(k.konu)}${k.ozet && k.ozet !== k.konu ? ": " + esc(k.ozet.slice(0, 200)) : ""} <a href="${esc(k.url)}" target="_blank" rel="noopener" style="color:var(--acc)">KAP</a></div>`).join("") || '<div class="dim">Son 5 günde bildirim yok.</div>'}
+    <div class="dim" style="margin-top:12px;font-size:11.5px">Veri kaynakları: ${(d.kaynak || []).map(k => `${esc(k.ad)}: ${esc(k.kaynak)}, ${k.t ? tm(k.t) : "alınamadı"}`).join(" · ")}</div></div>`;
+  if (d.mumlar?.length && LW) {
+    const c = mkChart("brschart"); if (c) { const s = c.addCandlestickSeries({upColor: "#2ecc8f", downColor: "#ff5d6c", borderVisible: false, wickUpColor: "#2ecc8f", wickDownColor: "#ff5d6c"});
+      s.setData(d.mumlar.map(m => ({time: m.time, open: m.open, high: m.high, low: m.low, close: m.close}))); c.timeScale().fitContent(); }
+  }
+}
+async function brsAl(kod) {
+  const v = prompt(`${kod} için sanal alım tutarı (TL):`, "10000"); if (!v) return;
+  const r = await post("/api/borsa/al", {kod, tutar: parseFloat(v.replace(",", ".")), cid: "ui" + Date.now()});
+  toast(r.ok ? `${kod} sanal portföye eklendi.` : r.msg, r.ok ? "up" : "warn", 6000);
+}
+async function brsKara(kod) {
+  const neden = prompt(`${kod} kara listeye eklenecek. Neden (isteğe bağlı):`, ""); if (neden === null) return;
+  const r = await post("/api/borsa/kara", {tur: "kod", deger: kod, neden});
+  toast(r.ok ? `${kod} kara listeye eklendi.` : r.msg, r.ok ? "up" : "warn"); loadBorsa();
+}
+async function brsAI(kod) {
+  const el = $("#brsai"); el.innerHTML = '<div class="banner info" style="display:block">Yapay zekâ verileri inceliyor (yaklaşık yarım dakika)...</div>';
+  const r = await post("/api/borsa/ai", {kod});
+  if (r.hata || r.msg && !r.gorus && !r.kara) return el.innerHTML = `<div class="banner warn" style="display:block">${esc(r.hata || r.msg)}</div>`;
+  if (r.kara) return el.innerHTML = `<div class="banner bad" style="display:block">${esc(r.ozet)}</div>`;
+  const G = {olumlu: ["Olumlu", "ok"], notr: ["Nötr", "info"], olumsuz: ["Olumsuz", "bad"], yetersiz_veri: ["Yetersiz veri", "warn"]}[r.gorus] || [r.gorus, "info"];
+  const li = (a, b) => (a || []).length ? `<div style="margin-top:8px"><b>${b}</b>${a.map(x => `<div style="font-size:12.5px">• ${typeof x === "string" ? esc(x) : `<b>${esc(x.veri)}</b>: ${esc(x.yorum)}`}</div>`).join("")}</div>` : "";
+  el.innerHTML = `<div class="banner ${G[1]}" style="display:block;margin-bottom:10px"><b>Yapay zekâ görüşü: ${G[0]}</b> <span style="font-size:12px">(güven: ${esc(r.guven)})</span><div style="margin-top:6px">${esc(r.ozet)}</div>
+    ${li(r.destekleyen, "Dayandığı veriler")}${li(r.riskler, "Riskler")}${li(r.eksik_veri, "Eksik ya da doğrulanamayan veri")}${li(r.tahminler, "Tahminler (gerçek veri değildir)")}
+    <div style="font-size:11.5px;margin-top:8px;opacity:.8">${esc(r.not || "")} · ${tm(r.t)} · ${fmt(r.usd, 3)} $</div></div>`;
+}
+/* ---------- Borsa portfoyu + kara liste ---------- */
+async function loadBorsaPf() {
+  const [p, k] = await Promise.all([api("/api/borsa/portfoy"), api("/api/borsa/kara")]);
+  const K = k.liste || {kod: {}, sektor: {}, ad: {}}, TUR = {kod: "Hisse", sektor: "Sektör", ad: "Şirket adı"};
+  const kayitlar = Object.entries(TUR).flatMap(([t, ad]) => Object.entries(K[t] || {}).map(([a, v]) => ({...v, tur: t, turAd: ad, a})));
+  $("#brspf").innerHTML = `<div class="kpis"><div class="kpi hero"><small>Sanal portföy</small><b>${fmt(p.toplam, 0)} TL</b><span>başlangıç ${fmt(p.baslangic, 0)} TL</span></div>
+      <div class="kpi"><small>Getiri</small><b>${sg(p.getiri_pct)}</b><span>BIST 100 aynı dönem ${p.xu100_pct == null ? "-" : sg(p.xu100_pct)}</span></div>
+      <div class="kpi"><small>Nakit</small><b>${fmt(p.nakit, 0)} TL</b><span>%${fmt(p.toplam ? p.nakit / p.toplam * 100 : 0, 0)}</span></div>
+      <div class="kpi"><small>Pozisyon</small><b>${p.poz.length}</b><span>tek hisse en çok %${fmt(p.sinir_pct, 0)}</span></div>
+      <div class="kpi"><small>Ödenen komisyon</small><b>${fmt(p.komisyon, 0)} TL</b><span>sanal</span></div></div>
+    ${(p.kara_uyari || []).map(u => `<div class="banner warn" style="display:block">${esc(u)}</div>`).join("")}
+    <div class="card"><h3>Pozisyonlar<span class="grow"></span><button class="btn sm danger" onclick="brsSifirla()">Portföyü sıfırla</button></h3>${p.poz.length ? `<table><tr><th>Hisse</th><th class="r">Adet</th><th class="r">Maliyet</th><th class="r">Fiyat</th><th class="r">Değer</th><th class="r">Kâr/zarar</th><th class="r">Pay</th><th></th></tr>${p.poz.map(x => `<tr><td class="click" onclick="go('borsa');brsAc('${x.kod}')"><b>${x.kod}</b> <span class="dim">${esc(x.ad)}</span>${x.kara ? ' <span class="tag" style="color:var(--down)">kara liste</span>' : ""}</td><td class="r">${x.adet}</td><td class="r">${fmt(x.maliyet)}</td><td class="r">${x.fiyat_yok ? '<span class="dim">yok</span>' : fmt(x.fiyat)}</td><td class="r">${fmt(x.deger, 0)}</td><td class="r">${sg(x.kz, 0, " TL")} ${sg(x.kz_pct, 1)}</td><td class="r">%${fmt(x.pay, 0)}</td><td class="r"><button class="btn sm" onclick="brsSat('${x.kod}', ${x.adet})">Sat</button></td></tr>`).join("")}</table>` : '<div class="dim">Pozisyon yok. Borsa sayfasında bir hisseyi açıp "Sanal al" ile ekleyebilirsiniz.</div>'}${brsNot}</div>
+    <div class="g2 g11"><div class="card"><h3>Kara liste <span class="dim" style="font-weight:400;font-size:12px">(buradaki hisse, sektör ve şirketler hiçbir yoldan satın alınamaz)</span></h3>
+      <div class="form" style="display:grid;grid-template-columns:120px 1fr 1fr auto;gap:8px;align-items:center"><select id="karatur"><option value="kod">Hisse kodu</option><option value="sektor">Sektör</option><option value="ad">Şirket adı</option></select><input id="karadeger" placeholder="AEFES / sektör adı / adında geçen kelime" list="karasek"><input id="karaneden" placeholder="Neden (isteğe bağlı)"><button class="btn pri sm" onclick="brsKaraEkle()">Ekle</button></div>
+      <datalist id="karasek">${(k.sektorler || []).map(s => `<option value="${esc(s)}">`).join("")}</datalist>
+      ${kayitlar.length ? `<table style="margin-top:10px"><tr><th>Tür</th><th>Kayıt</th><th>Neden</th><th>Kapsadığı</th><th></th></tr>${kayitlar.map(x => `<tr><td>${x.turAd}</td><td><b>${esc(x.deger)}</b></td><td class="dim">${esc(x.neden || "")}</td><td class="dim" style="font-size:12px">${esc(((k.kapsam || {})[x.tur + ":" + x.a] || []).slice(0, 8).join(", "))}${((k.kapsam || {})[x.tur + ":" + x.a] || []).length > 8 ? ` … (${(k.kapsam || {})[x.tur + ":" + x.a].length} hisse)` : ""}</td><td class="r"><button class="btn sm" onclick="brsKaraSil('${x.tur}','${esc(x.a)}')">Çıkar</button></td></tr>`).join("")}</table>` : '<div class="dim" style="margin-top:10px">Kara liste boş.</div>'}
+      <div class="dim" style="font-size:11.5px;margin-top:8px">Kara listedeki bir hisse elinizdeyse otomatik satılmaz; satış kararı size aittir.</div></div>
+    <div class="card"><h3>Engellenen işlem girişimleri</h3>${(k.engellenen || []).length ? `<table><tr><th>Zaman</th><th>Hisse</th><th>Neden</th><th>Kaynak</th></tr>${k.engellenen.slice(0, 40).map(e => `<tr><td class="dim">${tm(e.t)}</td><td><b>${esc(e.kod)}</b></td><td>${esc(e.neden)}</td><td class="dim">${esc(e.kaynak)}</td></tr>`).join("")}</table>` : '<div class="dim">Engellenen girişim yok.</div>'}</div></div>
+    <div class="card"><h3>İşlemler</h3>${p.islemler.length ? `<table><tr><th>Zaman</th><th>Hisse</th><th>Yön</th><th class="r">Adet</th><th class="r">Fiyat</th><th class="r">Komisyon</th><th class="r">Kâr/zarar</th></tr>${p.islemler.map(i => `<tr><td class="dim">${tm(i.t)}</td><td><b>${esc(i.kod)}</b></td><td>${i.yon === "AL" ? '<span class="up">Alış</span>' : '<span class="down">Satış</span>'}</td><td class="r">${i.adet}</td><td class="r">${fmt(i.fiyat)}</td><td class="r">${fmt(i.komisyon)}</td><td class="r">${i.kz == null ? "-" : sg(i.kz, 0, " TL")}</td></tr>`).join("")}</table>` : '<div class="dim">Henüz işlem yok.</div>'}</div>`;
+}
+async function brsSat(kod, adet) {
+  const v = prompt(`${kod}: kaç adet satılsın? (elde ${adet})`, adet); if (!v) return;
+  const r = await post("/api/borsa/sat", {kod, adet: parseInt(v), cid: "ui" + Date.now()});
+  toast(r.ok ? `${kod} satıldı.` : r.msg, r.ok ? "up" : "warn"); loadBorsaPf();
+}
+async function brsSifirla() { if (!confirm("Sanal borsa portföyü sıfırlansın mı? İşlem geçmişi silinir.")) return; const r = await post("/api/borsa/sifirla"); toast(r.msg, "up"); loadBorsaPf(); }
+async function brsKaraEkle() {
+  const r = await post("/api/borsa/kara", {tur: $("#karatur").value, deger: $("#karadeger").value, neden: $("#karaneden").value});
+  toast(r.ok ? "Kara listeye eklendi." : r.msg, r.ok ? "up" : "warn"); if (r.ok) loadBorsaPf();
+}
+async function brsKaraSil(tur, deger) { if (!confirm("Kara listeden çıkarılsın mı?")) return; const r = await post("/api/borsa/kara", {tur, deger, sil: true}); toast(r.ok ? "Çıkarıldı." : r.msg, r.ok ? "up" : "warn"); loadBorsaPf(); }
 /* ---------- uygulama ici gelistirme (gelistir.py) ---------- */
 let GEL_CALIS = false;
 const GEL_DURUM = {calisiyor: ["Claude kodu düzenliyor", "warn"], test: ["Testler çalışıyor", "warn"], hazir: ["Onayınızı bekliyor", "ok"],
@@ -1622,6 +1748,8 @@ every(20000, () => visible("news") && loadNews());
 every(15000, () => visible("opps") && loadOpps());
 every(30000, () => visible("macro") && loadMacro());
 every(15000, () => visible("lessons") && loadLessons());
+every(60000, () => visible("borsa") && loadBorsa(true));
+every(60000, () => visible("borsapf") && loadBorsaPf());
 every(3000, () => visible("gelistir") && GEL_CALIS && loadGel());
 every(30000, () => !AGR && visible("home") && loadPF().catch(() => {}));
 every(5000, () => AGR && visible("agresif") && loadAgr());
