@@ -136,7 +136,7 @@ def status(user):
 # ---------------- bildirim kartlari ----------------
 KIND = {"islem": ("💹", "İşlem"), "kalkan": ("🛡", "Sıfır Zarar Kalkanı"), "radar": ("📡", "Radar · Güçlü kırılım"),
         "karar": ("🧠", "Yeni strateji kararı"), "oz": ("📚", "Ders Defteri"), "uyari": ("⚠️", "Uyarı"),
-        "sistem": ("⚙️", "Sistem"), "bekleme": ("⏳", "Karar")}
+        "sistem": ("⚙️", "Sistem"), "bekleme": ("⏳", "Karar"), "haber": ("📰", "KAP · Borsa")}
 hide_paper = lambda t: re.sub(r"sanal: [^;\n]*;? ?", "", t)
 
 

@@ -44,6 +44,8 @@ KORUNAN_FONK = {  # para, emir, stop, risk ve giris yollari
                "Account.balance_check", "Account.reconcile", "Account.enter", "Account.exit", "Account.book", "Account._manage",
                "Account.sync", "Account.report", "Account.equity", "Account.free_cash", "Account.risk_mult", "Account.day_pct",
                "Account.roll_pct", "Account._sellable", "Account._status", "Account.check_key", "Account.manage_positions"},
+    "borsa.py": {"Borsa._kapi", "Borsa.al", "Borsa.sat", "Borsa.kara_mi", "Borsa.kara_degistir", "Borsa._kayit", "Borsa._son_fiyat", "Borsa.firsatlar"},
+    "borsa_haber.py": {"sinifla", "tick", "tepki", "engeller", "engel_mi", "_engel_koy", "engel_kaldir"},
     "app.py": {"Handler._guard", "Handler._local", "Handler._token", "Handler._send", "mode_for", "quit_app"},
 }
 YASAK = re.compile(r"(^|/)(\.git|veri[^/]*|dist|build|__pycache__)(/|$)|settings\.json$|\.(db|pkl|joblib|key|pem|env)$|sunucu_adresi\.txt$")

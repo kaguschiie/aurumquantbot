@@ -486,6 +486,14 @@ IMG = {b"\x89PNG": ("png", "image/png"), b"\xff\xd8": ("jpg", "image/jpeg"), b"R
 MAX_BODY = 2_000_000  # POST govdesi ust siniri (bayt)
 
 
+def borsa_motor():
+    """Borsa motoru ilk istekte baslar (kripto motorunu ve agresif botu etkilemez)."""
+    import borsa
+    b = borsa.Borsa.shared()
+    b.start()
+    return b
+
+
 def avatar_file(user):
     key = re.sub(r"[^a-z0-9_.-]", "_", (user or "").lower())
     for ext in ("webp", "jpg", "png", "gif"):
@@ -626,6 +634,11 @@ class Handler(BaseHTTPRequestHandler):
                       "/api/news": lambda: __import__("haberler").view(admin, hidden=q.get("hepsi") == "1"),
                       "/api/telegram": lambda: __import__("telegram_bot").status(sess["user"]),
                       "/api/mc": lambda: montecarlo(q, mode)}
+            if u.path.startswith("/api/borsa/"):  # Borsa (BIST): kripto motorundan bagimsiz, ilk istekte baslar. Sanal; gercek emir yok
+                BR = borsa_motor()
+                br = {"/api/borsa/ozet": BR.ozet_ekran, "/api/borsa/liste": BR.liste, "/api/borsa/detay": lambda: BR.detay(q.get("kod")),
+                      "/api/borsa/portfoy": BR.portfoy, "/api/borsa/kara": BR.kara_ekran}.get(u.path)
+                return self._send(200, br()) if br else self._send(404, {"error": "yok"})
             if admin:
                 routes["/api/users"] = auth.users
                 routes["/api/update"] = lambda: __import__("guncelle").status()
@@ -681,6 +694,31 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(401, {"ok": False, "msg": "Oturum kapandı, tekrar giriş yapın."})
         admin, b = sess["role"] == "admin", ENGINE.bot
         mode = mode_for(sess, body)
+        if p.startswith("/api/borsa/"):  # sanal borsa islemleri ve kara liste: sadece admin
+            if not admin:
+                return self._send(403, {"ok": False, "msg": "Sadece admin."})
+            BR = borsa_motor()
+            if p == "/api/borsa/ai":  # ucretli Claude cagrisi (gunluk butce); kara listede cagrilmaz
+                return self._send(200, __import__("borsa_ai").degerlendir(BR, str(body.get("kod", ""))))
+            if p == "/api/borsa/tara":
+                if BR.ilerleme["durum"] == "taranıyor":
+                    return self._send(200, {"ok": False, "msg": "Tarama zaten sürüyor."})
+                threading.Thread(target=BR.tara, name="borsa-tara", daemon=True).start()
+                return self._send(200, {"ok": True, "msg": "Tarama başladı."})
+            tutar = body.get("tutar")
+            islem = {"/api/borsa/al": lambda: BR.al(str(body.get("kod", "")), tutar, "elle", str(body.get("cid") or "") or None),
+                     "/api/borsa/sat": lambda: BR.sat(str(body.get("kod", "")), body.get("adet"), "elle", cid=str(body.get("cid") or "") or None),
+                     "/api/borsa/kara": lambda: BR.kara_degistir(str(body.get("tur", "")), body.get("deger"), body.get("neden"),
+                                                                 bool(body.get("sil")), sess["user"]),
+                     "/api/borsa/sifirla": BR.portfoy_sifirla,
+                     "/api/borsa/engel_kaldir": lambda: __import__("borsa_haber").engel_kaldir(str(body.get("kod", "")))}.get(p)
+            if not islem:
+                return self._send(404, {"ok": False, "msg": "yok"})
+            try:
+                err = islem()
+            except (TypeError, ValueError) as e:
+                err = f"Geçersiz istek: {str(e)[:80]}"
+            return self._send(200, {"ok": not err, "msg": err or "Tamam."})
         if p.startswith("/api/gelistir/"):  # uygulama ici gelistirme: sadece admin, sadece KQB_GELISTIRME=1 sunucu botu
             if not admin or os.environ.get("KQB_GELISTIRME") != "1" or not __import__("gelistir").etkin():
                 return self._send(403, {"ok": False, "msg": "Geliştirme bu botta kapalı ya da yetkiniz yok."})
