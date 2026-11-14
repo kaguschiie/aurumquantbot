@@ -1,4 +1,3 @@
-"""Grafik hizi: onbellek kilidi, REST hatasi, likidasyon arka planda, son=1, state git calistirmaz (ag ve motor sahte)."""
 import sys
 import threading
 import time
@@ -19,7 +18,6 @@ def check(name, cond, info=""):
     print(("OK  " if cond else "HATA"), name, info)
 
 
-# anahtar basina kilit: ayni anahtarda tek cagri
 n = []
 def yavas():
     n.append(1)
@@ -30,14 +28,12 @@ th = [threading.Thread(target=lambda: app.cached("a", 60, yavas)) for _ in range
 [t.join() for t in th]
 check("6 es zamanli cagri, tek dis istek", len(n) == 1, len(n))
 
-# ic ice farkli anahtarlar kilitlenmez; iki yonlu sira degil, tek yon
 sonuc = []
 t = threading.Thread(target=lambda: sonuc.append(app.cached("dis", 60, lambda: app.cached("ic", 60, lambda: 3))), daemon=True)
 t.start()
 t.join(3)
 check("ic ice farkli anahtar kilitlenmiyor", sonuc == [3], sonuc)
 
-# farkli anahtar yavas olana takilmaz
 t = threading.Thread(target=lambda: app.cached("yavas", 60, lambda: time.sleep(1)), daemon=True)
 t.start()
 time.sleep(0.05)
@@ -47,7 +43,6 @@ check("farkli anahtar yavas anahtari beklemiyor", time.time() - t0 < 0.3, round(
 t.join()
 
 
-# hata: onceki deger korunur, onceki deger yoksa hata
 def patla():
     raise requests.ConnectionError("yok")
 app.CACHE["h"] = (time.time() - 100, [1, 2])
@@ -60,7 +55,6 @@ except requests.ConnectionError:
     check("onceki deger yoksa hata yukari gider", True)
 
 
-# _klines ve candles: sahte Binance
 class R:
     def __init__(self, j, code=200):
         self.j, self.status_code = j, code
@@ -104,7 +98,7 @@ check("likidasyon mumu bekletmiyor", time.time() - t0 < 1 and len(o["candles"]) 
 for _ in range(3):
     app.candles("ETH/USDT", "1h", "PAPER")
 app.CACHE.pop("liq:ETH/USDT")
-app.candles("ETH/USDT", "1h", "PAPER")  # is suruyor: ikinci is parcacigi baslamamali
+app.candles("ETH/USDT", "1h", "PAPER")
 time.sleep(0.1)
 check("coin basina tek is parcacigi", len(liq_n) == 1, liq_n)
 bekle.set()
@@ -123,7 +117,6 @@ app.candles("XRP/USDT", "1h", "PAPER")
 time.sleep(0.1)
 check("600 sn'den eski harita arka planda yenilenir (liq_map suresi ayni)", liq_n == ["XRP/USDT"], liq_n)
 
-# state: git calistirmaz, beyin durumu beklemez, update anlami ayni
 guncelle.status = lambda: (_ for _ in ()).throw(AssertionError("git calisti"))
 sess = {"user": "x", "role": "admin"}
 guncelle.STATE["latest"] = {"version": "abc", "newer": True}
@@ -147,7 +140,7 @@ check("beyin: ilk deger bekletmez", time.time() - t0 < 0.5 and d == (True, "Beyi
 kapi.set()
 time.sleep(0.2)
 check("beyin: arka planda dolar", app.beyin_durumu() == (True, "Claude CLI", "cli"), app.beyin_durumu())
-app.CACHE.pop("claude", None)  # ayar kaydinda oldugu gibi: yeniden kontrol
+app.CACHE.pop("claude", None)
 A.status = lambda: (True, "Claude API")
 A.brain = lambda: "api"
 app.beyin_durumu()

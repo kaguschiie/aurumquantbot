@@ -1,5 +1,3 @@
-"""Canli piyasa akisi (WebSocket): Binance fiyat/24s/emir defteri/mumlar + Bybit fonlama/acik pozisyon.
-Saniyede bir guncellenir; baglanti koparsa kendiligindan yeniden baglanir."""
 import json
 import logging
 import threading
@@ -24,15 +22,14 @@ def usym(stream_id):
 class Stream:
     def __init__(self):
         self.ticker, self.book, self.deriv, self.kline = {}, {}, {}, {}
-        self.symbols, self.klines = set(), {}  # klines: (sym, tf) -> son abone olma zamani
+        self.symbols, self.klines = set(), {}
         self.lock = threading.Lock()
         self.last = {"binance": 0.0, "bybit": 0.0}
         self._ws = {"binance": None, "bybit": None}
         self._req = 1
 
-    # ---- disari acik ----
     def start(self, symbols):
-        if getattr(self, "_started", False):  # motor yeniden baslarsa ayni akis kullanilir
+        if getattr(self, "_started", False):
             return self.set_symbols(symbols)
         self._started = True
         self.symbols = set(symbols)
@@ -43,7 +40,7 @@ class Stream:
         symbols = set(symbols)
         if symbols != self.symbols:
             self.symbols = symbols
-            for ws in self._ws.values():  # yeni listeyle yeniden baglan
+            for ws in self._ws.values():
                 if ws:
                     ws.close()
 
@@ -51,7 +48,6 @@ class Stream:
         return time.time() - self.last[name] < max_age
 
     def watch_kline(self, sym, tf):
-        """Grafikte acik coin icin canli mum aboneligi (son 3 grafik tutulur)."""
         key = (sym, tf)
         new = key not in self.klines
         self.klines[key] = time.time()
@@ -59,14 +55,13 @@ class Stream:
             self._send("binance", {"method": "SUBSCRIBE", "params": [f"{sid(sym)}@kline_{tf}"]})
             for old in sorted(self.klines, key=self.klines.get)[:-3]:
                 self.klines.pop(old)
-                self.kline.pop(old, None)  # geri donulunce eski (donmus) mum kullanilmasin
+                self.kline.pop(old, None)
                 self._send("binance", {"method": "UNSUBSCRIBE", "params": [f"{sid(old[0])}@kline_{old[1]}"]})
 
     def snapshot(self, sym):
         with self.lock:
             return dict(self.ticker.get(sym, {})), dict(self.book.get(sym, {})), dict(self.deriv.get(sym, {}))
 
-    # ---- ic ----
     def _send(self, name, msg):
         ws = self._ws.get(name)
         if ws and ws.sock and ws.sock.connected:
@@ -86,7 +81,7 @@ class Stream:
             for sym, tf in list(self.klines):
                 self._send("binance", {"method": "SUBSCRIBE", "params": [f"{sid(sym)}@kline_{tf}"]})
 
-        while True:  # url sembol listesine bagli: her baglantida yeniden kur
+        while True:
             self._run_once("binance", url(), on_open, self._on_binance)
             time.sleep(2)
 

@@ -1,10 +1,3 @@
-"""Balina akisi + likidasyon haritasi (Arkham / CoinGlass mantigi, ucretsiz veriyle).
-- Borsa balinalari: Binance'teki buyuk tekil islemlerden (aggTrades) net balina alis/satis baskisi (her coin icin).
-- Zincir ustu (istege bagli): Whale Alert API anahtari girilirse etiketli buyuk transferler: borsaya giris = satis
-  baskisi olabilir, borsadan cikis = birikim. (Arkham tarzi etiketli cuzdan verisi ucretli API ister.)
-- Likidasyon haritasi: Binance vadeli 1s mumlar + acik pozisyon (OI) artislari; yeni acilan pozisyonlar agresif
-  alici payina gore long/short ayrilir, 10x-100x kaldirac katmanlarinda tahmini likidasyon fiyatlari toplanir. Fiyatin
-  gectigi seviyeler silinir (zaten likide oldu). Sonuc: fiyatin altinda long, ustunde short likidasyon kumeleri."""
 import logging
 import threading
 import time
@@ -15,8 +8,8 @@ import config as C
 
 log = logging.getLogger("bot")
 SPOT, FAPI = "https://api.binance.com/api/v3/", "https://fapi.binance.com/"
-LEV = ((10, 0.30), (25, 0.30), (50, 0.25), (100, 0.15))  # kaldirac katmani ve pozisyon payi (tahmini)
-MMR = 0.005                                              # bakim marji payi
+LEV = ((10, 0.30), (25, 0.30), (50, 0.25), (100, 0.15))
+MMR = 0.005
 
 
 class Zincir:
@@ -38,9 +31,7 @@ class Zincir:
             self._started = True
             threading.Thread(target=self._loop, name="zincir", daemon=True).start()
 
-    # ---------------- borsa balinalari ----------------
     def whale_flow(self, sym):
-        """Son ~1000 islemdeki buyuk tekil islemler: net balina alis/satis orani (-1..+1)."""
         rows = requests.get(SPOT + "aggTrades", params={"symbol": sym.replace("/", ""), "limit": 1000}, timeout=10).json()
         if not isinstance(rows, list) or not rows:
             return None
@@ -50,7 +41,7 @@ class Zincir:
             usd = float(r["p"]) * float(r["q"])
             if usd >= thr:
                 n += 1
-                if r["m"]:  # alici piyasa yapici = agresif satici
+                if r["m"]:
                     sell += usd
                 else:
                     buy += usd
@@ -59,7 +50,6 @@ class Zincir:
                 "ratio": round((buy - sell) / (buy + sell), 2) if buy + sell else 0.0, "thr": thr, "t": time.time()}
 
     def _onchain(self):
-        """Whale Alert (istege bagli anahtar): son 1 saatin 1M$+ transferleri, borsa giris/cikis olarak."""
         r = requests.get("https://api.whale-alert.io/v1/transactions", timeout=15,
                          params={"api_key": C.WHALE_ALERT_KEY, "min_value": 1_000_000, "start": int(time.time()) - 3600}).json()
         out = []
@@ -88,19 +78,16 @@ class Zincir:
                     self._onchain()
                 self.t, self.error = time.time(), ""
             except Exception as e:
-                err = str(e).replace(C.WHALE_ALERT_KEY, "***") if C.WHALE_ALERT_KEY else str(e)  # hata metni anahtarli adresi icerebilir
+                err = str(e).replace(C.WHALE_ALERT_KEY, "***") if C.WHALE_ALERT_KEY else str(e)
                 self.error = err[:160]
                 log.warning("zincir: %s", err)
             time.sleep(60)
 
     def chain_summary(self, coin):
-        """Coin icin son 1 saatin zincir ustu borsa girisi/cikisi (USD)."""
         xs = [x for x in self.chain if x["sym"] == coin]
         return sum(x["usd"] or 0 for x in xs if x["kind"] == "giris"), sum(x["usd"] or 0 for x in xs if x["kind"] == "cikis")
 
-    # ---------------- likidasyon haritasi ----------------
     def liq_map(self, sym, ttl=600):
-        """Tahmini likidasyon kumeleri (10 dk onbellek). Vadelisi olmayan coin: None."""
         c = self.liq.get(sym)
         if c and time.time() - c["t"] < ttl:
             return c
@@ -118,7 +105,7 @@ class Zincir:
         bars = [(int(k[0]), float(k[2]), float(k[3]), float(k[4]), float(k[5]), float(k[9])) for k in kl]
         price = bars[-1][3]
         lows, highs = [b[2] for b in bars], [b[1] for b in bars]
-        step = price * 0.0025  # %0,25'lik fiyat kovalari
+        step = price * 0.0025
         longs, shorts, prev = {}, {}, None
         for i, (t, h, low, cl, v, tb) in enumerate(bars):
             cur = oim.get(t)
@@ -132,7 +119,7 @@ class Zincir:
             later_lo, later_hi = min(lows[i + 1:] or [low]), max(highs[i + 1:] or [h])
             for lev, w in LEV:
                 lp, sp = px * (1 - 1 / lev + MMR), px * (1 + 1 / lev - MMR)
-                if later_lo > lp:  # henuz likide olmamis long'lar
+                if later_lo > lp:
                     k = round(lp / step)
                     longs[k] = longs.get(k, 0.0) + d * fb * w * px
                 if later_hi < sp:
@@ -147,8 +134,6 @@ class Zincir:
         return out
 
     def adjust(self, sym, price, stop, tp2, atr):
-        """Stop/hedef optimizasyonu: stop buyuk long-likidasyon kumesinin hemen ustundeyse (igne avi bolgesi) kumenin
-        altina alinir; hedef, ustteki buyuk short-likidasyon kumesine (fiyat miknatisi) cekilir. Donus: (stop, tp2, not)."""
         m = self.liq_map(sym)
         if not m or m.get("none"):
             return stop, tp2, ""
@@ -159,7 +144,7 @@ class Zincir:
             if (price - new) / price <= 0.15:
                 notes.append(f"stop {stop:.6g} → {new:.6g}: altındaki long likidasyon kümesinin ({min(near):.6g}) "
                              f"iğnesine karşı küme altına alındı (pozisyon risk sabit kalacak şekilde küçülür)")
-                tp2 = price + (tp2 - price) * (price - new) / (price - stop)  # odul/risk orani korunur
+                tp2 = price + (tp2 - price) * (price - new) / (price - stop)
                 stop = new
         r = price - stop
         mag = sorted(p for p, w, _ in m["short"] if w >= 0.3 and price + 1.5 * r <= p < tp2)
@@ -169,7 +154,6 @@ class Zincir:
         return stop, tp2, "; ".join(notes)
 
     def brief_line(self, syms):
-        """Claude'a: balina akisi + likidasyon kumeleri (sadece onbellekteki veriden, ag cagrisi yok)."""
         ws = [self.whale[s] for s in syms if s in self.whale and self.whale[s]["n"]]
         parts = [f"{w['sym'].split('/')[0]} {w['ratio']:+.2f} (al {w['buy'] / 1e6:.1f}M$/sat {w['sell'] / 1e6:.1f}M$, "
                  f"{w['mins']:.0f} dk)" for w in ws[:10]]

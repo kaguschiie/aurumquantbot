@@ -1,5 +1,3 @@
-"""Bakiye mutabakati + dengeleme defteri. Tamamen sahte borsa: ag yok (soket kapali), anahtar yok, gercek emir yok, ucretli cagri yok.
-Canli ayarlar sadece bu surecin belleginde, dosyaya yazilmaz. Kullanim: KQB_APP_DIR=<test> python -I mutabakat_test.py <proje>"""
 import json
 import math
 import os
@@ -18,7 +16,7 @@ import config as C
 for f in os.listdir(C.APP_DIR):
     if f.startswith(("state", "durdur", "ders_defteri", "gecmis", "trading_memory")):
         os.remove(os.path.join(C.APP_DIR, f))
-EV = os.path.join(C.APP_DIR, "ev")  # hesap sahibi kaydi kullanicinin gercek ev klasorune yazilmasin
+EV = os.path.join(C.APP_DIR, "ev")
 shutil.rmtree(EV, ignore_errors=True)
 os.makedirs(EV)
 os.environ["HOME"] = os.environ["USERPROFILE"] = EV
@@ -37,12 +35,12 @@ def _no_net(*a, **k):
     raise AssertionError("testte gercek baglanti yok")
 
 
-socket.socket.connect = _no_net  # Teknik/Stream kendi (bagsiz) borsa nesnesini kurar; baglanti denemesi burada patlar
+socket.socket.connect = _no_net
 socket.create_connection = _no_net
 ok_all = True
 KEY = "sahte-mutabakat-anahtari"
 C.API_KEY, C.API_SECRET, C.TELEGRAM_TOKEN = KEY, "sahte-gizli", ""
-C.LIVE_ALLOWED, C.PORTFOY_LIVE, C.LIVE_MAX_USDT, C.LIVE_MAX_EQUITY, C.HABER_LIVE = True, True, 1e6, 1.0, False  # sahte borsa icin, kaydedilmez
+C.LIVE_ALLOWED, C.PORTFOY_LIVE, C.LIVE_MAX_USDT, C.LIVE_MAX_EQUITY, C.HABER_LIVE = True, True, 1e6, 1.0, False
 A.brain = lambda: "local"
 
 
@@ -53,7 +51,6 @@ def check(name, cond, info=""):
 
 
 class FakeEx:
-    """Dolum + komisyon + stop kilidini bakiyeye isleyen sahte borsa."""
     PX = {"BTC/USDT": 100_000.0, "ETH/USDT": 4000.0, "SOL/USDT": 200.0, "RAW/USDT": 2.0, "UZAK/USDT": 50.0}
     STEP = {"BTC/USDT": 0.00001, "ETH/USDT": 0.0001, "SOL/USDT": 0.001, "RAW/USDT": 1.0, "UZAK/USDT": 0.01}
 
@@ -143,10 +140,9 @@ class FakeEx:
 
 
 def fresh(usdt=100_000.0, base=True):
-    """Motor + sahte borsa. Sanal hesap ayri sahte baglanti kullanir."""
     ex, pub = FakeEx(usdt), FakeEx()
     B.D.exchange = lambda auth=False: ex if auth else pub
-    if os.path.exists(C.STATE_FILE):  # her senaryo temiz defterle
+    if os.path.exists(C.STATE_FILE):
         os.remove(C.STATE_FILE)
     b = B.Bot()
     b.bid.update(FakeEx.PX)
@@ -187,10 +183,8 @@ def plan(s="BTC/USDT", usdt=1000.0):
 
 
 BTC = "BTC/USDT"
-# ---- ayarlar: canli varsayilanlari hala kapali ----
 check("varsayilan canli ayarlar degismedi", re.search(r"^LIVE_ALLOWED = False", cfg, re.M) and re.search(r"^PORTFOY_LIVE = False", cfg, re.M) and re.search(r"^HABER_LIVE = False", cfg, re.M))
 
-# ---- esit, kilitli dahil, tolerans ----
 b, a, ex, pub = fresh()
 a.st["positions"][BTC] = pos_(0.01)
 ex.set("BTC", free=0.002, used=0.008)
@@ -198,7 +192,7 @@ check("serbest + kilitli = defter: uyusmazlik yok", a.balance_check() and not a.
 ex.set("BTC", free=0.0, used=0.01)
 a.balance_check()
 check("tamami stop emrinde kilitli: uyusmazlik yok", not a.st["mut"], a.st["mut"])
-ex.set("BTC", free=0.01 + 0.00004)  # 4 USDT fazla: en kucuk emir tutari (5) altinda, toz
+ex.set("BTC", free=0.01 + 0.00004)
 a.balance_check()
 check("fark toz sinirinda: sayilmaz (fazla)", not a.st["mut"], a.st["mut"])
 ex.set("BTC", free=0.01 - 0.00004)
@@ -215,17 +209,15 @@ check("toz sinirinin ustu eksik: sayilir", a.st["mut"].get(BTC, {}).get("n") == 
 a.st["mut"].clear()
 del a.st["positions"][BTC]
 ex.set("BTC", 0.0)
-# adim tozdan buyukse adim esas: RAW adim 1, fiyat 2 -> toz 2,5 > adim; UZAK icin bu kez adim buyuk sahte market
 ex.STEP = dict(ex.STEP, **{"SOL/USDT": 0.5})
 a.st["positions"]["SOL/USDT"] = pos_(10.0, entry=200.0)
-ex.set("SOL", free=10.4)  # fark 0,4: toz siniri 5/200 = 0,025, adim 0,5
+ex.set("SOL", free=10.4)
 a.balance_check()
 check("borsa adimi tozdan buyukse adim esas alinir", not a.st["mut"], a.st["mut"])
 ex.set("SOL", free=10.6)
 a.balance_check()
 check("adimin ustu sayilir", a.st["mut"].get("SOL/USDT", {}).get("n") == 1, a.st["mut"])
 
-# ---- 3 kontrol: tek uyari, yasak; satis yok ----
 b, a, ex, pub = fresh()
 a.st["positions"][BTC] = pos_(0.01)
 ex.set("BTC", free=0.02)
@@ -248,7 +240,6 @@ n0 = len(alerts(b))
 a2.balance_check()
 check("yasak diskten gelen durumla surer, uyari tekrarlanmaz", a2.mut_why(BTC) and len(alerts(b)) == n0, a2.st["mut"])
 
-# ---- yasak: tum alim yollari kapali, satislar acik ----
 check("emir kapisi alimi reddeder", "uyuşmazlığı" in (a.fence(BTC, "buy", 0.001, 100_000.0) or ""), a.fence(BTC, "buy", 0.001, 100_000.0))
 check("coin kilidi (karar ve arayuz yolu) gorur", "uyuşmazlığı" in (a.locked(BTC) or ""), a.locked(BTC))
 n_note = len(b.notes)
@@ -266,13 +257,12 @@ check("dengeleme: yasakli coin alinmaz, digeri alinir", any(x.startswith("BTC/US
       and not [o for o in ex.orders if o["s"] == BTC], r)
 n_o = len(ex.orders)
 a.st["positions"][BTC]["kind"] = PF.KIND
-r = a.pf_sell(BTC, None, "hedef 0")  # strateji satisi serbest; satilan sadece defterdeki miktar, hesaptaki fazlalik degil
+r = a.pf_sell(BTC, None, "hedef 0")
 sold = sum(o["qty"] for o in ex.orders[n_o:] if o["s"] == BTC and o["side"] == "sell" and o["typ"] == "market")
 check("strateji satisi calisir, fazlalik satilmaz", BTC not in a.st["positions"] and abs(sold - 0.01) < 1e-9 and abs(ex.bal["BTC"]["free"] - 0.01) < 1e-9, (sold, ex.bal["BTC"]))
 a.balance_check()
 check("pozisyon kapaninca fazlalik hala uyusmazlik, hala satilmaz", a.mut_why(BTC) and abs(ex.bal["BTC"]["free"] - 0.01) < 1e-9, a.st["mut"].get(BTC))
 
-# ---- cozulme ----
 n_a = len(alerts(b))
 ex.set("BTC", 0.0)
 a.balance_check()
@@ -285,7 +275,6 @@ for i in range(3):
     a.balance_check()
 check("yeni uyusmazlik yeni tek uyari", len(alerts(b)) == n_a + 1, len(alerts(b)))
 
-# ---- gecici fark: sayac sifirlanir ----
 b, a, ex, pub = fresh()
 a.st["positions"][BTC] = pos_(0.01)
 for v in (0.02, 0.02, 0.01, 0.02, 0.02, 0.01, 0.02, 0.02):
@@ -293,7 +282,6 @@ for v in (0.02, 0.02, 0.01, 0.02, 0.02, 0.01, 0.02, 0.02):
     a.balance_check()
 check("ust uste olmayan fark uyari uretmez (3 kontrol kurali)", not alerts(b) and not a.mut_why(BTC) and a.st["mut"][BTC]["n"] == 2, a.st["mut"])
 
-# ---- belirsiz durumlar sayilmaz ----
 ex.set("BTC", free=0.05)
 a.st["orders"]["x"] = {"s": BTC, "side": "buy", "typ": "market", "t": time.time(), "qty": 0.04, "chk": time.time()}
 for i in range(5):
@@ -315,14 +303,13 @@ a.balance_check()
 check("okuma hatasi yasagi kaldirmaz", a.mut_why(BTC), a.st["mut"])
 ex.bal_err = None
 
-# ---- defterde olmayan coin ----
 b, a, ex, pub = fresh()
-ex.set("SOL", free=3.0)  # 600 USDT, defterde yok (izleniyor)
-ex.set("RAW", free=500.0)  # izlenmeyen coin: fiyat ayri okunur
-ex.set("UZAK", free=0.05)  # 2,5 USDT toz
-ex.set("USDC", free=900.0)  # sabit para
-ex.set("LDBTC", free=1.0)  # paritesi yok (Earn)
-ex.set("ESKI", free=99.0)  # kapali parite
+ex.set("SOL", free=3.0)
+ex.set("RAW", free=500.0)
+ex.set("UZAK", free=0.05)
+ex.set("USDC", free=900.0)
+ex.set("LDBTC", free=1.0)
+ex.set("ESKI", free=99.0)
 del b.bid["RAW/USDT"], b.bid["UZAK/USDT"]
 for i in range(3):
     a.balance_check()
@@ -337,11 +324,10 @@ a.balance_check()
 check("fiyat gelince cozulur", "RAW/USDT" not in a.st["mut"], a.st["mut"])
 check("emir yok", not ex.orders and not ex.cancels)
 
-# ---- inceleme: go-live aninda hesapta duran bot disi coin (taban) ----
 b, a, ex, pub = fresh(base=False)
 check("taban henuz alinmadi", a.st["dis"] is None)
-ex.set("BTC", free=0.02)  # kullanicinin kendi BTC'si
-ex.set("RAW", free=1.0)  # 2 USDT toz: notta gorunmez
+ex.set("BTC", free=0.02)
+ex.set("RAW", free=1.0)
 ex.set("USDC", free=500.0)
 a.st["pending"]["ETH/USDT"] = {"id": "1", "qty": 0.1, "price": 3900.0, "t": time.time()}
 a.balance_check()
@@ -371,7 +357,7 @@ r = a.rebalance({BTC: 0.03}, True)
 check("hedef yeniden yukselince alim gider (geri donmez kuculme yok)", BTC in a.st["positions"] and not a.mut_why(BTC), r)
 qty = a.st["positions"][BTC]["qty"]
 tz = a.st["toz"].get(BTC, 0.0)
-ex.set("BTC", free=qty + tz + 0.02 + 0.01)  # sonradan yatirilan coin
+ex.set("BTC", free=qty + tz + 0.02 + 0.01)
 for i in range(3):
     a.balance_check()
 check("sonradan gelen fazlalik uyusmazlik: uyari + yasak, metinde bot disi miktar", a.mut_why(BTC) and len(alerts(b)) == 1 and "bot dışı kayıtlı 0.02" in alerts(b)[0], alerts(b))
@@ -393,14 +379,13 @@ for i in range(3):
 check("bot disi coin yoksa not da yok, taban bos", a.st["dis"] == {} and not dis_notes(b) and not a.st["mut"], a.st["dis"])
 check("taban tek emir vermedi", not ex.orders and not ex.cancels)
 
-# ---- inceleme: esikte gezinen fiyat uyari/giderildi dondurmez ----
 b, a, ex, pub = fresh()
 ex.set("UZAK", free=0.1)
 for p_ in (51, 51, 51, 49) * 3:
     b.bid["UZAK/USDT"] = float(p_)
     a.balance_check()
 check("0.1 UZAK fiyat 51/49: tek uyari, giderildi yok, yasak surer", len(alerts(b)) == 1 and not solved(b) and a.mut_why("UZAK/USDT"), (alerts(b), solved(b)))
-b.bid["UZAK/USDT"] = 39.0  # 3,9 USDT: daralan sinirin (4) altinda
+b.bid["UZAK/USDT"] = 39.0
 a.balance_check()
 check("deger gercekten toz olunca yasak kalkar, tek not", not a.mut_why("UZAK/USDT") and len(solved(b)) == 1, a.st["mut"])
 for p_ in (49, 41, 49, 41):
@@ -413,11 +398,10 @@ a.st["positions"]["SOL/USDT"] = pos_(10.0, entry=200.0)
 ex.set("SOL", free=10.6)
 for i in range(3):
     a.balance_check()
-ex.set("SOL", free=10.4)  # adim 0,5: adim payi daralmaz, yasak takili kalmaz
+ex.set("SOL", free=10.4)
 a.balance_check()
 check("yasak kalkarken borsa adimi payi daralmaz", not a.mut_why("SOL/USDT") and len(solved(b)) == 1, a.st["mut"])
 
-# ---- gercek dolumlar: yuvarlama artigi yanlis alarm uretmez ----
 b, a, ex, pub = fresh(1_000_000.0)
 r = a.enter(BTC, plan(usdt=1234.0))
 check("alim: pozisyon + stop, bakiye kilitli", r is None and BTC in a.st["positions"] and ex.bal["BTC"]["used"] > 0, (r, ex.bal.get("BTC")))
@@ -432,7 +416,7 @@ tot = ex.bal["BTC"]["free"] + ex.bal["BTC"]["used"]
 qty = a.st["positions"][BTC]["qty"]
 check("40 alimda biriken artik toz siniri ustunde (test anlamli)", (tot - qty) * 100_000 > 5, f"{(tot - qty) * 100_000:.2f} USDT")
 check("artik kayitli: yanlis alarm yok", not a.st["mut"] and not alerts(b) and abs(toz - (tot - qty)) < 1e-9, (a.st["mut"], toz, tot - qty))
-ex.bal["BTC"]["free"] += 0.001  # gercek fark (100 USDT): artik onu gizlemez
+ex.bal["BTC"]["free"] += 0.001
 a.balance_check()
 check("artik gercek farki gizlemez", a.st["mut"].get(BTC, {}).get("n") == 1, a.st["mut"])
 ex.bal["BTC"]["free"] -= 0.001
@@ -442,12 +426,11 @@ n_s = len(ex.orders)
 a.exit(BTC, a.st["positions"][BTC], "PORTFOY_CIKIS")
 a.balance_check()
 check("tam cikis sonrasi artik kalir, uyusmazlik yok, satilmaz", BTC not in a.st["positions"] and not a.st["mut"] and ex.bal["BTC"]["free"] + ex.bal["BTC"]["used"] > 0.00005, (a.st["mut"], ex.bal["BTC"]))
-ex.set("BTC", 0.0)  # kullanici kalan artigi Binance'te satti
+ex.set("BTC", 0.0)
 for i in range(5):
     a.balance_check()
 check("cikis sonrasi artik elle satildi: tek uyari, yasak yok, artik sifir", not a.st["mut"] and not a.st["toz"].get(BTC) and len(toz_notes(b)) == 1 and not alerts(b), (a.st["mut"], a.st["toz"], toz_notes(b)))
 
-# ---- inceleme: artik eksigi gizlemez, ama geri donmez yasak da yapmaz ----
 b, a, ex, pub = fresh(1_000_000.0)
 a.enter(BTC, plan(usdt=1234.0))
 for i in range(40):
@@ -455,7 +438,7 @@ for i in range(40):
 a.balance_check()
 toz = a.st["toz"][BTC]
 check("artik 5 USDT'den buyuk (senaryo anlamli)", toz * 100_000 > 5, toz * 100_000)
-ex.bal["BTC"]["free"] -= 0.0003  # 30 USDT elle satildi; bakiye defterin 5 USDT'den az altinda
+ex.bal["BTC"]["free"] -= 0.0003
 qty = a.st["positions"][BTC]["qty"]
 for i in range(2):
     a.balance_check()
@@ -465,11 +448,11 @@ for i in range(3):
 check("artik eksigi: tek uyari, yasak yok", len(toz_notes(b)) == 1 and not a.mut_why(BTC) and not a.st["mut"] and not alerts(b), (toz_notes(b), a.st["mut"]))
 x = ex.bal["BTC"]["free"] + ex.bal["BTC"]["used"]
 check("artik gercek bakiyeye duzeltildi", abs(a.st["toz"][BTC] - max(x - qty, 0.0)) < 1e-12, a.st["toz"])
-ex.bal["BTC"]["free"] -= 0.0003  # artik kalmadi: ayni eksik simdi pozisyondan
+ex.bal["BTC"]["free"] -= 0.0003
 for i in range(3):
     a.balance_check()
 check("ikinci 30 USDT eksik: pozisyon eksigi, uyari + yasak", a.mut_why(BTC) and len(alerts(b)) == 1 and len(toz_notes(b)) == 1, a.st["mut"])
-ex.bal["BTC"]["free"] += 0.00035  # defterin ustune geri
+ex.bal["BTC"]["free"] += 0.00035
 a.balance_check()
 check("eksik geri gelince yasak kalkar", not a.mut_why(BTC) and len(solved(b)) == 1, a.st["mut"])
 ex.bal["BTC"]["free"] += 0.02
@@ -477,7 +460,7 @@ for i in range(3):
     a.balance_check()
 check("yasak (fazlalik) varken: uyari", a.mut_why(BTC) and len(alerts(b)) == 2)
 ex.bal["BTC"]["free"] -= 0.02
-a.st["toz"][BTC] = 0.001  # kayitli artik var ama hesapta yok
+a.st["toz"][BTC] = 0.001
 n_t = len(toz_notes(b))
 a.balance_check()
 check("yasakliyken fark artiga dustu: yasak hemen kalkar, takili kalmaz", not a.mut_why(BTC) and BTC not in a.st["mut"] and len(toz_notes(b)) == n_t + 1, a.st["mut"])
@@ -491,7 +474,6 @@ for i in range(5):
 a2.balance_check()
 check("komisyon BNB ile: artik yok, uyusmazlik yok", not a2.st["toz"].get(BTC) and not a2.st["mut"], (a2.st["toz"], a2.st["mut"]))
 
-# ---- dengeleme oncesi kontrol, okunamazsa alim yok ----
 b, a, ex, pub = fresh()
 a.st["positions"][BTC] = pos_(0.01)
 ex.set("BTC", free=0.01)
@@ -547,7 +529,6 @@ check("uygulama kapanirken beklemez, yanlis uyari yok", len(bc_n) == 1 and "ETH/
 b.stop.clear()
 del a.balance_check
 
-# ---- gercek hesap kilidi yoksa / sanal hesap: borsaya hic sorulmaz ----
 b, a, ex, pub = fresh()
 ex.reads, pub.reads = 0, 0
 pa = b.accounts["PAPER"]
@@ -560,8 +541,6 @@ a.own = False
 ex.reads = 0
 check("kilit bizde degil (pasif kopya): borsaya sormaz, sayac tutmaz", a.balance_check() is True and ex.reads == 0)
 a.own = True
-
-# ---- motor dongusu: acilista bir, sonra MUT_SEC'te bir ----
 
 
 class _Dummy:
@@ -601,7 +580,6 @@ check("dongude periyodik kontrol, emir yok", len(calls) >= 3 and not xx.orders, 
 B.L.loop, B.HB.loop, B.G.load, B.PF.load_model, B.PF.maybe_train, B.MC.calibrate, C.TICK_SEC, B.MUT_SEC = _loops
 check("periyot birkac dakika, 3 kontrol kurali", 60 <= B.MUT_SEC <= 600 and B.MUT_N == 3, (B.MUT_SEC, B.MUT_N))
 
-# ---- dengeleme defteri (uctan uca Bot.portfolio) ----
 shutil.rmtree(C.REBAL_DIR, ignore_errors=True)
 b, a, ex, pub = fresh()
 b.accounts["PAPER"].st.update(cash=10_000.0, positions={}, trades=[])
@@ -649,7 +627,7 @@ except RuntimeError:
 last = [json.loads(x) for x in open(fn, encoding="utf-8")][-1]
 check("dengeleme motor hatasiyla yarim kaldi: sonuc None olarak kayitta", last["hesap"] == "LIVE" and last["asama"] == "sonuc" and last["sonuc"] is None, last)
 a.rebalance = real_reb
-real_dir, C.REBAL_DIR = C.REBAL_DIR, os.path.join(fn, "yazilamaz")  # dosyanin altinda klasor acilamaz
+real_dir, C.REBAL_DIR = C.REBAL_DIR, os.path.join(fn, "yazilamaz")
 n0 = len(b.notes)
 b.portfolio()
 b.portfolio()
@@ -657,7 +635,6 @@ yaz = [n["text"] for n in b.notes[n0:] if "Dengeleme defteri yazılamadı" in n[
 check("defter yazilamazsa dengeleme surer, hesap basina saatte bir uyari", len(yaz) == 2 and b.ag["pf"].get("result"), yaz)
 C.REBAL_DIR = real_dir
 
-# ---- gec dengeleme: gercek hesap ayri izlenir ----
 d0 = time.time() // 86400 * 86400
 n1 = d0 + 1860
 
@@ -727,7 +704,6 @@ _la, C.LIVE_ALLOWED = C.LIVE_ALLOWED, False
 check("gercek islem izni kapali: beklenmez", geciken(b5) == [])
 C.LIVE_ALLOWED = _la
 
-# ---- pf_buy gerekcesi gercek hesapta da korunur ----
 b5, a5, ex5, _ = fresh()
 ex5.set("BTC", free=0.01)
 a5.balance_check()

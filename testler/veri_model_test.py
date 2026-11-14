@@ -1,5 +1,3 @@
-"""Kotu veri ertelenir, tasfiye etmez: bayat/eksik mum, evren, model yasi, ic None, atomik model, gunde bir egitim, kullanici uyarisi.
-Sahte borsa: ag yok, emir yok, anahtar yok. Kullanim: KQB_APP_DIR=<test> python -I veri-model_test.py <proje>"""
 import os
 import shutil
 import sys
@@ -11,7 +9,7 @@ import zlib
 sys.path.insert(0, sys.argv[1])
 import config as C
 for f in os.listdir(C.APP_DIR):
-    if f.startswith(("state", "durdur", "ders_defteri", "gecmis", "trading_memory", "haberler")):  # haber_test'in acil durum engeli buraya tasmasin
+    if f.startswith(("state", "durdur", "ders_defteri", "gecmis", "trading_memory", "haberler")):
         os.remove(os.path.join(C.APP_DIR, f))
 import joblib
 import numpy as np
@@ -39,17 +37,16 @@ os.makedirs(PF.DATA)
 
 def series(sym, n=500):
     r = np.random.RandomState(zlib.crc32(sym.encode()))
-    core = sym.startswith(("BTC", "ETH"))  # cekirdek yukselis trendinde: rejim acik
+    core = sym.startswith(("BTC", "ETH"))
     return 100 * np.exp(np.cumsum((0.004 if core else r.uniform(-0.002, 0.003)) + r.normal(0, 0.01 if core else 0.02, n)))
 
 
 class FakeEx:
-    """publicGetKlines Binance gibi: son limit satir, sondaki olusan gun mumu dahil."""
 
     def __init__(self, n_alt=60):
         self.syms = ["BTC/USDT", "ETH/USDT"] + [f"A{i:02d}/USDT" for i in range(n_alt)]
         self.back, self.short, self.empty, self.flat, self.boom, self.orders = {}, {}, set(), set(), set(), []
-        self.crash = set()  # son 12 gunde %40 dusus: tum ortalamalarin altinda
+        self.crash = set()
 
     def publicGetKlines(self, p):
         sym = p["symbol"].replace("USDT", "/USDT")
@@ -111,7 +108,7 @@ A.cli_ready = lambda: False
 C.TELEGRAM_TOKEN = ""
 C.PAPER_BALANCE = 10_000.0
 _real_maybe = PF.maybe_train
-PF.maybe_train = lambda say: None  # egitim sadece kendi bolumunde
+PF.maybe_train = lambda say: None
 _real_sync, _real_train = PF.sync_data, PF.train
 PF.sync_data = PF.train = lambda *a: (_ for _ in ()).throw(AssertionError("ag yok"))
 ex = FakeEx()
@@ -139,7 +136,6 @@ def run():
     b._pf_thread.join(30)
 
 
-# ---- 1) saglam veri: sonuc degismez ----
 st = {}
 tg, info = PF.targets(ex, st, True)
 cw = {s: PF.core_weight(PF.klines(ex, s, 260)["c"])[0] for s in PF.CORE_SYMS}
@@ -153,7 +149,6 @@ pa_pos0 = snap()
 check("ilk dengeleme pozisyon acti", len(pa.st["positions"]) >= 5, list(pa.st["positions"]))
 week_key = b.ag["pf"]["ml_hafta"]
 
-# ---- 2) bayat / eksik cekirdek verisi: o coine dokunulmaz, gerisi islenir, sadece o coin tekrar denenir ----
 def reset():
     pa.st.update(cash=10_000.0, positions={}, trades=[])
     b.bid.clear()
@@ -176,7 +171,6 @@ def tick_run(retry):
 
 
 class Clock:
-    """pf_tick zaman kapisi testin saatine bagli olmasin: gunun ilk 5 dk'si disinda."""
     def __getattr__(self, k):
         return getattr(time, k)
 
@@ -200,7 +194,7 @@ for name, setup in [
     eth0, week0 = qty(ETH), b.ag["pf"]["ml_hafta"]
     ml0 = [s for s in pa.st["positions"] if s not in PF.CORE_SYMS]
     setup()
-    ex.crash.add(BTC)  # BTC ortalamalarin altina: cekirdek payi duser, ML rejimi kapanir
+    ex.crash.add(BTC)
     b.ag["pf"]["ml_hafta"] = "2000-01"
     n_a = len(alerts("yeniden denenecek"))
     run()
@@ -211,14 +205,12 @@ for name, setup in [
     check(f"{name}: ekranda ETH simdiki agirlik, panelde sebep", abs(b.ag["pf"]["targets"][ETH] - b._pf_now()[ETH]) < 0.01 and ETH in b.ag["pf"]["bekle"], b.ag["pf"]["targets"])
     check(f"{name}: son bilinen trend korunur (haber kapisi)", ETH in b.ag["pf"]["info"]["core"], b.ag["pf"]["info"]["core"].keys())
 
-# hic elde yokken bayat: alim yok
 reset()
 pa.st.update(cash=10_000.0, positions={}, trades=[])
 ex.back[ETH] = 2
 run()
 check("ETH bayat, elde yok: ETH alinmaz, BTC alinir", qty(ETH) is None and qty(BTC), list(pa.st["positions"]))
 
-# yeniden denemede: duzelmeyen = islem yok, publish yok, Claude yok; duzelen = sadece o coin
 reset()
 real_brain = A.brain
 A.brain = lambda: "cli"
@@ -238,13 +230,12 @@ cash0 = pa.st["cash"]
 A.brain = lambda: "local"
 reviews.clear()
 ex.back.clear()
-ex.crash.add(BTC)  # duzelen ETH disinda hedef degisse de bu turda sadece ETH islenir
+ex.crash.add(BTC)
 tick_run(True)
 check("duzelince: ETH alinir, BTC aynen; 3 kapanis altinda sepet cikar", qty(ETH) and qty(BTC) == others[BTC] and not (set(pa.st["positions"]) - {ETH, BTC}), list(pa.st["positions"]))
 check("duzelince: bugunku tur biter", b.ag["pf_d"] == time.strftime("%Y-%m-%d", time.gmtime()) and "pf_bekle" not in b.ag and not b.ag["pf"]["bekle"])
 A.brain = real_brain
 
-# kontrolor ayni gunde duzelen coin icin en fazla bir kez
 reset()
 A.brain = lambda: "cli"
 pa.st["cash"] += pa.st["positions"].pop(ETH)["qty"] * b.bid[ETH]
@@ -253,13 +244,12 @@ reviews.clear()
 run()
 n_r = len(reviews)
 other = [s for s in pa.st["positions"] if s not in PF.CORE_SYMS][0]
-pa.st["cash"] += pa.st["positions"].pop(other)["qty"] * b.bid[other]  # bugunku turda islenmis coin: yeniden denemede sorulmaz, alinmaz
+pa.st["cash"] += pa.st["positions"].pop(other)["qty"] * b.bid[other]
 ex.back.clear()
 tick_run(True)
 A.brain = real_brain
 check("duzelen coin icin bir kontrolor cagrisi, sadece o coin", len(reviews) == n_r + 1 and reviews[-1] == [ETH] and qty(other) is None and qty(ETH), reviews)
 
-# BTC bozuk: ETH islenir, rejim bilinmiyor: ML gunu harcanmaz, yeni ML alimi yok
 reset()
 btc0, eth0 = qty(BTC), qty(ETH)
 week0 = b.ag["pf"]["ml_hafta"]
@@ -280,7 +270,6 @@ tick_run(True)
 check("BTC duzelince tam tur: ML gunu islenir, secim yeni", b.ag["pf"]["ml_hafta"] == week0 and not b.ag["pf"]["ml"].get("kept") and "pf_bekle" not in b.ag, b.ag["pf"]["ml_hafta"])
 check("BTC duzelince tam turda eksik ML alinir", qty(drop) is not None, list(pa.st["positions"]))
 
-# elle basma: tam tur, geri bildirim
 reset()
 ex.back[ETH] = 2
 ex.crash.add(BTC)
@@ -295,7 +284,6 @@ tick_run(True)
 check("eski gunun bekleme kaydi: tam tur gibi calisir", b.ag["pf_bekle"]["d"] == time.strftime("%Y-%m-%d", time.gmtime()), b.ag["pf_bekle"])
 ex.back.clear(), ex.crash.clear()
 
-# ---- 2b) dongu kapisi: pf_tick gercekten calistirilir ----
 calls = []
 real_run = b.run_portfolio
 b.run_portfolio = lambda retry=False: calls.append(retry) or True
@@ -328,7 +316,6 @@ check("kapi: strateji kapaliysa calismaz", not b.pf_tick())
 C.PORTFOY = real_port
 b.run_portfolio = real_run
 B.time = _time
-# yaris: is parcacigi dongu isaretlemeden biterse yeniden deneme isareti ezilmemeli
 reset()
 ex.back[ETH] = 2
 
@@ -352,7 +339,6 @@ reset()
 pa_pos0 = snap()
 week_key = b.ag["pf"]["ml_hafta"]
 
-# ---- 2c) reddedilen secim: rejim kapisi taze, yas siniri, yeni alim yok ----
 prev0 = [("A01/USDT", 0.9), ("A02/USDT", 0.8), ("A03/USDT", 0.7), ("A04/USDT", 0.6), ("A05/USDT", 0.5)]
 mk0 = lambda age=8, reg=True: {"ml": {"picks": list(prev0), "reg": reg, "note": "eski", "t": time.time() - age * 86400}, "ml_n": 50}
 exd = FakeEx(n_alt=20)
@@ -399,11 +385,10 @@ fresh_model()
 st = mk0(age=2)
 tg, info = PF.targets(ex, st, False)
 check("saglikli hafta ici: secim ve rejim dokunulmaz (normal yol degismez)", st["ml"]["picks"] == prev0 and st["ml"]["reg"] is True and not st["ml"].get("kept") and all(abs(tg[s] - 0.06) < 1e-9 or s in PF.CORE_SYMS for s, _ in prev0), tg)
-# bot: stopla satilan secim geri alinmaz, reddedilende satis yine gider
 reset()
 held_ml = [s for s in pa.st["positions"] if s not in PF.CORE_SYMS]
 gone = held_ml[0]
-pa.st["cash"] += pa.st["positions"].pop(gone)["qty"] * b.bid[gone]  # felaket stopu satti gibi
+pa.st["cash"] += pa.st["positions"].pop(gone)["qty"] * b.bid[gone]
 keep = {s: qty(s) for s in held_ml[1:]}
 b.ag["pf"]["ml_hafta"] = "2000-01"
 ex.boom.add("A10/USDT") if "A10/USDT" not in held_ml else ex.boom.add("A11/USDT")
@@ -422,10 +407,9 @@ reset()
 pa_pos0 = snap()
 week_key = b.ag["pf"]["ml_hafta"]
 
-# ---- 3) evren: kucukse onceki secim korunur ----
 prev = [("A01/USDT", 0.9), ("A02/USDT", 0.8), ("A03/USDT", 0.7), ("A04/USDT", 0.6), ("A05/USDT", 0.5)]
 mk = lambda: {"ml": {"picks": list(prev), "reg": True, "note": "eski", "t": time.time() - 8 * 86400}, "ml_n": 50}
-exs = FakeEx(n_alt=20)  # BTC+ETH+20 = 22 coin; 50'nin %70'inden az
+exs = FakeEx(n_alt=20)
 st = mk()
 tg, info = PF.targets(exs, st, True)
 check("evren 22 (onceki 50): onceki secim, ML agirligi korunur", st["ml"]["picks"] == prev and all(s in tg for s, _ in prev), st["ml"]["note"])
@@ -444,14 +428,13 @@ exs2 = FakeEx(n_alt=6)
 tg, info = PF.targets(exs2, st, True)
 check("evren < 10: tasfiye yok (eski kod secimi bosaltiyordu)", st["ml"]["picks"] == prev and st["ml"]["reg"], st["ml"]["note"])
 st = {"ml_n": 50, "ml": {"picks": list(prev), "reg": True, "t": 1}}
-exs3 = FakeEx(n_alt=38)  # 40 coin, %80: yakin
+exs3 = FakeEx(n_alt=38)
 PF.targets(exs3, st, True)
 check("evren yakin (40/50): yeni secim", st["ml"]["picks"] != prev and st["ml_n"] == 40, st["ml"]["note"])
 st = {}
 PF.targets(exs, st, True)
 check("onceki secim yoksa evren karsilastirmasi yok", len(st["ml"]["picks"]) == 5)
 
-# ---- 4) ML hatasi kullaniciya gorunur; coin verisi bayat ----
 ex2 = FakeEx()
 for s in ex2.syms[2:]:
     ex2.back[s] = 3
@@ -482,7 +465,6 @@ tg, info = PF.targets(ex, st, True)
 ex.boom.clear()
 check("ilk secim hata verirse: nakit ve uyari", set(tg) == set(PF.CORE_SYMS) and "nakitte" in info["uyari"][0], info["uyari"])
 
-# ---- 5) model yasi ----
 fresh_model(t=time.time() - 89 * 86400)
 st = {}
 tg, info = PF.targets(ex, st, True)
@@ -511,7 +493,6 @@ d = b.ag["decisions"][-1]["view"]
 check("bot: eski model bir say, ML satildi, ozet dogru sebep", len(alerts("90 günden eski")) == n_a + 1 and "90 günden eski" in d
       and all(s in PF.CORE_SYMS for s in pa.st["positions"]), d[-160:])
 
-# ---- 6) ic None acik durum: agirlik degismez, gizli gecmez ----
 fresh_model(ic=None)
 st = {}
 tg, info = PF.targets(ex, st, True)
@@ -532,7 +513,6 @@ b.portfolio()
 check("bot ozeti saglik_yok gosterir", "sağlık kontrolü ölçülmemiş" in b.ag["decisions"][-1]["view"], b.ag["decisions"][-1]["view"][-180:])
 check("arayuz durumu gorur", "durum_not" in b.ag["pf"]["ml"] and "ml.durum_not" in open(os.path.join(sys.argv[1], "ui.html"), encoding="utf-8").read())
 
-# ---- 7) model hic yok: secim korunur ----
 PF._M.clear()
 st = mk()
 tg, info = PF.targets(ex, st, True)
@@ -542,7 +522,6 @@ tg, info = PF.targets(ex, st, True)
 check("model yok, secim yok: nakit", set(tg) == set(PF.CORE_SYMS) and st["ml"]["picks"] == [])
 fresh_model()
 
-# ---- 8) egitim: gercek train sentetik veriyle, atomik yazma ----
 PF.train = _real_train
 today = int(time.time() // 86400) * DAY
 n = 1500
@@ -579,7 +558,6 @@ check("yazma yarim kalirsa eski model saglam, bellek degismedi", raised and disk
 PF._M.clear()
 check("load_model gecici dosyayi okumaz", PF.load_model()["t"] == m1["t"])
 
-# ---- 9) egitim verisi guncellenemediyse taze model yok ----
 PF._ls, _ls0 = (lambda sess, prefix, keys=False: []), PF._ls
 try:
     _real_sync(lambda t: None)
@@ -596,7 +574,6 @@ except ValueError as e:
 PF._ls = _ls0
 check("sync: taze veri gecer, 20 gun eski veri hata", ok1 and raised, (ok1, raised))
 
-# ---- 10) basarisiz egitim gunde en fazla bir ----
 calls, says = [], []
 PF.maybe_train = _real_maybe
 

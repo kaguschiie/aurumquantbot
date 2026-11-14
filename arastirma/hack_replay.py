@@ -1,5 +1,3 @@
-"""Gercek sinav: 29 Ekim Binance hack'inde haber kurallari ne yapardi? Gercek basliklar (zamanlariyla) + gercek 5 dk mumlar.
-Claude puani varsayimi: olayin ilk haberleri kritik/-0.95 (bu parca varsayim, gercek Claude cevabi degil)."""
 import calendar, os, sys, time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import ccxt, feedparser, requests
@@ -35,7 +33,6 @@ def chg(sym, t):
     return k[-1][4] / k[0][1] - 1
 
 
-# kural: 2 farkli kaynak (3 saat icinde) + 1 saatte <= %-1.5
 fire = None
 for t, s, ti in rows:
     srcs = {x[1] for x in rows if t - 3 * 3600 <= x[0] <= t}

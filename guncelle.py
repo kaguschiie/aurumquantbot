@@ -1,8 +1,3 @@
-"""Uzaktan tek tikla guncelleme (GitHub Releases) + yeniden baslatma.
-Yayin: guncelleme_yayinla.bat -> surum (yyyy.MM.dd.HHmm) + exe paketi (zip) + SHA-256 -> GitHub release.
-Uygulama: surumu kontrol eder, paketi indirir, SHA-256 ile dogrular, cikarir; kapanir ve kucuk bir yardimci betik
-dosyalari degistirip uygulamayi yeniden acar. 'veri' klasoru (hesaplar, anahtarlar, kasa, Ders Defteri) hic
-kopyalanmaz ve silinmez; veri LOCALAPPDATA'daysa zaten kurulum klasorunun disindadir."""
 import hashlib
 import logging
 import os
@@ -19,11 +14,10 @@ log = logging.getLogger("bot")
 API = os.environ.get("KQB_UPDATE_API") or "https://api.github.com"
 DIR = os.path.join(C.APP_DIR, "guncelleme")
 STATE = {"t": 0.0, "latest": None, "error": "", "progress": None, "notified": ""}
-DETACH = 0x00000008 | 0x00000200 | 0x08000000  # DETACHED_PROCESS | NEW_PROCESS_GROUP | NO_WINDOW
+DETACH = 0x00000008 | 0x00000200 | 0x08000000
 
 
 def ver(v):
-    """'2026.10.25.1430' -> (2026, 10, 25, 1430); 'dev' -> (0,)"""
     parts = [int(x) for x in str(v).lstrip("vV").split(".") if x.isdigit()]
     return tuple(parts) or (0,)
 
@@ -35,8 +29,8 @@ def _headers(raw=False):
     return h
 
 
-GIT = not getattr(sys, "frozen", False) and os.path.isdir(os.path.join(C.BASE_DIR, ".git"))  # sunucu: git ile kurulu
-DAL = os.environ.get("KQB_KOD_DALI")  # kendi kod dali olan bot (gelistir.py): ana surum bu dala birlestirilir
+GIT = not getattr(sys, "frozen", False) and os.path.isdir(os.path.join(C.BASE_DIR, ".git"))
+DAL = os.environ.get("KQB_KOD_DALI")
 
 
 def _git(*a):
@@ -44,7 +38,6 @@ def _git(*a):
 
 
 def _check_git():
-    """Sunucu (git klonu): GitHub'daki main ile yerel surumu karsilastirir."""
     f = _git("fetch", "-q", "origin")
     if f.returncode:
         raise ValueError(f.stderr.strip()[:160] or "git fetch başarısız")
@@ -56,7 +49,6 @@ def _check_git():
 
 
 def check():
-    """En son yayini okur. Donus: durum sozlugu (arayuz icin)."""
     STATE["t"] = time.time()
     if GIT:
         try:
@@ -111,11 +103,9 @@ TASK = "KriptoQuantBot_guncelle"
 
 
 def _helper(lines):
-    """Uygulama kapandiktan sonra calisan yardimci betik. Windows Gorev Zamanlayici ile baslatilir: uygulamanin surec
-    agacindan tamamen bagimsizdir (servis/zamanlayici altinda calisan 7/24 bilgisayarda da kapanista oldurulmez)."""
-    bat = os.path.join(os.environ.get("TEMP") or DIR, "kqb_guncelle.bat")  # kisa yol (gorev komutu 261 karakter siniri)
+    bat = os.path.join(os.environ.get("TEMP") or DIR, "kqb_guncelle.bat")
     pid = os.getpid()
-    env = "".join(f'set "{k}={v}"\r\n' for k, v in os.environ.items() if k.startswith("KQB_"))  # gelistirici ayarlari
+    env = "".join(f'set "{k}={v}"\r\n' for k, v in os.environ.items() if k.startswith("KQB_"))
     with open(bat, "w", encoding="utf-8", newline="") as fh:
         fh.write("@echo off\r\nchcp 65001 >nul\r\ntitle KriptoQuantBot guncelleniyor\r\n" + env + ":bekle\r\n"
                  f'tasklist /FI "PID eq {pid}" | find "{pid}" >nul && (timeout /t 1 /nobreak >nul & goto bekle)\r\n'
@@ -127,7 +117,7 @@ def _helper(lines):
             return
     except OSError:
         pass
-    subprocess.Popen(["cmd", "/c", bat], creationflags=DETACH, close_fds=True, cwd=DIR)  # yedek yol
+    subprocess.Popen(["cmd", "/c", bat], creationflags=DETACH, close_fds=True, cwd=DIR)
 
 
 def _relaunch_cmd():
@@ -137,13 +127,11 @@ def _relaunch_cmd():
 
 
 def restart(quit_cb):
-    """Uygulamayi kapatip yeniden acar (or. sunucu modu degisince)."""
     _helper([_relaunch_cmd()])
     quit_cb()
 
 
 def _verify_git():
-    """git pull sonrasi, yeniden baslatmadan once: paketler kurulabildi mi, kod derlenip ana moduller yukleniyor mu. Hata metni/None."""
     req = os.path.join(C.BASE_DIR, "requirements-sunucu.txt")
     try:
         r = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", req], capture_output=True, text=True, timeout=900)
@@ -159,11 +147,9 @@ def _verify_git():
 
 
 def apply(quit_cb):
-    """Indir -> SHA-256 dogrula -> cikar -> kapan; yardimci betik dosyalari degistirip yeniden acar. Hata metni/None.
-    Sunucuda (git): git pull + paketler; kapanir, systemd yeniden baslatir (veri, oturumlar, Telegram korunur)."""
     if GIT:
         old = _git("rev-parse", "HEAD").stdout.strip()
-        if DAL:  # bu botun kendi degisiklikleri var: ana surum dala birlestirilir, cakisirsa hic uygulanmaz
+        if DAL:
             p = _git("fetch", "-q", "origin")
             if p.returncode:
                 return f"git fetch başarısız: {p.stderr.strip()[:200]}"
@@ -177,14 +163,14 @@ def apply(quit_cb):
             if p.returncode:
                 return f"git pull başarısız: {p.stderr.strip()[:200]}"
         err = _verify_git()
-        if err:  # yeni kod calismayacak: eski surume geri don, servis yeniden baslatilmaz (calisan surum kalir)
+        if err:
             if old:
                 _git("reset", "--hard", "-q", old)
             log.warning("Guncelleme geri alindi (%s): %s", old[:7], err)
             return f"Güncelleme geri alındı, eski sürüm çalışmaya devam ediyor: {err}"
         log.info("Sunucu guncellendi: %s", _git("log", "-1", "--format=%h %s").stdout.strip())
-        try:  # ayni kodu kullanan diger botlar (melik, fatih...) da yeni surume gecer; bu bot asagida kendisi kapanir
-            if DAL:  # kendi kod kopyasindaki bot digerlerini yeniden baslatmaz (onlar baska klasorden calisir)
+        try:
+            if DAL:
                 raise OSError
             ls = subprocess.run(["systemctl", "list-units", "--type=service", "--plain", "--no-legend", "kriptoquantbot*"],
                                 capture_output=True, text=True, timeout=30).stdout.split("\n")
@@ -193,7 +179,7 @@ def apply(quit_cb):
                 subprocess.run(["systemctl", "restart", "--no-block", *others], timeout=30)
         except (OSError, subprocess.SubprocessError):
             pass
-        quit_cb()  # systemd (Restart=always) yeni kodla yeniden baslatir
+        quit_cb()
         return None
     if not getattr(sys, "frozen", False):
         return "Geliştirici modunda (python) güncelleme uygulanmaz; exe sürümünde çalışır."
@@ -205,7 +191,7 @@ def apply(quit_cb):
     try:
         os.makedirs(DIR, exist_ok=True)
         pkg, new = os.path.join(DIR, "paket.zip"), os.path.join(DIR, "yeni")
-        if not lt["sha"]:  # dogrulanamayan paket kurulmaz
+        if not lt["sha"]:
             return "Yayında SHA-256 dosyası yok; güncelleme iptal edildi."
         _download(lt["zip"], pkg)
         if lt["sha"]:

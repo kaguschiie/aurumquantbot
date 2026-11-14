@@ -1,5 +1,3 @@
-"""Uygulama ici gelistirme (gelistir.py) + kendi dali olan botun guncellemesi (guncelle.py DAL). Sahte Claude cevaplari, gecici git
-depolari; ag yok, ucretli cagri yok, gercek emir yok."""
 import hashlib
 import json
 import os
@@ -60,13 +58,11 @@ G.W, G.GECMIS, G.HARCAMA, G.ONAY = os.path.join(G.DIR, "calisma"), os.path.join(
     os.path.join(APP, "gelistirme_onay.sha256")
 guncelle.GIT = True
 
-# 1) etkinlik
 check("etkin: KQB_GELISTIRME=1 + git", G.etkin())
 os.environ["KQB_GELISTIRME"] = "0"
 check("etkin degil: bayrak kapali", not G.etkin() and "açık değil" in G.baslat("bir sey yap", "f"))
 os.environ["KQB_GELISTIRME"] = "1"
 
-# 2) sahte Claude
 SENARYO, CAGRI = [], []
 B = lambda **k: types.SimpleNamespace(**k)
 U = B(input_tokens=1000, output_tokens=500, cache_read_input_tokens=0, cache_creation_input_tokens=0)
@@ -99,7 +95,6 @@ def bekle(durumlar=("hazir", "hata", "degisiklik_yok", "iptal"), sn=30):
     return G.STATE["is"]
 
 
-# 3) basit degisiklik: oku + degistir + ozet
 SENARYO[:] = [[("oku", {"yol": "ui.html", "bas": 1, "adet": 50})],
               [("degistir", {"yol": "ui.html", "eski": "<h1>Kasa</h1>", "yeni": "<h1>Kasa</h1><p>7 gun</p>"})],
               "Kasa kartina 7 gunluk satir eklendi."]
@@ -121,7 +116,6 @@ g = json.load(open(G.GECMIS, encoding="utf-8"))
 check("gecmise yazildi", g[-1]["sha"] == sha1 and g[-1]["tur"] == "uygulandi" and g[-1]["dosyalar"] == ["ui.html"])
 check("calisma kopyasi temizlendi", not os.path.isdir(G.W) and G.STATE["is"] is None)
 
-# 4) arac guvenligi
 os.makedirs(G.W, exist_ok=True)
 for yol in ("../veri/x.txt", ".git/config", "veri/settings.json", "a/b/../../../dis.txt", "x.db"):
     try:
@@ -131,7 +125,6 @@ for yol in ("../veri/x.txt", ".git/config", "veri/settings.json", "a/b/../../../
         check(f"yol reddi: {yol}", True)
 shutil.rmtree(G.W)
 
-# 5) korunan bolge + onay kodu + test basarisizligi
 SENARYO[:] = [[("degistir", {"yol": "bot.py", "eski": "return 'emir ' + s", "yeni": "return 'EMIR ' + s"})], "Emir metni buyuk harf."]
 G.baslat("emir metnini degistir", "fatih")
 j = bekle()
@@ -168,7 +161,6 @@ check("testler gecmezse uygulanamaz", j["durum"] == "hazir" and not j["gecti"] a
 os.environ["GEL_TEST_SONUC"] = "gecti"
 G.vazgec()
 
-# 6) arac hatasi Claude'a doner, degisiklik yoksa durum
 SENARYO[:] = [[("degistir", {"yol": "ui.html", "eski": "yok-boyle-metin", "yeni": "x"})], "Yapamadim."]
 G.baslat("olmayan", "fatih")
 j = bekle()
@@ -177,7 +169,6 @@ check("eslesmeyen degistir hata olarak doner", son.get("is_error") and "0 kez" i
 check("degisiklik yoksa degisiklik_yok", j["durum"] == "degisiklik_yok")
 G.vazgec()
 
-# 7) butce
 C.GELISTIRME_IS_USD = 0.001
 SENARYO[:] = [[("oku", {"yol": "ui.html", "bas": 1, "adet": 5})]] * 5
 G.baslat("butce testi", "fatih")
@@ -188,13 +179,11 @@ C.GELISTIRME_IS_USD, C.GELISTIRME_GUNLUK_USD = 2.0, 0.0
 check("gunluk butce doluysa baslamaz", "bütçesi doldu" in G.baslat("x yap lutfen", "fatih"))
 C.GELISTIRME_GUNLUK_USD = 5.0
 
-# 8) geri al
 check("geri al", G.geri_al(sha1, lambda: None) is None)
 time.sleep(1.2)
 check("geri alininca dosya eski hali", "7 gun" not in open(os.path.join(BASE, "ui.html"), encoding="utf-8").read())
 check("ikinci kez geri alinamaz", "zaten" in G.geri_al(sha1, lambda: None))
 
-# 9) guncelleme: kendi dali olan bot ana surumu birlestirir; cakisirsa uygulamaz
 ORIG = os.path.join(TMP, "origin.git")
 git("init", "-q", "--bare", "-b", "main", ORIG, cwd=TMP)
 git("push", "-q", ORIG, "fatih:main", cwd=BASE)

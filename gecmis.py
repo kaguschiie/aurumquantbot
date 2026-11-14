@@ -1,11 +1,3 @@
-"""Gecmis Okulu: Binance'teki tum USDT paritelerinin 2 yillik 1s mumlari -> canli motorla ayni ozellikler ve sinyaller ->
-canli cikis politikasiyla maliyet sonrasi simulasyon -> somut dersler:
-  - strateji x rejim beklentisi (egitim: ilk 2/3, test: son 1/3 zaman; ikisi de negatifse o kurulum o rejimde kapanir)
-  - sampiyon cikis parametreleri (stop/hedef/basabas/iz/kismi kar/zaman stopu), sadece testte de ustunse
-  - sinyal ve ikili sinyal istatistikleri (binlerce ornek) -> Ders Defteri tuzak/altin kurallari ve agirlik onsel'i
-  - portfoy simulasyonu: kasa egrisi vs BTC al-tut (son 1/3 = hic gorulmemis veri)
-Sadece herkese acik mum verisi; emir yok, ucret yok. 15dk teknik, emir defteri, balina, fonlama mumdan uretilemez:
-bu sinyaller testte yoktur (canlida ek filtre olarak kalir)."""
 import json
 import logging
 import os
@@ -25,10 +17,10 @@ log = logging.getLogger("bot")
 LEVERAGED = ("UP", "DOWN", "BULL", "BEAR")
 FILE = os.path.join(C.APP_DIR, "gecmis.json")
 STATE = {"phase": "", "done": 0, "total": 0, "t": 0.0, "error": "", "running": False}
-RES = {}             # son sonuc (gecmis.json): canli motor buradan okur
+RES = {}
 TF_H = 3_600_000
-H_MAX = 48           # en uzun tutma (saat)
-GAP_H = 4            # ayni coinde iki ornek arasi en az (ust uste binen ornekler istatistigi sisirmesin)
+H_MAX = 48
+GAP_H = 4
 KINDS = ("trend", "ayrisma", "momentum", "altin", "geri_cekilme", "dip")
 KIND_TR = {"trend": "Zaman dilimleri uyumlu yükseliş", "ayrisma": "BTC'den pozitif ayrışma",
            "momentum": "Momentum / kırılım avcısı", "altin": "Altın (PAXG)", "geri_cekilme": "Trend içi geri çekilme",
@@ -42,16 +34,14 @@ DEFAULT_EXIT = {"stop_atr": 1.5, "tp_atr": 3.2, "be_r": 0.4, "trail_atr": 1.0, "
                 "ts_h": 0, "ts_r": 0.3, "max_h": 24}
 
 
-# ---------------- veri ----------------
 def symbols(ex, min_vol=1_000_000):
-    """Islemdeki tum USDT spot pariteleri (sabit/kaldiracli haric), 24s hacmi min_vol uzeri; BTC ve ek pariteler dahil."""
     out = []
     for s, t in ex.fetch_tickers().items():
         m, base = ex.markets.get(s) or {}, s.split("/")[0]
         if not (m.get("spot") and m.get("active") and m.get("quote") == "USDT") or base in D.STABLE or base.endswith(LEVERAGED):
             continue
         last, hi, lo = t.get("last") or 0, t.get("high") or 0, t.get("low") or 0
-        if 0.97 < last < 1.03 and hi < lo * 1.01:  # listede olmayan dolar sabitli coin
+        if 0.97 < last < 1.03 and hi < lo * 1.01:
             continue
         if (t.get("quoteVolume") or 0) >= min_vol or s in C.EXTRA_SYMBOLS or s == C.BTC:
             out.append(s)
@@ -59,8 +49,7 @@ def symbols(ex, min_vol=1_000_000):
 
 
 def download(syms=None, days=C.HISTORY_DAYS, workers=2):
-    """Eksik/yeni mumlari indirir (artimli, data.py onbellegi: DATA_DIR/<SEMBOL>_1h.pkl). Donus: indirilen sembol listesi."""
-    exs = [D.exchange() for _ in range(workers)]  # her is parcacigi kendi baglantisi (ccxt hiz siniri baglanti basina)
+    exs = [D.exchange() for _ in range(workers)]
     syms = syms or symbols(exs[0], 0)
     start = int(time.time() * 1000) - days * 86_400_000
     STATE.update(phase="indirme", done=0, total=len(syms), error="")
@@ -96,16 +85,14 @@ def _frame(sym, days=C.HISTORY_DAYS):
     return df[df.index >= df.index[-1] - days * 86_400_000] if len(df) else df
 
 
-# ---------------- ozellikler (canli teknik.py/quant.py tanimlariyla ayni) ----------------
 def _tf_rec(df, hours):
-    """Her 1s mumda biten 'hours' saatlik mumlarin teknik ozeti (ofsetli yeniden ornekleme; ileriye bakis yok)."""
     o, h, l, c, v = (df[k].values.astype(float) for k in ("open", "high", "low", "close", "volume"))
     out = np.full(len(c), np.nan)
-    for off in range(0, hours, max(1, hours // 6)):  # gunlukte 4 saatte bir ofset; aradaki saatler bir oncekiyle
+    for off in range(0, hours, max(1, hours // 6)):
         m = (len(c) - off) // hours
         if m < 60:
             continue
-        s = len(c) - off - m * hours  # bloklar off kadar onceki mumda biter
+        s = len(c) - off - m * hours
         blk = lambda x: x[s:s + m * hours].reshape(m, hours)
         agg = pd.DataFrame({"open": blk(o)[:, 0], "high": blk(h).max(1), "low": blk(l).min(1), "close": blk(c)[:, -1],
                             "volume": blk(v).sum(1)})
@@ -114,7 +101,6 @@ def _tf_rec(df, hours):
 
 
 def features(df):
-    """1s mumdan canli ozellikler (her satir: o mum kapanisinda bilinen)."""
     c, h, l, v, tb = (df[k].values.astype(float) for k in ("close", "high", "low", "volume", "taker_buy"))
     rt = T.rating_series(df)
     S = lambda x: pd.Series(x)
@@ -133,8 +119,6 @@ def features(df):
 
 
 def _market(syms):
-    """Saatlik piyasa baglami (1. gecis, hafif): BTC 24s/4s getiri, BTC ATR (volatilite), genislik (likit coinlerin
-    50 EMA ustu orani), rejim (model.regime ile ayni kural)."""
     import model as M
     bdf = _frame(C.BTC)
     t0, t1 = int(bdf.index[0]), int(bdf.index[-1])
@@ -166,7 +150,6 @@ def _market(syms):
 
 
 def signals(f, mk, ix, gold=False):
-    """Ders Defteri sinyalleri (dersler.SIGNALS ile ayni esikler; mumdan uretilebilenler) -> bit maskesi."""
     rs24 = f["chg24"] - mk["btc_chg24"][ix]
     reg = mk["reg"][ix]
     conds = {"trend_1s": f["rec1h"] >= 0.5, "trend_4s": f["rec4h"] >= 0.3, "zayif_4s": f["rec4h"] < 0.1,
@@ -181,8 +164,6 @@ def signals(f, mk, ix, gold=False):
 
 
 def kinds(f, rs24, gold=False):
-    """Canli quant.py kurulumlari (15dk/emir defteri kosullari mumdan uretilemez) + 2 arastirma kurulumu.
-    Donus: {tur: (maske, puan)}."""
     h1, h4, d1, rsi, vs, chg = f["rec1h"], f["rec4h"], f["rec1d"], f["rsi"], f["vspike"], f["chg24"]
     with np.errstate(invalid="ignore"):
         out = {}
@@ -202,9 +183,7 @@ def kinds(f, rs24, gold=False):
     return out
 
 
-# ---------------- ornekler ve fiyat yollari ----------------
 def build(syms=None, say=lambda m: None):
-    """Tum coinler: ozellikler -> kurulum ornekleri (+ her ornegin sonraki 48 saatlik goreli fiyat yolu)."""
     syms = sorted(syms or _cached_syms())
     if C.BTC not in syms:
         raise ValueError("BTC verisi yok")
@@ -212,7 +191,7 @@ def build(syms=None, say=lambda m: None):
     mk = _market(syms)
     STATE.update(phase="özellikler")
     rows, paths, used = [], [], []
-    for s in syms:  # tek tek: bellekte ayni anda tek coinin ozellikleri (dusuk RAM'li bilgisayarda da calissin)
+    for s in syms:
         STATE["done"] += 1
         try:
             df = _frame(s)
@@ -241,7 +220,7 @@ def build(syms=None, say=lambda m: None):
                     continue
                 last[k] = i
                 seg = rel[i + 1:i + 1 + H_MAX] / f["c"][i]
-                if len(seg) < H_MAX:  # veri sonu: son kapanisla doldur (acik kalan pozisyon son fiyattan degerlenir)
+                if len(seg) < H_MAX:
                     seg = np.vstack([seg, np.repeat(seg[-1:, [2, 2, 2]], H_MAX - len(seg), 0)])
                 paths.append(seg.astype(np.float32))
                 rows.append((int(f["t"][i]), si, KINDS.index(k), int(mk["reg"][ix[i]]), int(mk["vol"][ix[i]]),
@@ -255,10 +234,7 @@ def build(syms=None, say=lambda m: None):
     return E, mk
 
 
-# ---------------- vektorlu cikis simulasyonu (canli Account._manage/_shield/partial ile ayni kurallar) ----------------
 def simulate(path, atr, p, taker=True):
-    """path: (n, T, 3) girise gore goreli (yuksek, dusuk, kapanis); atr: (n,) ATR/fiyat. Ayni mumda once stop
-    (temkinli), kalkan bir sonraki mumdan gecerli. Donus: (net R, net getiri, tutulan saat, cikis turu kodu)."""
     n, T_ = path.shape[:2]
     e = 1 + (C.SLIPPAGE if taker else 0.0)
     stop = 1 - p["stop_atr"] * atr
@@ -275,29 +251,29 @@ def simulate(path, atr, p, taker=True):
     prev_c = np.ones(n)
     for t in range(min(T_, p["max_h"])):
         h, low, c = path[:, t, 0], path[:, t, 1], path[:, t, 2]
-        hit = ~done & (low <= sl)                          # stop (bosluk varsa onceki kapanistan / acilistan)
+        hit = ~done & (low <= sl)
         px = np.minimum(sl, prev_c) * (1 - C.SLIPPAGE)
         out[hit], held[hit], done[hit] = px[hit], t + 1, True
-        why[hit] = np.where(sl[hit] > bep[hit] * 1.001, 3, np.where(sl[hit] >= e, 2, 1))  # 1 stop 2 basabas 3 iz
-        pp = ~done & (h >= part_at)                        # kademeli kar
+        why[hit] = np.where(sl[hit] > bep[hit] * 1.001, 3, np.where(sl[hit] >= e, 2, 1))
+        pp = ~done & (h >= part_at)
         if pp.any():
             f = p["part_frac"]
             realized[pp] += f * (part_at[pp] * (1 - C.FEE) - e)
             qty[pp] -= f
             part_at[pp] = np.inf
             sl[pp], be[pp] = np.maximum(sl[pp], bep[pp]), True
-        ht = ~done & (h >= tp)                             # hedef
+        ht = ~done & (h >= tp)
         out[ht], held[ht], done[ht], why[ht] = tp[ht], t + 1, True, 4
         hi = np.maximum(hi, h)
-        nb = ~done & ~be & (hi - e >= trig)                # sifir zarar kalkani
+        nb = ~done & ~be & (hi - e >= trig)
         sl[nb], be[nb] = np.maximum(sl[nb], bep[nb]), True
         tr = np.maximum(hi - p["trail_atr"] * atr, np.where(hi - e >= r0, e + C.LOCK_FRAC * (hi - e), -np.inf))
         sl = np.where(~done & be, np.maximum(sl, np.minimum(tr, c * 0.998)), sl)
-        if p["ts_h"] and t + 1 == p["ts_h"]:              # zaman stopu: N saatte ilerlemeyen pozisyon
+        if p["ts_h"] and t + 1 == p["ts_h"]:
             ts = ~done & (hi - e < p["ts_r"] * r0)
             out[ts], held[ts], done[ts], why[ts] = c[ts], t + 1, True, 5
         prev_c = c
-    rest = ~done                                           # sure doldu: son kapanistan
+    rest = ~done
     out[rest] = path[rest, min(T_, p["max_h"]) - 1, 2]
     why[rest] = 6
     ret = realized + qty * (out * (1 - C.FEE) - e) - C.FEE * e
@@ -318,15 +294,12 @@ def stats(r, w=None):
             "pf": round(float(win.sum() / -loss.sum()), 3) if loss.sum() < 0 else None, "sum": round(float(r.sum()), 1)}
 
 
-# ---------------- arama ----------------
 GRID = {"stop_atr": (1.0, 1.5, 2.0, 2.5, 3.0), "tp_atr": (2.0, 3.2, 4.5, 6.0, 0), "be_r": (0, 0.4, 0.7, 1.0, 1.5),
         "trail_atr": (1.0, 1.5, 2.0, 3.0), "part_frac": (0, 0.33, 0.5), "part_r": (1.0, 1.5, 2.0),
         "ts_h": (0, 4, 8, 12), "ts_r": (0.2, 0.5), "max_h": (12, 24, 48)}
 
 
 def search(path, atr, taker, p0=None, rounds=2):
-    """Koordinat inisi: her turda her parametrenin tum degerleri denenir, egitim verisinde ort. net R en iyi olan
-    secilir. Az parametre + ayri test donemi = asiri uyuma karsi."""
     p = dict(p0 or DEFAULT_EXIT)
     best = float(simulate(path, atr, p, taker)[0].mean())
     for _ in range(rounds):
@@ -347,7 +320,6 @@ def search(path, atr, taker, p0=None, rounds=2):
 
 
 def _rules(E, R, train, test, base):
-    """Tekli ve ikili sinyal istatistikleri (egitim/test); her iki donemde de tutarli olanlar kural olur."""
     out, n_s = [], len(SIGS)
     bits = [(E["sig"] >> b) & 1 for b in range(n_s)]
     keys = [(a,) for a in range(n_s)] + [(a, b) for a in range(n_s) for b in range(a + 1, n_s)]
@@ -374,8 +346,6 @@ def _rules(E, R, train, test, base):
 
 
 def portfolio(E, R, ret, held, mask, risk_pct=1.0, max_pos=C.MAX_POSITIONS):
-    """Kronolojik portfoy: her saatte en yuksek puanli kurulumlar, coin basina tek pozisyon, en fazla max_pos acik.
-    Islem basi risk kasanin risk_pct'si (R x risk). Donus: kasa egrisi ozeti."""
     idx = np.flatnonzero(mask)
     idx = idx[np.lexsort((-E["score"][idx], E["t"][idx]))]
     eq, open_until, busy, curve, n = 1.0, [], {}, [], 0
@@ -387,17 +357,14 @@ def portfolio(E, R, ret, held, mask, risk_pct=1.0, max_pos=C.MAX_POSITIONS):
             continue
         end = t + int(held[i]) * TF_H
         open_until.append(end)
-        busy[s] = end + 3_600_000  # cikistan sonra 60 dk bekleme (canli COOLDOWN_MIN)
+        busy[s] = end + 3_600_000
         eq *= 1 + risk_pct / 100 * float(R[i])
         n += 1
         curve.append((t, eq))
     return {"n": n, "ret_pct": round((eq - 1) * 100, 2), "curve": curve}
 
 
-# ---------------- ana is ----------------
 def run(say=lambda m: None, fetch=True):
-    """Tam Gecmis Okulu: indir -> ornekle -> her kurulum icin cikis parametresi ara (egitim) -> test donemiyle dogrula ->
-    kurallar + portfoy -> gecmis.json. Uzun surer (ilk sefer ~15-25 dk); arka planda calisir."""
     if STATE["running"]:
         return "zaten çalışıyor"
     STATE.update(running=True, error="", t=time.time())
@@ -422,7 +389,7 @@ def run(say=lambda m: None, fetch=True):
             tr_m = train[m]
             p, _ = search(E["path"][m & train], E["atr"][m & train], taker)
             r1, ret1, held1, why1 = simulate(E["path"][m], E["atr"][m], p, taker)
-            better = r1[~tr_m].mean() > r0[~tr_m].mean() + 0.02  # yeni parametre test doneminde de ustun mu?
+            better = r1[~tr_m].mean() > r0[~tr_m].mean() + 0.02
             use = p if better else p0
             r, rt, hd, wy = (r1, ret1, held1, why1) if better else simulate(E["path"][m], E["atr"][m], p0, taker)
             R_all[m], ret_all[m], held_all[m], why_all[m] = r, rt, hd, wy
@@ -431,9 +398,8 @@ def run(say=lambda m: None, fetch=True):
                 mm = E["reg"][m] == gi
                 by_reg[g] = {"train": stats(r[mm & tr_m]), "test": stats(r[mm & ~tr_m])}
                 a, b = by_reg[g]["train"].get("avg"), by_reg[g]["test"].get("avg")
-                # izin sadece KANITLA: egitimde de, hic gorulmemis test doneminde de maliyet sonrasi pozitif
                 by_reg[g]["allowed"] = a is not None and b is not None and a > 0 and b > 0 and \
-                    by_reg[g]["test"]["n"] >= 100  # az ornekli 'kanit' sans olabilir
+                    by_reg[g]["test"]["n"] >= 100
             exits = {EXIT_TR[c]: int((wy == c).sum()) for c in EXIT_TR}
             res["kinds"][k] = {"name": KIND_TR[k], "taker": taker, "params": use, "searched": p, "promoted": bool(better),
                                "default": {"train": stats(r0[tr_m]), "test": stats(r0[~tr_m])},
@@ -463,7 +429,7 @@ def run(say=lambda m: None, fetch=True):
         pf = {}
         for name, mask in (("eski", np.ones(len(E["t"]), bool)), ("yeni", allowed & ~veto)):
             for per, pm in (("tum", np.ones(len(E["t"]), bool)), ("test", test)):
-                if name == "eski":  # eski politika: varsayilan cikis + tum kurulumlar (geri cekilme/dip haric)
+                if name == "eski":
                     m2 = pm & np.isin(E["kind"], [KINDS.index(x) for x in ("trend", "ayrisma", "momentum", "altin")])
                     r_old = np.zeros(len(E["t"]))
                     h_old = np.zeros(len(E["t"]))
@@ -522,14 +488,11 @@ def apply(res):
     _IDX.update({tuple(sorted(r["sigs"])): r for r in res.get("rules") or []})
 
 
-# ---------------- canli motorun okudugu dersler ----------------
 def sig_stat(keys):
-    """Sinyal (veya ikili) icin 2 yillik istatistik: {avg, n, win, kind} | None."""
     return _IDX.get(tuple(sorted(keys)))
 
 
 def kind_stat(kind, regime):
-    """Kurulum x rejim test donemi sonucu: {avg, n, allowed} | None."""
     k = (RES.get("kinds") or {}).get(kind)
     g = (k or {}).get("by_regime", {}).get(regime) if regime else None
     if not g or not g["test"].get("n"):
@@ -538,7 +501,6 @@ def kind_stat(kind, regime):
 
 
 def allowed(kind, regime):
-    """Gecmis Okulu bu kurulumu bu rejimde aciyor mu? Donus: (izin, sebep). Okul hic calismadiysa izin (eski davranis)."""
     if not RES.get("kinds"):
         return True, ""
     ks = kind_stat(kind, regime)
@@ -552,13 +514,11 @@ def allowed(kind, regime):
 
 
 def exit_params(kind):
-    """Kurulumun sampiyon cikis parametreleri (okul calismadiysa varsayilan)."""
     k = (RES.get("kinds") or {}).get(kind)
     return {**DEFAULT_EXIT, **((k or {}).get("params") or {})}
 
 
 def traps():
-    """2 yilda egitim ve testte tutarli zarar ettiren sinyal kombinasyonlari (Ders Defteri tuzaklarina eklenir)."""
     return [r for r in RES.get("rules") or [] if r.get("kind") == "tuzak"]
 
 

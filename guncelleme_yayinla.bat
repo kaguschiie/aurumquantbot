@@ -3,10 +3,6 @@ chcp 65001 >nul
 cd /d "%~dp0"
 title KriptoQuantBot - guncelleme yayinla
 setlocal EnableDelayedExpansion
-rem Tek tikla yayin: yeni surum numarasi -> exe derle -> zip + SHA-256 -> GitHub release.
-rem Diger bilgisayarlar (abinin PC'si, kanal PC'si) Ayarlar > Guncelleme > "Tek tikla guncelle" ile kurar; veri korunur.
-rem Bir kerelik hazirlik: 1) GitHub'da depo acin  2) winget install GitHub.cli  3) gh auth login
-rem 4) Bu klasorde guncelleme_ayar.txt icine: REPO=kullanici/depo   5) Uygulamada Ayarlar > Guncelleme deposu ayni depo.
 
 if not exist guncelleme_ayar.txt (
   echo REPO=kullanici/depo> guncelleme_ayar.txt

@@ -1,5 +1,3 @@
-"""Gercek paraya hazirlik raporu (sadece admin): sanal gozlem sonucu, dengeleme sureklligi, anahtar ve sinir kontrolleri, felaket stopunun Binance filtresi.
-Kontrol gercek emir vermez: /api/v3/order/test emri eslesme motoruna gondermez. Karar kullanicinindir; bir haftalik gozlem stratejiyi kanitlamaz."""
 import csv
 import datetime
 import json
@@ -13,16 +11,15 @@ import config as C
 import portfoy as PF
 
 log = logging.getLogger("kqb")
-BAS = "2026-11-03"     # btc_sma200 duzeltmesi 2 Kasim'da sunuculara ulasti: oncesi sayilmaz
-GUN_MIN = 7            # hazir saymak icin en az gozlem gunu
-DUSUS_MAX = 28.0       # gozlem dususu test dususunu (7 gun ortalamasi -%28) gecmesin
-EN_BUYUK_PAY = 0.41    # tek coinde ilk alim: cekirdek %35 + sepet %6
+BAS = "2026-11-03"
+GUN_MIN = 7
+DUSUS_MAX = 28.0
+EN_BUYUK_PAY = 0.41
 SATIR = 20000
 KOINLER = ("BTC/USDT", "ETH/USDT")
 
 
 def gozlem(path=None, bas=BAS):
-    """gozlem.csv'den sanal hesabin BAS sonrasi seyri. Veri yoksa None."""
     try:
         with open(path or os.path.join(C.APP_DIR, "gozlem.csv"), encoding="utf-8", newline="") as fh:
             rows = [r for r in csv.DictReader(fh) if r.get("hesap") == "PAPER" and (r.get("zaman") or "") >= bas][-SATIR:]
@@ -53,7 +50,6 @@ def gozlem(path=None, bas=BAS):
 
 
 def dengelemeler(klasor=None, bas=BAS, bugun=None):
-    """Dengeleme defterinden gun gun sanal hesap sonucu. Bugun 00:05 UTC'den once henuz beklenmez."""
     klasor = klasor or C.REBAL_DIR
     bugun = bugun or time.strftime("%Y-%m-%d", time.gmtime())
     out, g = [], datetime.date.fromisoformat(bas)
@@ -82,7 +78,6 @@ def dengelemeler(klasor=None, bas=BAS, bugun=None):
 
 
 def binance_kontrol(acct, bid):
-    """Felaket stopu Binance filtresinden gecer mi? Gercek emir gitmez. Reddedilirse duz STOP_LOSS da denenir (yedek yol)."""
     ex, sonuc = acct.ex, []
     for s in KOINLER:
         px = bid.get(s)
@@ -116,7 +111,6 @@ def binance_kontrol(acct, bid):
 
 
 def rapor(bot, kontrol=None):
-    """Ekranin tum verisi. Madde durumu: ok / uyari / bekle. Hazir: hepsi ok."""
     gz, dg = gozlem(), dengelemeler()
     lv = bot.accounts.get("LIVE")
     M = []

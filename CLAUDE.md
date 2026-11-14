@@ -13,6 +13,7 @@ Bu projede maksimum token verimliliği ve kurumsal Quant mühendisliği kurallar
 
 3. **TAM DOSYA TEKRARI YASAĞI (Token Kalkanı):**
    - Bir dosyada güncelleme veya hata düzeltmesi yaparken, açıkça "tüm dosyayı baştan ver" denmedikçe tüm dosyayı tekrar yazma; sadece değişen fonksiyonu veya ilgili kod bloğunu ver.
+   - Kodda (py, html/js, sh, bat) açıklama satırı ve docstring yok (kullanıcı isteği 2026-11-14; kod başkası tarafından incelenecek). Kararların gerekçesi bu dosyada tutulur. Borsa (BIST) ayrı uygulama oldu: Masaüstü\BorsaBot (2026-11-14); bu depodaki 'borsa' dalı arşivdir.
 
 4. **YEREL HESAP + KONTROLLÜ CLAUDE KARARI (2026-10-21'de kullanıcı onayıyla güncellendi):**
    - Al-sat kararlarını Claude API verir (agent.py). Bu karar sadece saatlik mum kapanışında ve yerel olay tetiklerinde alınır; ücretli LLM çağrısı saniyelik döngüye asla girmez.

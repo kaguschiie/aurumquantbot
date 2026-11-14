@@ -1,4 +1,3 @@
-"""Dengelemede 24 saatlik zarar limiti: kasa bir gunde %X dustuyse o gun alim yok (satis serbest). 70/30 portfoy, koruma.py ile ayni ML."""
 import os
 __file__ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "koruma.py")
 exec(open(__file__, encoding="utf-8").read().split("V = {")[0])

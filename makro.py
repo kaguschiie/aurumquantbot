@@ -1,6 +1,3 @@
-"""Borsa / Makro modulu: kuresel endeksler, altin, dolar endeksi, faiz, BIST ve buyuk hisseler (Yahoo Finance, 60 sn).
-Kripto kararlarina risk istahi baglami olarak girer (risk-on / risk-off) ve altinin (PAXG) gucunu gosterir.
-Hisseler ve endeksler Binance spotta islem goremez: sadece izlenir; altin PAXG/USDT ile islem gorur."""
 import logging
 import threading
 import time
@@ -10,7 +7,7 @@ import requests
 log = logging.getLogger("bot")
 URL = "https://query1.finance.yahoo.com/v7/finance/spark"
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-ASSETS = [  # (Yahoo sembolu, ad, grup)
+ASSETS = [
     ("^GSPC", "S&P 500", "Endeks"), ("^NDX", "Nasdaq 100", "Endeks"), ("^DJI", "Dow Jones", "Endeks"),
     ("XU100.IS", "BIST 100", "Endeks"), ("^VIX", "VIX korku endeksi", "Risk"), ("DX-Y.NYB", "Dolar endeksi (DXY)", "Döviz"),
     ("USDTRY=X", "USD/TRY", "Döviz"), ("^TNX", "ABD 10 yıllık faiz", "Faiz"), ("GC=F", "Altın (ons)", "Emtia"),
@@ -91,7 +88,6 @@ class Makro:
         return time.time() - self.t < 300
 
     def risk(self):
-        """Kuresel risk istahi: 'riskoff' / 'riskon' / 'notr' ve sebebi. Veri yoksa (None, sebep)."""
         g = lambda s: self.data.get(s) or {}
         ndx, vix, dxy = g("^NDX"), g("^VIX"), g("DX-Y.NYB")
         if not self.live() or ndx.get("day") is None:
@@ -113,7 +109,6 @@ class Makro:
         return "notr", f"Nasdaq %{nd:+.1f}" + (f", VIX {vx:.0f}" if vx else "")
 
     def gold(self):
-        """Altinin (ons) gucu: gunluk ve haftalik degisim."""
         x = self.data.get("GC=F") or {}
         return {"price": x.get("price"), "day": x.get("day"), "w1": x.get("w1"), "m1": x.get("m1"),
                 "up": (x.get("w1") or 0) > 0 and (x.get("day") or 0) > -0.3}
@@ -124,7 +119,6 @@ class Makro:
         return {"rows": rows, "risk": risk, "why": why, "gold": self.gold(), "t": self.t, "error": self.error}
 
     def brief_line(self):
-        """Claude'a giden tek satir makro ozet."""
         if not self.live():
             return ""
         f = lambda s, k="day": (self.data.get(s) or {}).get(k)

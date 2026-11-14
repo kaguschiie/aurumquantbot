@@ -1,9 +1,7 @@
-"""ML siralama sonucunun denetimi: sizinti var mi, hangi ozellik calisiyor, tek faktorler ayni isi yapiyor mu,
-gecikme/maliyet/yil saglamligi. ml.py'nin veri hazirligini aynen kullanir."""
 import os, sys
 __file__ = os.path.abspath(__file__)
 src = open(os.path.join(os.path.dirname(__file__), "ml.py"), encoding="utf-8").read()
-exec(src.split("pred = pd.Series")[0])          # veri + ozellikler + D (haftalik ornekler)
+exec(src.split("pred = pd.Series")[0])
 from sklearn.inspection import permutation_importance
 
 D["pred"] = np.nan

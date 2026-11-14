@@ -1,4 +1,3 @@
-"""Strateji ailelerini tara: egitim 2018-2021 ile parametre sec, test 2022+ ile dogrula. BTC al-tut ile karsilastir."""
 import itertools, json, os, sys, time
 import numpy as np, pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -33,26 +32,23 @@ def regime(n):
     return (b > b.rolling(n).mean()).fillna(False)
 
 
-# --- 0) kiyaslar ---
 W = pd.DataFrame(0.0, index=c.index, columns=c.columns); W[BTC] = 1.0
 btc_eq = run("BH_BTC", W, fam="kiyas")
 U10 = PN.universe(X, top=10)
 run("BH_TOP10_esit_haftalik", U10.astype(float).div(U10.sum(1), axis=0), REB, fam="kiyas")
 
-# --- 1) BTC trend + vol hedefleme ---
 for n, vt in itertools.product((50, 100, 150, 200), (None, 0.4, 0.6)):
     g = regime(n).astype(float)
     if vt:
         g = g * (vt / vol[BTC]).clip(upper=1.0)
     W = pd.DataFrame(0.0, index=c.index, columns=c.columns); W[BTC] = g
     run(f"BTC_SMA{n}_vt{vt}", W, fam="btc_trend", n=n, vt=vt)
-for n in (100, 200):  # BTC+ETH yari yari, her biri kendi trendinde
+for n in (100, 200):
     W = pd.DataFrame(0.0, index=c.index, columns=c.columns)
     for s in (BTC, "ETHUSDT"):
         W[s] = 0.5 * (c[s] > c[s].rolling(n).mean()).astype(float)
     run(f"BTCETH_SMA{n}", W, fam="btc_trend", n=n)
 
-# --- 2) cok-coin zaman serisi trendi (ters oynaklik agirlik, BTC rejim filtresi) ---
 for top, n, rg, vt in itertools.product((10, 20, 30), (50, 100), (0, 100, 200), (0.5, 0.8)):
     U = PN.universe(X, top=top)
     sig = (c > c.rolling(n).mean()) & U
@@ -60,12 +56,11 @@ for top, n, rg, vt in itertools.product((10, 20, 30), (50, 100), (0, 100, 200), 
         sig = sig & regime(rg).values[:, None]
     iv = (1 / vol).where(sig)
     W = iv.div(iv.sum(1), axis=0).fillna(0.0)
-    W = W.mul(np.minimum(sig.sum(1) / max(5, top // 3), 1.0), axis=0)  # az coin trenddeyse nakit fazla
-    scale = (vt / (W * vol).sum(1).replace(0, np.nan)).clip(upper=1.0).fillna(0.0)  # korelasyon~1 varsayimi (temkinli)
+    W = W.mul(np.minimum(sig.sum(1) / max(5, top // 3), 1.0), axis=0)
+    scale = (vt / (W * vol).sum(1).replace(0, np.nan)).clip(upper=1.0).fillna(0.0)
     run(f"TS_top{top}_sma{n}_rg{rg}_vt{vt}", W.mul(scale, axis=0), REB,
         fam="ts_trend", top=top, n=n, rg=rg, vt=vt)
 
-# --- 3) kesitsel momentum (haftalik, BTC rejim filtresi) ---
 for top, L, K, rg in itertools.product((30, 50, 100), (14, 30, 60, 90), (3, 5, 10), (0, 100, 200)):
     U = PN.universe(X, top=top)
     mom = (c / c.shift(L) - 1).where(U)
@@ -76,7 +71,6 @@ for top, L, K, rg in itertools.product((30, 50, 100), (14, 30, 60, 90), (3, 5, 1
     W = sig.astype(float) / K
     run(f"XS_top{top}_L{L}_K{K}_rg{rg}", W, REB, fam="xs_mom", top=top, L=L, K=K, rg=rg)
 
-# --- 4) balina akisi (gunluk): agresif alis orani 7g - 30g (birikim) + hacim patlamasi ---
 tr_ = (P["tbq"] / P["qv"]).replace([np.inf, -np.inf], np.nan)
 acc = tr_.rolling(7, min_periods=5).mean() - tr_.rolling(60, min_periods=30).mean()
 vsp = P["qv"].rolling(7, min_periods=5).mean() / P["qv"].rolling(60, min_periods=30).mean()
@@ -95,7 +89,6 @@ for top, K, rg, mode in itertools.product((30, 50, 100), (5, 10), (0, 200), ("ak
         sig = sig & regime(rg).values[:, None]
     run(f"WH_{mode}_top{top}_K{K}_rg{rg}", sig.astype(float) / K, REB, fam="balina", top=top, K=K, rg=rg, mode=mode)
 
-# --- 5) gunluk Donchian-20 (botta calisan kol) portfoy olarak ---
 for top, N, X_ in ((30, 20, 10), (30, 55, 20), (10, 20, 10)):
     U = PN.universe(X, top=top)
     hi = c.rolling(N).max().shift(1); lo = c.rolling(X_).min().shift(1)

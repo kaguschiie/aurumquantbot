@@ -1,5 +1,3 @@
-"""Gercek emir kapisi: tutar / kasa / fiyat bandi / parite durumu, cekim izni okuma, hesap kilidi. Tamamen sahte borsa: ag yok, anahtar yok,
-gercek emir yok. Kullanim: KQB_APP_DIR=<test> python -I canli-kapi_test.py <proje>"""
 import os
 import re
 import shutil
@@ -21,9 +19,9 @@ def _no_net(*a, **k):
     raise AssertionError("testte gercek baglanti yok")
 
 
-ccxt.binance = _no_net  # gercek borsa nesnesi kurulamaz
+ccxt.binance = _no_net
 ok_all = True
-EV = os.path.join(C.APP_DIR, "ev")  # hesap sahibi kaydi kullanicinin gercek ev klasorune yazilmasin
+EV = os.path.join(C.APP_DIR, "ev")
 shutil.rmtree(EV, ignore_errors=True)
 os.makedirs(EV)
 os.environ["HOME"] = os.environ["USERPROFILE"] = EV
@@ -89,7 +87,6 @@ class FakeEx:
 
 
 class Stub:
-    """Motorun Account'a gosterdigi kismi."""
 
     def __init__(self, ex):
         self.ex, self.bid, self.ask = ex, {"BTC/USDT": 100.0, "ETH/USDT": 100.0}, {"BTC/USDT": 100.0, "ETH/USDT": 100.0}
@@ -103,8 +100,8 @@ class Stub:
 
 
 KEY = "sahte-test-anahtari"
-C.API_KEY, C.API_SECRET, C.TELEGRAM_TOKEN = KEY, "sahte", ""  # sadece bu surecin bellegi; dosyaya yazilmaz
-C.LIVE_ALLOWED = True  # sahte borsa icin; kaydedilmez
+C.API_KEY, C.API_SECRET, C.TELEGRAM_TOKEN = KEY, "sahte", ""
+C.LIVE_ALLOWED = True
 C.LIVE_MAX_USDT = 100.0
 L.init()
 
@@ -129,7 +126,6 @@ def plan(usdt):
             "risk_pct": 0, "max_hours": 1e6, "reason": "test", "conviction": None}
 
 
-# ---- yapi: tek kapi, ayar ----
 src = open(os.path.join(PROJ, "bot.py"), encoding="utf-8").read()
 others = [f for f in os.listdir(PROJ) if f.endswith(".py") and f != "bot.py" and "create_order(" in open(os.path.join(PROJ, f), encoding="utf-8", errors="ignore").read()]
 n_co = len(re.findall(r"\.create_order\(", src))
@@ -158,7 +154,6 @@ _e = _c.Exchange.__subclasses__ and __import__("ccxt.binance", fromlist=["binanc
 sapi = _e.describe()["api"]["sapi"]["get"]
 check("ccxt anahtar izni ucu tanimli ve metot var", "account/apiRestrictions" in sapi and hasattr(_e, "sapi_get_account_apirestrictions") and hasattr(_e, "public_get_exchangeinfo"))
 
-# ---- tutar, kasa, fiyat, parite ----
 a, ex = live()
 check("temiz anahtar: hata yok, alim acik", a.error == "" and a.blocked() is None and a.key_ok is True, a.blocked())
 check("sinir ici alim gecer + borsa stopu kurulur", a.enter("BTC/USDT", plan(50)) is None and [o["side"] for o in ex.orders] == ["buy", "sell"]
@@ -183,7 +178,7 @@ check("sinir 0: alim yok", a.enter("BTC/USDT", plan(10)) and not ex.orders)
 C.LIVE_MAX_USDT = 100.0
 
 a, ex = live()
-ex.last = 90.0  # akisin fiyati (100) son islem fiyatindan %11 uzak
+ex.last = 90.0
 r = a.enter("BTC/USDT", plan(50))
 check("piyasa alimi: fiyat bandi disi reddedilir", r and "uzak" in r and not ex.orders, r)
 ex.last = 98.0
@@ -216,9 +211,8 @@ r = a.enter("BTC/USDT", plan(50))
 check("izin yokken kapi da alimi durdurur", r and "admin" in r and not ex.orders, r)
 C.LIVE_ALLOWED = True
 
-# ---- cikis ve stop kapida kalmaz ----
 a, ex = live()
-a.st["positions"]["BTC/USDT"] = pos(50.0)  # 5000 USDT: sinirin ve kasanin %40'inin cok ustunde
+a.st["positions"]["BTC/USDT"] = pos(50.0)
 a.exit("BTC/USDT", a.st["positions"]["BTC/USDT"], "PORTFOY_CIKIS")
 check("buyuk pozisyondan cikis gider (sinira takilmaz)", ex.orders and ex.orders[0]["side"] == "sell" and ex.orders[0]["qty"] == 50.0 and "BTC/USDT" not in a.st["positions"], ex.orders)
 a, ex = live()
@@ -255,7 +249,7 @@ except B.FenceDeny:
     check("reddedilecek yeni stop icin eski stop iptal edilmez", not ex.cancels and p["stop_id"] == "st1", ex.cancels)
 a, ex = live()
 ex.status["BTC/USDT"] = "BREAK"
-a._status("BTC/USDT")  # BREAK onbellekte, parite acildi: satis bayat duruma takilmaz
+a._status("BTC/USDT")
 ex.status["BTC/USDT"] = "TRADING"
 a.st["positions"]["BTC/USDT"] = p = pos(1.0)
 a.exit("BTC/USDT", p, "STOP", stop=True)
@@ -267,7 +261,7 @@ p["stop_id"] = a.place_stop("BTC/USDT", p, quiet=True)
 check("BREAK durumunda stop kapida kalmaz", p["stop_id"] and ex.orders[-1]["typ"] == "STOP_LOSS_LIMIT", ex.orders)
 a, ex = live()
 ex.status["BTC/USDT"] = "BREAK"
-a.st["positions"]["BTC/USDT"] = p = pos(0.01, stop_id=None)  # 1 USDT: satilamayacak kadar az, kapali paritede
+a.st["positions"]["BTC/USDT"] = p = pos(0.01, stop_id=None)
 a.exit("BTC/USDT", p, "HEDEF")
 check("kapali paritedeki toz defterden duser", "BTC/USDT" not in a.st["positions"] and not ex.orders, ex.orders)
 a, ex = live()
@@ -291,7 +285,7 @@ try:
 except B.FenceDeny as e:
     check("duz limit satis bant disinda reddedilir", "uzak" in str(e) and not ex.orders, e)
 a, ex = live()
-a.b.bid.update({"BTC/USDT": 60.0, "ETH/USDT": 60.0})  # ikisi de stop altinda, borsa stopu yok
+a.b.bid.update({"BTC/USDT": 60.0, "ETH/USDT": 60.0})
 a.st["positions"]["BTC/USDT"] = pos(1.0, stop_id=None)
 a.st["positions"]["ETH/USDT"] = pos(1.0, stop_id=None)
 ex.order_raises[("BTC/USDT", "market")] = ccxt.ExchangeError("red")
@@ -304,7 +298,7 @@ a.partial("BTC/USDT", p, 100.0)
 check("kademeli satis: sat + stopu yenile", ex.cancels == ["st1"] and ex.orders[0]["typ"] == "market" and ex.orders[0]["qty"] == 10.0 * C.PARTIAL_FRAC and ex.orders[-1]["typ"] == "STOP_LOSS_LIMIT" and p["part"], ex.orders)
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(10.0)
-ex.cancel_order = lambda oid, s: {"status": "canceled", "filled": 9.0, "average": 100.0}  # stop iptal aninda %90 dolmus
+ex.cancel_order = lambda oid, s: {"status": "canceled", "filled": 9.0, "average": 100.0}
 a.partial("BTC/USDT", p, 100.0)
 check("kademeli satis: stop kismen dolduysa kalan kadar satilir, kapida takilmaz", ex.orders and ex.orders[0]["side"] == "sell" and ex.orders[0]["typ"] == "market" and ex.orders[0]["qty"] <= 1.0, ex.orders[:1])
 a, ex = live()
@@ -316,16 +310,15 @@ check("durum okunamasa da pozisyon cikisi gider", ex.orders and ex.orders[0]["si
 
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(1.0, stop_id=None)
-p["qty"] = 0.0  # stop parca parca tamamen dolmus
+p["qty"] = 0.0
 a.exit("BTC/USDT", p, "HEDEF")
 check("miktari sifira inmis pozisyon defterden duser (kapida takilmaz)", "BTC/USDT" not in a.st["positions"] and not ex.orders)
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(10.0)
-ex.cancel_order = lambda oid, s: {"status": "canceled", "filled": 9.0, "average": 100.0}  # stop iptal aninda %90 dolmus
+ex.cancel_order = lambda oid, s: {"status": "canceled", "filled": 9.0, "average": 100.0}
 r = a.pf_sell("BTC/USDT", 500.0, "test")
 check("portfoy azaltma: stop kismen dolduysa kalan kadar satilir, kapida takilmaz", r is None and ex.orders and ex.orders[0]["side"] == "sell" and ex.orders[0]["qty"] <= 1.0, (r, ex.orders[:1]))
 
-# ---- portfoy akisi ----
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(0.5)
 r = a.pf_buy("BTC/USDT", 300, "test")
@@ -343,7 +336,7 @@ for s_ in ("BTC/USDT", "ETH/USDT"):
     a.st["positions"][s_] = pos(0.5, stop_id="st_" + s_[:3])
 _t = ex.fetch_ticker
 _n = [0]
-def _tk(s_):  # ilk kapi gecer, ikinci kapida fiyat okunamaz (stop iptal edildikten sonra)
+def _tk(s_):
     _n[0] += 1
     if _n[0] == 2:
         raise ccxt.RequestTimeout("zaman asimi")
@@ -372,7 +365,6 @@ ex.cancel_order = _ci
 out = a.rebalance({"BTC/USDT": 0.12, "ETH/USDT": 0.12}, False)
 check("dengeleme: stop iptal hatasi alim dongusunu kirmaz", [o["s"] for o in ex.orders if o["side"] == "buy"] == ["ETH/USDT"] and a.st["positions"]["BTC/USDT"]["stop_id"] == "st1", out)
 
-# ---- anahtar izinleri ----
 a, ex = live(FakeEx(withdraw=True))
 check("cekim izni acik: yeni alim yok, sebep gorunur", a.key_ok is False and "çekme izni" in (a.blocked() or "") and "çekme izni" in a.error, a.blocked())
 check("cekim izni: uyari gonderildi", any("çekme izni" in m for k, m in a.b.notes if k == "uyari"))
@@ -452,7 +444,6 @@ ex = FakeEx(withdraw="evet")
 a, ex = live(ex)
 check("anlasilmayan izin degeri acik sayilir", a.key_ok is False, a.key_err)
 
-# ---- hesap kilidi: gercek ikinci surec ----
 HOLD = """import ast, errno, hashlib, logging, os, sys, tempfile, time
 sys.path.insert(0, sys.argv[1])
 import config as C
@@ -495,7 +486,7 @@ r = a.enter("BTC/USDT", plan(50))
 check("kilit yok: alim reddedilir", r and "başka bir motor" in r and not ex.orders, r)
 C.LIVE_MAX_USDT = 100.0
 a.st["positions"]["BTC/USDT"] = p2 = pos(1.0)
-a.b.bid["BTC/USDT"] = 60.0  # stop altinda
+a.b.bid["BTC/USDT"] = 60.0
 a.manage_positions()
 check("kilit yok: saniyelik yonetim stopa ve pozisyona dokunmaz", not ex.orders and not ex.cancels and "BTC/USDT" in a.st["positions"])
 a.st["pending"]["BTC/USDT"] = {"id": "e1", "t": 0, "qty": 1, "price": 100}
@@ -518,9 +509,9 @@ a.st["pending"]["BTC/USDT"] = {"id": "e1", "t": 0, "qty": 1, "price": 100}
 a.manage_pending()
 a.finish_pending = _fp
 a.st["pending"].clear()
-ex.fo = {"status": "closed", "filled": 1.0, "average": 65.0}  # borsada stop dolmus gorunuyor (hesap baska motorun)
+ex.fo = {"status": "closed", "filled": 1.0, "average": 65.0}
 a.b.bid["BTC/USDT"] = 100.0
-p2["stop_chk"] = 0  # 15 sn kontrol araligi engellemesin
+p2["stop_chk"] = 0
 a.manage_positions()
 check("kilit yok: baska motorun dolumunu defterine yazmaz", "BTC/USDT" in a.st["positions"] and not a.st["trades"], a.st["trades"][-1:])
 try:
@@ -546,14 +537,13 @@ p, got = child(KEY)
 check("anahtar degisince eski hesabin kilidi birakilir", got == "KILIT", got)
 p.kill(); p.wait()
 
-# ---- ayni anahtarli baska veri klasoru: once baslasa da eski defterle islem yapamaz ----
 K3 = KEY + "-3"
 open(os.path.join(other, os.path.basename(C.STATE_FILE)), "w").close()
 _app = C.APP_DIR
-p, got = child(K3, other)  # A: hesabi yoneten kopya (ayri veri klasoru)
-p.kill(); p.wait()  # A guncellemede kapandi, kilit bos
+p, got = child(K3, other)
+p.kill(); p.wait()
 C.API_KEY = K3
-a, ex = live()  # B once basladi
+a, ex = live()
 r = a.enter("BTC/USDT", plan(50))
 check("kilit bos ama hesabi baska klasor yonetti: B pasif, alim yok", got == "KILIT" and a.own is False and "veri klasörü" in a.error and r and not ex.orders, a.error)
 a.st["positions"]["BTC/USDT"] = p3 = pos(1.0)
@@ -579,7 +569,6 @@ C.API_KEY = K4
 a, ex = live()
 check("eski klasor artik yoksa (tasindi) engel yok", a.own is True and a.error == "", a.error)
 
-# ---- kilit dosyasi hatasi 'baska motor' degildir ----
 K5 = KEY + "-5"
 C.API_KEY = K5
 _open = B.os.open
@@ -653,7 +642,6 @@ ts = [threading.Thread(target=a.take_lock) for _ in range(4)]
 B._flock = _fl
 check("ayni anda kilit denemesi surecin kendi kilidine carpmaz", a.own is True and a.lock_why == "", a.lock_why)
 
-# ---- islem izni kapali kopya kilit almaz ----
 K8 = KEY + "-8"
 C.API_KEY, C.LIVE_ALLOWED = K8, False
 a, ex = live()
@@ -683,7 +671,6 @@ check("izin kapali ama defterde pozisyon var: kilit alinir, pozisyon korunur", g
 p.kill(); p.wait()
 C.LIVE_ALLOWED = True
 
-# ---- 2026-11-08: STOP_LOSS yedegi + fail-closed (stop kurulamazsa yeni alim yok) ----
 C.LIVE_ALLOWED = True
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(1.0, stop_id=None)
@@ -717,7 +704,6 @@ a.live = False
 check("sanal hesapta stop kontrolu alimi durdurmaz", "stop emri" not in (a.blocked() or ""))
 a.live = True
 
-# ---- sanal hesap dokunulmadi ----
 C.API_KEY, C.LIVE_MAX_USDT, C.LIVE_ALLOWED = "", 100.0, False
 ex = FakeEx(withdraw=True)
 stub = Stub(ex)
@@ -726,7 +712,7 @@ stub.accounts["PAPER"] = pa
 locks0 = dict(B._LOCKS)
 _f, B.Account.fence = B.Account.fence, lambda *a, **k: (_ for _ in ()).throw(AssertionError("sanal hesap kapidan gecmez"))
 pa.st["cash"] = 1_000_000.0
-r = pa.enter("BTC/USDT", plan(900_000))  # sinirin ve %40'in cok ustu
+r = pa.enter("BTC/USDT", plan(900_000))
 ok = r is None and "BTC/USDT" in pa.st["positions"]
 pa.exit("BTC/USDT", pa.st["positions"]["BTC/USDT"], "HEDEF")
 B.Account.fence = _f

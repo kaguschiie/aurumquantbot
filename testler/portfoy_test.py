@@ -1,5 +1,3 @@
-"""Portfoy stratejisi: hedef agirlik -> al / artir / azalt / cik muhasebesi, korumalar, gercek hedeflerle uctan uca dengeleme.
-Gercek Binance fiyatlari (anahtarsiz), emir yok. Kullanim: KQB_APP_DIR=<test> python -I portfoy_test.py <proje>"""
 import os
 import sys
 import time
@@ -36,7 +34,6 @@ pa.mark()
 eq0 = pa.equity()
 check("ayarlar: portfoy acik, saatlik otomatik kapali, gercek hesapta kapali", C.PORTFOY and not C.OTO_SAATLIK and not C.PORTFOY_LIVE)
 
-# ---- ML gunu: hafta Persembe 00:00 UTC'de doner, eski kayitta sepet korunur ----
 import calendar
 hk = lambda d: time.strftime("%G-%V", time.gmtime(calendar.timegm(time.strptime(d, "%Y-%m-%d %H:%M")) - (PF.ML_DOW + 1) * 86400))
 check("hafta anahtari Carsamba gecesi donuyor", hk("2026-11-04 23:59") != hk("2026-11-05 00:05") and hk("2026-11-05 00:05") == hk("2026-11-11 23:59") != hk("2026-11-12 00:05"))
@@ -71,7 +68,6 @@ PF.sync_data, PF.train = _sd, _tr
 PF._M.clear()
 PF.load_model()
 
-# ---- 1) sahte hedeflerle muhasebe ----
 real_targets = PF.targets
 PF.targets = lambda ex, st, ml_day, core_frac=None: (
     {"BTC/USDT": 0.30, "ETH/USDT": 0.20, "SOL/USDT": 0.06},
@@ -90,7 +86,6 @@ d = b.ag["decisions"][-1]
 check("karar kaydi: portfoy, ozet + islem sonucu", d["kind"] == "portfoy" and "yükseliş gücü" in d["view"] and d["actions"],
       d["actions"][0]["result"][:200])
 n_tr = len(pa.st["trades"])
-# ---- 2) saniyelik yonetim dokunmaz; Claude/yerel motor kapatamaz ----
 for _ in range(3):
     pa.manage_positions()
 check("kalkan/sure/kismi kar uygulanmaz", len(pa.st["positions"]) == 3 and len(pa.st["trades"]) == n_tr)
@@ -102,7 +97,6 @@ qd = Q.decide(b)
 check("yerel motor tez-bozuldu kapatmasi yapmaz", not any(a["type"] == "close" and a["symbol"] == "BTC/USDT" for a in qd["actions"]))
 check("portfoy pozisyonlari pozisyon limitine sayilmaz", pa.blocked() is None, pa.blocked())
 
-# ---- 3) azalt / artir / cik ----
 PF.targets = lambda ex, st, ml_day, core_frac=None: ({"BTC/USDT": 0.10, "ETH/USDT": 0.35}, {
     "core": {"BTC/USDT": {"w": 0.1, "trend": 0.25, "vol": 0.3}, "ETH/USDT": {"w": 0.35, "trend": 1.0, "vol": 0.4}},
     "ml": {"picks": [], "reg": False, "note": "test", "t": time.time()}})
@@ -117,7 +111,6 @@ eq1 = pa.equity()
 b.portfolio()
 check("hedefe yakinken islem yok (bant)", abs(pa.equity() - eq1) < 1e-6 and "değişiklik yok" in b.ag["decisions"][-1]["actions"][0]["result"],
       b.ag["decisions"][-1]["actions"][0]["result"])
-# ---- 4) korumalar: acil durdurma varken alis yok, satis var ----
 open(C.pause_flag("PAPER"), "w").close()
 PF.targets = lambda ex, st, ml_day, core_frac=None: ({"BTC/USDT": 0.0, "ETH/USDT": 0.5}, {
     "core": {}, "ml": {"picks": [], "reg": False, "note": "test", "t": time.time()}})
@@ -125,7 +118,6 @@ b.portfolio()
 r = b.ag["decisions"][-1]["actions"][0]["result"]
 check("duraklatilmis: BTC satildi, ETH alimi yapilmadi", "BTC/USDT" not in pa.st["positions"] and "alışlar yapılmadı" in r, r)
 os.remove(C.pause_flag("PAPER"))
-# ---- 4b) Claude itirazi hesap basina: alimi erteler / yariya indirir, satisa donusmez ----
 PF.targets = lambda ex, st, ml_day, core_frac=None: ({"BTC/USDT": 0.30, "ETH/USDT": 0.20}, {
     "core": {}, "ml": {"picks": [], "reg": False, "note": "test", "t": time.time()}})
 b.portfolio(force_ml=True)
@@ -141,7 +133,6 @@ pa.rebalance({"BTC/USDT": 0.003, "ETH/USDT": 0.20}, True)
 check("kucuk hedef: itirazsiz tam cikis", "BTC/USDT" not in pa.st["positions"])
 pa.rebalance({"BTC/USDT": 0.03, "ETH/USDT": 0.20}, True, {"BTC/USDT": "ertele"})
 check("hic pozisyon yokken ertele: alim yok, satis yok", "BTC/USDT" not in pa.st["positions"])
-# gercek hesap senaryosu: sanal hesapta coin yok (cur=0), LIVE elinde tutuyor; ertele LIVE'i sattirmamali
 pa.rebalance({"BTC/USDT": 0.20, "ETH/USDT": 0.20}, True)
 q1 = pa.st["positions"]["BTC/USDT"]["qty"]
 pa.rebalance({"BTC/USDT": 0.30, "ETH/USDT": 0.20}, True, {"BTC/USDT": "ertele"})
@@ -156,7 +147,6 @@ b.portfolio(force_ml=True)
 check("portfolio: hedef bozulmadan, itiraz ayri gecer", seen["tg"]["BTC/USDT"] == 0.40 and seen["objs"] == {"BTC/USDT": "ertele"}, seen)
 check("ekrandaki hedef sanal hesaba gore itirazli", abs(b.ag["pf"]["targets"]["BTC/USDT"] - 0.20) < 0.01, b.ag["pf"]["targets"])
 pa.rebalance, A.brain, B.KT.review = real_reb, real_brain, real_rev
-# ---- 4c) 24 saatlik zarar limiti gece yarisi sifirlanmaz ----
 now, eqn = time.time(), pa.equity()
 pa.st["day"] = {"d": B.today(), "eq": eqn}
 sv = pa.st["curve"]
@@ -169,7 +159,6 @@ check("limit altinda alim serbest", pa.blocked(portfolio=True) is None, pa.block
 pa.st["curve"] = []
 check("gecmis yoksa engel yok", pa.blocked(portfolio=True) is None)
 pa.st["curve"] = sv
-# ---- 4d) canli ozellikler: 160 gunluk tabloda 200 gunluk BTC ortalamasi dolu, bos ozellik yakalanir ----
 import numpy as np
 import pandas as pd
 ix = pd.date_range("2025-01-01", periods=260, freq="D")
@@ -182,14 +171,12 @@ check("btc_sma200 kisa tabloda da dolu ve dogru", abs(Fr4["btc_sma200"].iloc[-1,
 check("btc_r30 tam seriyle ayni", abs(Fr4["btc_r30"].iloc[-1, 0] - (btc_full.iloc[-1] / btc_full.iloc[-31] - 1)) < 1e-9)
 check("egitim gibi hizali seride sonuc degismez", abs(PF.ranked(F4, U4, btc_full.reindex(U4.index))["btc_r30"].iloc[-1, 0]
                                                       - Fr4["btc_r30"].iloc[-1, 0]) < 1e-9)
-# ---- 5) kapanis muhasebesi: tum pozisyonlar kapaninca kasa = nakit ----
 PF.targets = lambda ex, st, ml_day, core_frac=None: ({}, {"core": {}, "ml": {"picks": [], "reg": False, "note": "", "t": 0}})
 b.portfolio()
 check("hedef bos -> hepsi nakit", not pa.st["positions"] and abs(pa.equity() - pa.st["cash"]) < 1e-6, round(pa.st["cash"], 2))
 tot = sum(t["pnl"] for t in pa.st["trades"])
 check("islem kayitlari kasa ile tutarli", abs((pa.st["cash"] - 10_000) - tot) < 0.05, (round(pa.st["cash"] - 10_000, 2), round(tot, 2)))
 
-# ---- 6) gercek hedefler (Binance verisi + egitilmis ML modeli) uctan uca ----
 PF.targets = real_targets
 t0 = time.time()
 b.portfolio(force_ml=True)

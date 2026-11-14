@@ -1,26 +1,21 @@
-"""Yerel Quant karar motoru: Claude (API/CLI) yokken ayni karar bicimini ucretsiz uretir.
-Kurallar: 4 zaman diliminde teknik ozet (TradingView yontemi) uyumu + emir defteri + rejim + asiri alim/pompa filtresi,
-tum piyasa radari (BTC dusse de pozitif ayrisan, hacmi patlayan coinler), altin (PAXG) ve Ders Defteri'nin ogrendigi
-sinyal agirliklari. Uretilen emirler Claude'unkiler gibi yerel risk yoneticisinden (bot.vet_buy) gecer."""
 import config as C
 import dersler as L
 import gecmis as G
 import model as M
 from teknik import radar_score
 
-MAX_NEW = 2  # bir kararda en fazla yeni alis
-MIN_RADAR = 0.5  # radar puani esigi (eski hibrit deneyinin terfi ettirdigi deger)
+MAX_NEW = 2
+MIN_RADAR = 0.5
 
 
 def score(te, r):
-    """Teknik uyum puani (yuksek = guclu yukselis kurulumu). None = uygun degil."""
     m15, h1, h4, d1 = (te.get(k) for k in ("15m", "1h", "4h", "1d"))
     if None in (m15, h1, h4):
         return None
     if h1 < 0.5 or h4 < 0.1 or m15 < 0.1 or (d1 is not None and d1 < -0.1):
         return None
     rsi, chg = r.get("rsi"), r.get("chg24") or 0
-    if (rsi is not None and rsi > 72) or chg > 15:  # asiri alim / dikey pompa: kovalama
+    if (rsi is not None and rsi > 72) or chg > 15:
         return None
     if (r.get("ob") is not None and r["ob"] < 0.45) or (r.get("funding") or 0) > 0.0005:
         return None
@@ -28,8 +23,6 @@ def score(te, r):
 
 
 def decouple_score(te, r):
-    """BTC'den pozitif ayrisan coin: piyasa dusse de hacmi patlamis, BTC'yi 24 saatte en az 5 puan gecmis ve
-    1s/4s trendi guclu. Dikey pompa (24s %30+), asiri alim ve satici defteri elenir."""
     m15, h1, h4 = (te.get(k) for k in ("15m", "1h", "4h"))
     if None in (m15, h1, h4) or h1 < 0.5 or h4 < 0.3 or m15 < 0.1:
         return None
@@ -41,8 +34,6 @@ def decouple_score(te, r):
 
 
 def momentum_score(te, r):
-    """Momentum / kirilim avcisi (BTC dusse de): hacim 3x+, BTC'den pozitif ayrisma, saglikli RSI (50-74), pozitif
-    alici akisi ve yukari 1s trend. Balina satisi ve satici defteri elenir. Sifir zarar kalkani riski sinirlar."""
     h1, h4 = te.get("1h"), te.get("4h")
     rsi, vs, rs = r.get("rsi"), r.get("vspike") or 0, r.get("rs24") or 0
     if h1 is None or h1 < 0.1 or rsi is None or not 50 <= rsi <= 74 or vs < 3 or rs < 3:
@@ -56,7 +47,6 @@ def momentum_score(te, r):
 
 
 def gold_score(te, r, gold):
-    """Altin (PAXG): kripto zayifken guvenli liman. 1s ve 4s teknik al + ons altin haftalik pozitif."""
     h1, h4, m15 = (te.get(k) for k in ("1h", "4h", "15m"))
     if None in (h1, h4) or h1 < 0.3 or h4 < 0.3 or (m15 is not None and m15 < 0):
         return None
@@ -66,7 +56,6 @@ def gold_score(te, r, gold):
 
 
 def classify(r, regime=None):
-    """Bir oneri (or. Claude'un) hangi kuruluma uyuyor? En yuksek puanli tur veya None (serbest fikir)."""
     te = r.get("tech") or {}
     if str(r.get("sym", "")).split("/")[0] in ("PAXG", "XAUT"):
         return "altin"
@@ -76,7 +65,6 @@ def classify(r, regime=None):
 
 
 def explain(te, r):
-    """Coin neden aday degil? (yerel analist sohbeti icin)"""
     m15, h1, h4, d1 = (te.get(k) for k in ("15m", "1h", "4h", "1d"))
     if None in (m15, h1, h4):
         return "teknik özet henüz hesaplanmadı"
@@ -100,21 +88,19 @@ def explain(te, r):
 
 
 def decide(bot):
-    """Claude'un karar semasiyla ayni sozluk (+ '_why': secilmeyen adaylarin sebebi, Ders Defteri icin)."""
     acct = bot.ref()
     st, regime, ctx = acct.st, bot.regime, bot.ctx()
     rows, gold = bot.rows(), bot.macro.gold()
     actions, why = [], {}
-    # acik pozisyonlar: 1s ve 15dk birlikte satisa dondu -> tez bozuldu
     for s, p in st["positions"].items():
-        if p.get("manual") or p.get("kind") in ("gunluk_trend", "portfoy"):  # Manuel Kilit / gunluk kol: kendi kuraliyla
+        if p.get("manual") or p.get("kind") in ("gunluk_trend", "portfoy"):
             continue
         te = (rows.get(s) or {}).get("tech") or {}
         if (te.get("1h") or 0) <= -0.3 and (te.get("15m") or 0) <= -0.3:
             actions.append(_act("close", s, reason=f"Teknik özet tersine döndü (1s {te['1h']:+.2f}, 15dk {te['15m']:+.2f}); "
                                                    f"kâr/zarar beklemeden çıkıyorum."))
     busy = st["positions"].keys() | st["pending"].keys()
-    cands, noml = [], not bot.brain or bot.brain.get("thr") is None  # saatlik ML avantajsizsa olasiligi puana girmez
+    cands, noml = [], not bot.brain or bot.brain.get("thr") is None
     for s, r in rows.items():
         if noml:
             r = dict(r, p=None)
@@ -125,7 +111,7 @@ def decide(bot):
             sc, kind = gold_score(te, r, gold), "altin"
         else:
             dc, mo = decouple_score(te, r), momentum_score(te, r)
-            ds = max((x for x in (dc, mo) if x is not None), default=None)  # piyasaya karsi: ayrisma / momentum
+            ds = max((x for x in (dc, mo) if x is not None), default=None)
             sc = ds if regime == "dusus" else max((x for x in (score(te, r), ds) if x is not None), default=None)
             kind = ("momentum" if ds == mo else "ayrisma") if ds is not None and sc == ds else "trend"
         if sc is None:
@@ -137,18 +123,18 @@ def decide(bot):
         if kind != "altin" and radar_score(r) < MIN_RADAR:
             why[s] = f"eşik: radar puanı {radar_score(r):.2f} < {MIN_RADAR:g}"
             continue
-        al, gwhy = G.allowed(kind, regime)  # 2 yillik test: bu kurulum bu rejimde kazandirdi mi?
+        al, gwhy = G.allowed(kind, regime)
         if not al:
             why[s] = gwhy
             continue
         tk = ((bot.ex.markets.get(s) or {}).get("precision") or {}).get("price")
-        if tk and tk < 1 and tk / r["price"] > 0.002:  # risk yoneticisi reddedecek: alis hakkini bosa harcama
+        if tk and tk < 1 and tk / r["price"] > 0.002:
             why[s] = f"fiyat adımı kaba (%{tk / r['price'] * 100:.2f})"
             continue
         ex = G.exit_params(kind)
         atr = min(max(r.get("atr_pct") or 0.012, 0.004), 0.06)
         ks = G.kind_stat(kind, regime)
-        proven = bool(ks and ks["allowed"] and ks["avg"] > 0)  # 2 yillik test maliyet dahil pozitif: maliyet onsezgisi gereksiz
+        proven = bool(ks and ks["allowed"] and ks["avg"] > 0)
         if not proven and (2 * C.FEE + 2 * C.SLIPPAGE) / (ex["stop_atr"] * atr) > C.MAX_COST_R + 1e-9:
             why[s] = (f"stop ({ex['stop_atr']:g} ATR = %{ex['stop_atr'] * atr * 100:.2f}) komisyon+kaymaya göre çok dar: "
                       f"işlem maliyete yenir")
@@ -164,15 +150,15 @@ def decide(bot):
     for sc, s, r, mult, sigs, kind, edge in cands[:slots]:
         px, atr = r["price"], min(max(r.get("atr_pct") or 0.012, 0.004), 0.06)
         te, ex, ks = r.get("tech") or {}, G.exit_params(kind), G.kind_stat(kind, regime)
-        proven = bool(ks and ks["avg"] > 0 and ks["n"] >= 100)  # 2 yillik testte pozitif beklenti
+        proven = bool(ks and ks["avg"] > 0 and ks["n"] >= 100)
         conv = round(min(0.9 if proven else 0.6, 0.45 + sc / 6), 2)
-        risk = 0.4 + 0.6 * conv  # Ders Defteri ve adaptif carpanlar risk yoneticisinde (vet_buy) bir kez uygulanir
+        risk = 0.4 + 0.6 * conv
         if kind in ("ayrisma", "momentum") and regime == "dusus":
-            risk *= 0.6  # piyasaya karsi islem: kucuk risk
+            risk *= 0.6
         if ctx.get("macro") == "riskoff" and kind != "altin":
             risk *= 0.7
         head = G.KIND_TR.get(kind, kind)
-        tp_atr = ex["tp_atr"] or 6.0  # hedefsiz (sadece iz) politikada uzak emniyet hedefi
+        tp_atr = ex["tp_atr"] or 6.0
         plan_txt = (f"Stop {ex['stop_atr']:g} ATR, hedef {tp_atr:g} ATR"
                     + (f", %{ex['part_frac'] * 100:.0f} kısmi kâr {ex['part_r']:g}R'de" if ex.get("part_frac") else "")
                     + (f", başabaş {ex['be_r']:g}R'de" if ex.get("be_r") else ", erken başabaş yok (gürültü)")
@@ -192,7 +178,7 @@ def decide(bot):
                  + ("" if proven else " Bu kurulumun 2 yıllık testte kanıtlanmış pozitif beklentisi yok."),
             reason=f"{s.split('/')[0]}: {head} (puan {sc:.2f}, Ders Defteri {edge:+.2f}R). Sinyaller: "
                    f"{L.labels(sorted(sigs)) or '-'}. {plan_txt}",
-            entry="taker" if kind in ("momentum", "ayrisma") else "maker"))  # momentum kacar: hemen al
+            entry="taker" if kind in ("momentum", "ayrisma") else "maker"))
     for sc, s, *_ in cands[slots:]:
         why[s] = f"yerel motor: daha güçlü adaylar seçildi (puan {sc:.2f})"
     n_dec = sum(1 for c in cands if c[5] in ("ayrisma", "momentum"))

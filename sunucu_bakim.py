@@ -1,6 +1,3 @@
-"""Sunucu bakimi (sadece standart kutuphane; botlardan bagimsiz calisir).
-  bekci: dakikada bir botlari yoklar; 3 dakika cevap yoksa Telegram'dan haber verir, duzelince de bildirir.
-  yedek: gunluk veri yedegi (kasa, ayarlar, hesaplar, Ders Defteri; indirilebilir veri onbellekleri haric), 14 gun saklanir."""
 import glob
 import json
 import os
@@ -18,19 +15,18 @@ ROOT = "/opt/crypto_bot"
 BOTS = {"melik": (8765, f"{ROOT}/veri"), "fatih": (8766, f"{ROOT}/veri-fatih")}
 STATE = f"{ROOT}/bekci.json"
 BACKUP = f"{ROOT}/yedek"
-LIMIT = 3      # art arda bu kadar basarisiz yoklama (dakika): guncelleme/yeniden baslama alarm vermesin
+LIMIT = 3
 KEEP = 14
 SKIP_DIRS = {"data", "gunluk_veri", "cli", "guncelleme", "pencere", "__pycache__"}
 SKIP_EXT = (".pkl", ".joblib", ".log", ".tmp")
 
 
 def probe(port):
-    """(saglikli mi, sebep)."""
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=10) as r:
             d = json.load(r)
         return bool(d.get("ok")), f"motor {d.get('age')} sn'dir güncellenmedi ({d.get('status')})"
-    except Exception as e:  # kapali, zaman asimi, 5xx
+    except Exception as e:
         return False, f"cevap yok ({type(e).__name__})"
 
 
@@ -43,7 +39,6 @@ def _read(path):
 
 
 def channels(data_dir):
-    """Bu botun Telegram'i: (token, sohbetler)."""
     s = _read(os.path.join(data_dir, "settings.json"))
     chats = {v.get("chat_id") for v in _read(os.path.join(data_dir, "telegram.json")).values() if isinstance(v, dict)}
     if s.get("TELEGRAM_CHAT_ID"):
@@ -53,7 +48,6 @@ def channels(data_dir):
 
 
 def send(text, data_dir, bots):
-    """Botun kendi Telegram'i; yoksa diger botlarinki (biri mutlaka duysun). Gonderildiyse True. Token yazdirilmaz."""
     cands = [data_dir] + [d for _, d in bots.values() if d != data_dir]
     for d in cands:
         token, chats = channels(d)
@@ -87,7 +81,7 @@ def bekci(bots=None, state=STATE, probe_fn=probe, send_fn=send):
         print(name, "basarisiz", s["fails"], why)
         if s["fails"] >= LIMIT and not s["alarm"] and \
                 send_fn(f"🔴 {name} botu {s['fails']} dakikadır çalışmıyor: {why}. Sunucuda bakın: systemctl status kriptoquantbot", data, bots):
-            s["alarm"] = True  # gonderilemediyse sonraki dakika tekrar dener
+            s["alarm"] = True
     tmp = state + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(st, fh)
@@ -95,7 +89,6 @@ def bekci(bots=None, state=STATE, probe_fn=probe, send_fn=send):
 
 
 def _copy(src, dst):
-    """Calisan botun verisi: veritabanlari tutarli kopyalanir, onbellekler atlanir."""
     for base, dirs, files in os.walk(src):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
         rel = os.path.relpath(base, src)
@@ -113,12 +106,11 @@ def _copy(src, dst):
                     out.close()
                 else:
                     shutil.copy2(a, b)
-            except (OSError, sqlite3.Error) as e:  # o anda degisen dosya tum yedegi bozmasin
+            except (OSError, sqlite3.Error) as e:
                 print("atlandi:", f, type(e).__name__)
 
 
 def _kod(dst):
-    """Kendi kod dali olan botlarin (gelistir.py) kod kopyasi: sadece sunucuda duran degisiklikler kaybolmasin (git bundle)."""
     for d in sorted(glob.glob(f"{ROOT}/aurumquantbot-*")):
         if os.path.isdir(os.path.join(d, ".git")):
             os.makedirs(dst, exist_ok=True)
@@ -130,7 +122,7 @@ def _kod(dst):
 
 def yedek(bots=None, out=BACKUP, keep=KEEP):
     bots = bots or BOTS
-    os.umask(0o077)  # yedekte anahtarlar var: sadece root okur
+    os.umask(0o077)
     os.makedirs(out, exist_ok=True)
     os.chmod(out, 0o700)
     name = os.path.join(out, time.strftime("yedek_%Y-%m-%d.tar.gz"))

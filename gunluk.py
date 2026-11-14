@@ -1,13 +1,3 @@
-"""Gunluk Trend Kolu (Donchian-20 kirilimi, Turtle tarzi). Her gun UTC 00:00 gunluk mum kapanisindan sonra:
-- Evren: son 30 tamamlanmis gunun medyan gunluk USDT hacmine gore en likit 30 coin (24s hacim >= 3M, >= 60 gun gecmis;
-  sabit/altin/kaldiracli haric).
-- Rejim: BTC gunluk kapanis > BTC gunluk EMA50 degilse yeni giris yok (acik pozisyonlar kurala gore yonetilir).
-- Giris: gunluk kapanis > onceki 20 gunun en yuksegi. Ayni gun birden fazlaysa 20 gunluk getirisi yuksek olan once.
-- Stop: giris - 2 x ATR14 (gunluk, sabit, iz surmez). Cikis: gunluk kapanis < onceki 10 gunun en dusuk kapanisi veya
-  90 gun. Hedef, kismi kar, basabas yok: kar birkac buyuk trendden gelir; erken kesmek kari siler.
-Kanit (arastirma, maliyet dahil): 2 yil egitim islem basi +%2,2 PF 1,34, test +%1,6 PF 1,27; hic gorulmemis 2023-24
-on donemi +%6 PF 1,9. Zayif-orta kanit, BTC al-tutu gecmedi. Bu yuzden once sanal hesapta: gercek hesap ancak sanalda
-30+ islem ve ortalama R > 0 olunca acilir."""
 import time
 
 import numpy as np
@@ -23,7 +13,6 @@ EXCLUDE = ("PAXG", "XAUT")
 
 
 def atr(h, low, c, n=14):
-    """Wilder ATR (data.atr ile ayni)."""
     pc = np.concatenate([[c[0]], c[:-1]])
     tr = np.maximum(h - low, np.maximum(abs(h - pc), abs(low - pc)))
     out = np.empty(len(tr))
@@ -42,8 +31,6 @@ def ema(x, span):
 
 
 def entry_signal(d):
-    """d: tamamlanmis gunluk mumlar (n, 5) acilis/yuksek/dusuk/kapanis/USDT hacmi. Son satir dun kapanan gun.
-    Donus: None veya {close, stop, atr, hi20, roc20}."""
     if len(d) < 60:
         return None
     h, low, c = d[:, 1], d[:, 2], d[:, 3]
@@ -56,7 +43,6 @@ def entry_signal(d):
 
 
 def exit_signal(d):
-    """Gunluk kapanis onceki 10 gunun en dusuk kapanisinin altinda mi?"""
     c = d[:, 3]
     return len(c) > N_EXIT and c[-1] < c[-N_EXIT - 1:-1].min()
 
@@ -67,14 +53,12 @@ def regime_ok(btc_d):
 
 
 def daily(ex, sym, limit=120):
-    """Tamamlanmis gunluk mumlar (olusan gun atilir)."""
     rows = ex.public_get_klines({"symbol": sym.replace("/", ""), "interval": "1d", "limit": limit})
     now = time.time() * 1000
     return np.array([[float(r[i]) for i in (1, 2, 3, 4, 7)] for r in rows if int(r[0]) + 86_400_000 <= now])
 
 
 def universe(ex):
-    """En likit 30: 24s hacme gore ilk 60 aday, sonra 30 gunluk medyan gunluk hacimle siralama."""
     out = []
     for s, t in ex.fetch_tickers().items():
         m, base = ex.markets.get(s) or {}, s.split("/")[0]
@@ -90,13 +74,12 @@ def universe(ex):
 
 
 def scan(ex):
-    """Gunun karari: rejim, en likit 30, giris sinyalleri. Ag cagrisi ~62 kucuk istek (gunde bir)."""
     btc = daily(ex, C.BTC, 200)
     rows = {}
     for s in universe(ex):
         try:
             d = daily(ex, s, 120)
-        except Exception:  # tek coin hatasi taramayi durdurmasin
+        except Exception:
             continue
         if len(d) >= 60:
             rows[s] = d
@@ -113,7 +96,6 @@ def scan(ex):
 
 
 def track(trades):
-    """Sanal hesaptaki karne: gercek hesabin acilma sarti (30+ islem, ortalama R > 0)."""
     rs = [t["R"] for t in trades if t.get("kind") == KIND and t.get("R") is not None]
     avg = sum(rs) / len(rs) if rs else None
     return {"n": len(rs), "avg_r": avg, "live_ok": len(rs) >= LIVE_MIN_N and avg is not None and avg > 0}

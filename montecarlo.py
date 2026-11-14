@@ -1,14 +1,3 @@
-"""Monte Carlo Zaman Makinesi: bir alis plani icin 10.000 olasi gelecek fiyat yolu.
-- Yollar coinin son ~40 gunluk 1s mumlarindan BLOK bootstrap ile uretilir (6 saatlik bloklar: oynaklik kumelenmesi korunur).
-  Her mum giris fiyatina gore (yuksek, dusuk, kapanis) orani olarak alinir; fitiller dahil.
-- Oynaklik bugunun ATR'sine olceklenir; hacim patlamasi varsa gecmisteki yuksek hacimli saatler daha sik secilir.
-- Egilim (drift) DURUST: son donemin ortalama getirisi yarisina indirilir (gecmis 40 gunun yukselisi gelecege aynen
-  tasinmaz) ve piyasa rejimi sert dususse ek negatif kayma eklenir.
-- Her yol botun GERCEK cikis kurallariyla yonetilir (gecmis.simulate: stop, hedef, kismi kar, sifir zarar kalkani, iz
-  suren stop, zaman stopu, komisyon + kayma). Sonuc: hedef once / stop once (zarar) / notr (kalkan-iz-sure ile cikis)
-  yuzdeleri ve beklenen deger (R).
-- Kalibrasyon: kapanan islemlerde tahmin ile gerceklesen karsilastirilir (dersler.db 'mc' tablosu); en az 20 islemde
-  sapma varsa sonraki tahminler olculen oranla duzeltilir. Spot: sadece long."""
 import json
 import threading
 import time
@@ -21,20 +10,19 @@ import gecmis as G
 
 N = 10_000
 BLOCK = 6
-HIST_H = 960          # ornekleme havuzu: son 40 gun
-MAX_T = 72            # simulasyon ufku (saat)
+HIST_H = 960
+MAX_T = 72
 _CACHE, _LOCK = {}, threading.Lock()
 CAL = {"n": 0, "pred_tp": None, "real_tp": None, "pred_stop": None, "real_stop": None, "f_tp": 1.0, "f_stop": 1.0}
 
 
 def bars(ex, sym):
-    """Son 1000 adet 1s mum (10 dk onbellek): (yuksek, dusuk, kapanis) / onceki kapanis + hacim."""
     with _LOCK:
         c = _CACHE.get(sym)
     if c and time.time() - c["t"] < 600:
         return c
     rows = ex.public_get_klines({"symbol": sym.replace("/", ""), "interval": "1h", "limit": 1000})
-    a = np.array([[float(r[i]) for i in (2, 3, 4, 5)] for r in rows[:-1]])  # olusan mum haric
+    a = np.array([[float(r[i]) for i in (2, 3, 4, 5)] for r in rows[:-1]])
     pc = a[:-1, 2]
     rel = np.stack([a[1:, 0] / pc, a[1:, 1] / pc, a[1:, 2] / pc], 1)[-HIST_H:]
     vol = a[1:, 3][-HIST_H:]
@@ -47,17 +35,16 @@ def bars(ex, sym):
 
 
 def paths(b, hours, regime=None, vspike=None, n=N, seed=None):
-    """Blok bootstrap yollari: (n, hours, 3) girise gore goreli yuksek/dusuk/kapanis."""
     rng = np.random.default_rng(seed)
     rel = b["rel"].copy()
     lr = np.log(rel[:, 2])
     mu = lr.mean()
-    drift = 0.5 * mu + (-0.0005 if regime == "dusus" else 0.0)  # gecmis egilimin yarisi + sert dususte negatif kayma
-    scale = min(max(b["atr_now"] / b["atr_hist"], 0.5), 2.0) if b["atr_hist"] else 1.0  # bugunun oynakligi
-    adj = np.exp((np.log(rel) - mu) * scale + drift)             # her bilesen ayni olcekle (fitil orani korunur)
+    drift = 0.5 * mu + (-0.0005 if regime == "dusus" else 0.0)
+    scale = min(max(b["atr_now"] / b["atr_hist"], 0.5), 2.0) if b["atr_hist"] else 1.0
+    adj = np.exp((np.log(rel) - mu) * scale + drift)
     m = len(adj) - BLOCK
     w = np.ones(m)
-    if vspike and vspike >= 3:  # hacim patlamasinda: gecmisteki yuksek hacimli bloklar daha sik
+    if vspike and vspike >= 3:
         v = b["vol"]
         med = np.median(v)
         w = np.where(v[:m] >= 2 * med, 3.0, 1.0)
@@ -65,7 +52,7 @@ def paths(b, hours, regime=None, vspike=None, n=N, seed=None):
     nb = -(-hours // BLOCK)
     starts = rng.choice(m, size=(n, nb), p=w)
     idx = (starts[:, :, None] + np.arange(BLOCK)).reshape(n, -1)[:, :hours]
-    step = adj[idx]                                              # (n, hours, 3) onceki kapanisa gore
+    step = adj[idx]
     cl = np.cumprod(step[:, :, 2], axis=1)
     prev = np.concatenate([np.ones((n, 1)), cl[:, :-1]], 1)
     return np.stack([prev * step[:, :, 0], prev * step[:, :, 1], cl], 2).astype(np.float32)
@@ -73,7 +60,6 @@ def paths(b, hours, regime=None, vspike=None, n=N, seed=None):
 
 def run(ex, sym, entry, stop, tp, exit_p=None, hours=24, regime=None, vspike=None, taker=True, n=N, seed=None,
         partial_at=None):
-    """Plan icin 10.000 yol. Donus: {tp, stop, neutral (0-1, kalibre), raw_*, ev_r, p_loss, n, hours, ms}."""
     t0 = time.time()
     b = bars(ex, sym)
     e = entry
@@ -104,8 +90,6 @@ def run(ex, sym, entry, stop, tp, exit_p=None, hours=24, regime=None, vspike=Non
 
 
 def best_stop(ex, sym, entry, stop, tp, exit_p, hours, regime, vspike, taker, atr_abs):
-    """Stop mesafesi optimizasyonu: ayni odul/risk orani korunarak 1,5-3 ATR arasi aday stoplar 10.000 yolla yarisir.
-    Mevcut stoptan en az 0,05R daha iyi beklenen deger yoksa plan degismez (gurultuye uyum yok). Donus: (stop, tp, mc, not)."""
     base = run(ex, sym, entry, stop, tp, exit_p, hours, regime, vspike, taker, seed=1)
     if not base or not atr_abs:
         return stop, tp, base, ""
@@ -134,7 +118,6 @@ def line(mc):
             f"Stop önce %{mc['stop'] * 100:.1f} | Nötr %{mc['neutral'] * 100:.1f} | beklenen {mc['ev_r']:+.2f}R")
 
 
-# ---------------- kalibrasyon (Ders Defteri geri beslemesi) ----------------
 def _init():
     with L._LOCK, L._db() as con:
         con.execute("CREATE TABLE IF NOT EXISTS mc (id INTEGER PRIMARY KEY, t REAL, sym TEXT, acct TEXT, p_tp REAL, "
@@ -142,7 +125,6 @@ def _init():
 
 
 def record(acct, sym, mc, reason, r):
-    """Kapanan islem: tahmin vs gerceklesen. Donus: ders metni (sapma buyukse) veya ''."""
     if not mc:
         return ""
     _init()
@@ -166,7 +148,6 @@ def record(acct, sym, mc, reason, r):
 
 
 def calibrate():
-    """Son 200 tahminle duzeltme carpani (en az 20 islem; 0,5-1,5 arasi)."""
     _init()
     with L._LOCK, L._db() as con:
         rows = con.execute("SELECT p_tp, p_stop, outcome FROM mc ORDER BY t DESC LIMIT 200").fetchall()
@@ -176,7 +157,7 @@ def calibrate():
         return CAL
     pt, ps = sum(r["p_tp"] for r in rows) / n, sum(r["p_stop"] for r in rows) / n
     rt, rs = sum(r["outcome"] == "hedef" for r in rows) / n, sum(r["outcome"] == "stop" for r in rows) / n
-    f = lambda real, pred: min(max((real + 0.02) / (pred + 0.02), 0.5), 1.5)  # kucuk paydada patlamasin
+    f = lambda real, pred: min(max((real + 0.02) / (pred + 0.02), 0.5), 1.5)
     CAL.update(n=n, pred_tp=pt, real_tp=rt, pred_stop=ps, real_stop=rs, f_tp=f(rt, pt), f_stop=f(rs, ps))
     return CAL
 

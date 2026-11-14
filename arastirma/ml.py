@@ -1,6 +1,3 @@
-"""Hibrit ML'in iyilestirilmis hali: saatlik al/alma siniflandirmasi yerine haftalik KESITSEL SIRALAMA (Qlib yaklasimi).
-Ozellikler gunluk; hedef: gelecek 7 gun getirisinin evren icindeki sirasi. Yururlukte ileri (walk-forward): her yil basinda
-sadece o tarihe kadarki veriyle (7 gun bosluk) yeniden egitim. Portfoy: tahmini en yuksek K coin, BTC rejim filtresi."""
 import os, sys, time, json
 import numpy as np, pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
@@ -13,7 +10,7 @@ P = PN.load()
 STOCK = ("BNCB", "CRCLB", "INTCB", "KORUB", "MSTRB", "MUB", "NBISB", "NVDAB", "SKHYB", "SNDKB", "SOXLB", "SPCXB")
 for k in P:
     P[k] = P[k][[s for s in P[k].columns if not s.startswith(STOCK)]]
-_ilk = P["c"].apply(lambda v: v.first_valid_index())  # tokenize hisse/ETF: 2026-06'dan sonra listelenen, adi B ile biten
+_ilk = P["c"].apply(lambda v: v.first_valid_index())
 for k in P:
     P[k] = P[k][[s for s in P[k].columns if not (s[:-4].endswith("B") and _ilk[s] >= pd.Timestamp("2026-06-01"))]]
 X = PN.prep(P)
@@ -36,7 +33,6 @@ F["age"] = np.log(X["age"].clip(lower=1))
 b = c[BTC]
 mkt = {"btc_r30": b / b.shift(30) - 1, "btc_sma200": b / b.rolling(200).mean() - 1}
 fwd = c.shift(-7) / c - 1
-# kesitsel normalizasyon: her gun evrendeki yuzdelik sira (rejimden bagimsiz)
 Fr = {k: v.where(U).rank(axis=1, pct=True) for k, v in F.items()}
 y = fwd.where(U).rank(axis=1, pct=True)
 days = c.index[(c.index.dayofweek == 0) & (c.index >= "2018-03-01")]
@@ -76,7 +72,6 @@ for yr in range(2019, c.index[-1].year + 1):
     ic[yr] = round(t.groupby("d").apply(lambda g: g.pred.corr(g.y, method="spearman")).mean(), 3)
     print(yr, "egitim", len(trn), "IC", ic[yr], flush=True)
 
-# momentum tek basina ayni IC olcusu (ML deger katiyor mu?)
 ic_mom = {yr: round(D[D.d.dt.year == yr].groupby("d").apply(lambda g: g.r30.corr(g.y, method="spearman")).mean(), 3)
           for yr in ic}
 print("IC ML ", ic, "\nIC r30", ic_mom)

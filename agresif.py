@@ -1,6 +1,3 @@
-"""Agresif deney botu: SADECE sanal kasa. Ayri giris noktasi: python agresif.py --sunucu
-Melik ve fatih bu dosyayi hic yuklemez; app/config/bot icinde agresif kosulu yoktur, kapi burada kosulsuzdur.
-Kurallar gecmis testte zarar etti (bkz. UYARI): amac kar degil olcum. Gercek emir yolu yok."""
 import collections
 import copy
 import logging
@@ -11,7 +8,7 @@ import threading
 import time
 from urllib.parse import parse_qs, urlparse
 
-CIKIS = 77  # sunucu birimi: RestartPreventExitStatus (yanlis kurulumda yeniden baslamasin)
+CIKIS = 77
 
 
 def _dur(msg):
@@ -19,7 +16,6 @@ def _dur(msg):
     sys.exit(CIKIS)
 
 
-# ---------------- kapi: config yuklenmeden once ----------------
 if hasattr(os, "geteuid") and os.geteuid() == 0:
     _dur("root ile calismaz.")
 _veri = os.environ.get("KQB_APP_DIR") or ""
@@ -27,7 +23,7 @@ if not _veri:
     _dur("KQB_APP_DIR zorunlu.")
 if os.path.basename(os.path.normpath(os.path.realpath(_veri))).lower() in ("veri", "veri-fatih"):
     _dur("melik/fatih veri klasorunde calismaz.")
-if os.path.exists(os.path.join(_veri, "settings.json")):  # config import aninda okur; anahtar icerebilir
+if os.path.exists(os.path.join(_veri, "settings.json")):
     _dur("veri klasorunde settings.json olmamali.")
 if (os.environ.get("KQB_PORT") or "8765") in ("8765", "8766"):
     _dur("KQB_PORT ayri olmali (8765/8766 melik ve fatih).")
@@ -60,7 +56,7 @@ guncelle.GIT = False
 PF.maybe_train = lambda say: None
 PF.load_model = lambda: None
 app.mode_for = lambda sess, q: "PAPER"
-app.migrate_old_files = lambda: None  # kod klasorundeki dosyalar veri klasorune tasinmasin
+app.migrate_old_files = lambda: None
 
 log = logging.getLogger("bot")
 KURAL = {"agr_radar": {"ad": "Radar", "slot": 4, "test": -99.8, "saat": 12,
@@ -70,12 +66,10 @@ UYARI = ("Ölçüm deneyi, kâr hedefi değil. 47 kuralın hepsi geçmiş testte
          "aynı dönemde BTC +%13,3. Kârda hemen satmak kazanma oranını yükseltir ama küçük kazanç / büyük kayıp kasayı eritir. "
          "Karar 100+ işlemden sonra. Sadece sanal kasa, gerçek para yok.")
 KAR_ESIK, RADAR_STOP = 0.005, 0.03
-EMEKLI_N, EMEKLI_Z = 30, 1.0  # basarisiz kural otomatik dinlenmeye: en az 30 islem, islem basi net ust guven siniri < 0
+EMEKLI_N, EMEKLI_Z = 30, 1.0
 
 
 def dinlenme(trades, kind):
-    """Son 100 islemde islem basi net % (komisyon + kayma dahil) ortalamasi + 1 standart hata < 0 ise kural yeni islem acmaz.
-    Acik pozisyonlar kendi kuraliyla kapanir. Geri donus: kasa sifirlama (yeni deney). Donus: neden metni veya None."""
     x = [t["pct"] for t in trades if t.get("kind") == kind][-100:]
     if len(x) < EMEKLI_N:
         return None
@@ -87,12 +81,11 @@ def dinlenme(trades, kind):
 
 
 def karne_ozet(trades, kind):
-    """Kuralin canli islem sayisi ve islem basi net % ortalamasi."""
     x = [t["pct"] for t in trades if t.get("kind") == kind]
     return len(x), (sum(x) / len(x) if x else 0.0)
 
 
-ALTIN = ("PAXG", "XAUT")  # altina bagli token: kripto degil, radar kuralinda testte islem basi -%0,35
+ALTIN = ("PAXG", "XAUT")
 GET_IZIN = {"/", "/lw.js", "/api/app", "/api/health", "/api/auth/me", "/api/state", "/api/screener", "/api/opps", "/api/trades",
             "/api/notes", "/api/decisions", "/api/candles", "/api/agresif"}
 POST_IZIN = {"/api/auth/login", "/api/auth/logout", "/api/pause", "/api/close", "/api/paper/reset"}
@@ -101,7 +94,6 @@ GOVDE_MAX = 16384
 
 
 class Sinir:
-    """Kayan pencere: istemci (kim) basina pencerede en cok n; en cok maks istemci, en eski kullanilan atilir."""
 
     def __init__(self, n, sn, maks=5000):
         self.n, self.sn, self.maks, self.q, self.k = n, sn, maks, collections.OrderedDict(), threading.Lock()
@@ -124,9 +116,7 @@ class Sinir:
 GENEL, GIRIS, MUM = Sinir(20, 1), Sinir(10, 60), Sinir(30, 60)
 
 
-# ---------------- kurallar: sadece kapanmis mumlardan, durumsuz ----------------
 def radar_taze(kapali):
-    """Kapanmis son mumda rec > 0.5, bir oncekinde <= 0.5 ise son mumun teknik ozeti, degilse None."""
     if len(kapali) < 61:
         return None
     simdi = T.rating(kapali)
@@ -134,7 +124,6 @@ def radar_taze(kapali):
 
 
 def senaryo_tara(kapali):
-    """agresif_test.py retest(24) dongusu: kirilim + hacim, 12 mum icinde geri test. Donus (sinyal, izleme); sinyal sadece geri test son mumdaysa."""
     n = len(kapali)
     if n < 80:
         return None, None
@@ -143,7 +132,7 @@ def senaryo_tara(kapali):
     hh = S(h).shift(1).rolling(24).max().values
     vs = np.nan_to_num((S(v).rolling(3).mean() / S(v).shift(3).rolling(48).median()).values)
     liq = S(v * c).rolling(24).sum().values >= C.RADAR_MIN_VOL
-    atr = np.clip(np.nan_to_num(T.rating_series(kapali)["atr_pct"].values, nan=0.02), 0.004, 0.06)  # oran (0.02 = %2)
+    atr = np.clip(np.nan_to_num(T.rating_series(kapali)["atr_pct"].values, nan=0.02), 0.004, 0.06)
     with np.errstate(invalid="ignore"):
         kirilim = np.flatnonzero((c > hh) & (vs >= 2) & liq)
     nxt, sinyal, izleme = -1, None, None
@@ -152,7 +141,7 @@ def senaryo_tara(kapali):
             continue
         lv, at = float(hh[i]), float(atr[i])
         for j in range(i + 1, min(i + 13, n)):
-            if c[j] < lv * (1 - 0.5 * at):  # seviye kirildi: senaryo bozuldu
+            if c[j] < lv * (1 - 0.5 * at):
                 nxt = j
                 break
             if lo[j] <= lv * (1 + 0.25 * at) and c[j] > lv and liq[j]:
@@ -163,15 +152,14 @@ def senaryo_tara(kapali):
                 break
         else:
             nxt = i + 12
-            if i + 12 >= n:  # pencere bitmedi: geri test bekleniyor
+            if i + 12 >= n:
                 izleme = {"L": lv, "gecersiz": lv * (1 - 0.5 * at), "once": int(n - 1 - i), "kalan": int(i + 12 - (n - 1)), "vspike": round(float(vs[i]), 2)}
     return sinyal, izleme
 
 
 def btc_rejim(gunluk, saat):
-    """Testle ayni: sinyal mumunun gunu icin DUNKU kapanis > 100 gunluk ortalama. gunluk: son satir olusan gun; saat: su anki saat sayaci (epoch/3600)."""
     d = gunluk.close.iloc[:-1]
-    if saat % 24 == 0:  # son kapanan 1s mum dunun 23:00 mumu: onun 'dunu' bir gun oncesi
+    if saat % 24 == 0:
         d = d.iloc[:-1]
     return bool(d.iloc[-1] > d.rolling(100).mean().iloc[-1])
 
@@ -183,7 +171,7 @@ def _f(x):
 class AgresifBot(B.Bot):
     def __init__(self):
         super().__init__()
-        if "LIVE" in self.accounts:  # motor kendi is parcaciginda: sys.exit sureci durdurmazdi
+        if "LIVE" in self.accounts:
             os._exit(CIKIS)
         self.ag.setdefault("agr", {"senaryolar": [], "izleme": [], "son": 0, "saat": 0, "hata": ""})
 
@@ -203,12 +191,11 @@ class AgresifBot(B.Bot):
         super().say(msg.replace(" | Manuel Kilit (stop/hedef kullanıcıda)", ""), notify, kind, acct, tg)
 
     def pf_tick(self):
-        """Ana dongu saniyede cagirir, ag yapmaz: yeni saatin radari gelince kurallar bir kez."""
         saat = int(time.time() // 3600)
         if self.ag["agr"].get("saat") == saat:
             return False
-        if time.time() - saat * 3600 > 900:  # acilis/kesinti/radar gecikmesi: test girisi mum acilisinda, bu saat yeni giris yok
-            if self._background("Agresif kar", lambda: self._kar(self.accounts["PAPER"], saat, {}, [])):  # kar alma yine calisir
+        if time.time() - saat * 3600 > 900:
+            if self._background("Agresif kar", lambda: self._kar(self.accounts["PAPER"], saat, {}, [])):
                 self.ag["agr"]["saat"] = saat
             return False
         if self.tech.t_opps <= saat * 3600 + 30:
@@ -219,30 +206,25 @@ class AgresifBot(B.Bot):
         return False
 
     def _hisse(self, s):
-        """Adi B ile biten ve Bybit vadelisi olmayan parite tokenize hisse sayilir (BNB, ARB, SHIB gibi gercek coinlerin vadelisi var).
-        Bybit listesi gunde bir okunur; okunamazsa sadece bilinen hisse listesi (PF.STOCK) uygulanir."""
         base = s.split("/")[0]
-        if base in PF.STOCK or base in ALTIN:  # tam eslesme: MUB oneki MUBARAK'i yakalamasin
+        if base in PF.STOCK or base in ALTIN:
             return True
         if time.time() - getattr(self, "_perps_t", 0) > 86400:
             try:
                 self._perps = __import__("data").bybit_perps()
                 self._perps_t = time.time()
-            except Exception as e:  # okunamazsa 10 dk sonra yeniden denenir
+            except Exception as e:
                 self._perps_t = time.time() - 86400 + 600
                 log.warning("bybit vadeli listesi: %s", e)
-        return base.endswith("B") and bool(getattr(self, "_perps", None)) and             not {base + "USDT", "1000" + base + "USDT", base + "1000USDT"} & self._perps  # SHIB: Bybit'te SHIB1000USDT
+        return base.endswith("B") and bool(getattr(self, "_perps", None)) and             not {base + "USDT", "1000" + base + "USDT", base + "1000USDT"} & self._perps
 
     def _temizle(self):
-        """scan kapali: islemi biten coinler izlemeden dussun (akis listesi buyumesin)."""
         with self.lock:
             busy = {s for a in self.accounts.values() for s in a.st["positions"].keys() | a.st["pending"].keys()}
             self.extra = {s for s in self.extra if s in busy} | set(C.EXTRA_SYMBOLS)
             self.market = {s: r for s, r in self.market.items() if s in self.symbols or s in busy or s in self.extra}
 
     def _kar(self, a, saat, mum, hata):
-        """Hizli kar: giris son kapanan mumdan once (o mum tutuldu) ve kapanis girisin %0,5 ustunde (test: k_1s_kar0.5_sl3_12s).
-        Sadece yeni kural (en cok 12 sa) pozisyonlari; eski 48 sa kurallilar kendi kuraliyla biter."""
         with self.lock:
             radar_poz = [s for s, p in a.st["positions"].items() if p.get("kind") == "agr_radar"
                          and p.get("max_hours", 99) <= 12]
@@ -271,12 +253,11 @@ class AgresifBot(B.Bot):
         self._kar(a, saat, mum, hata)
         rows = sorted((r for r in self.tech.opps if (r.get("qvol") or 0) >= C.RADAR_MIN_VOL), key=lambda r: -(r.get("score") or 0))
         radar_sym = {r["sym"] for r in rows}
-        # senaryo testte (h_24_2R_btc) radar sarti olmadan tum likit coinlerde olculdu: radar disi likitler hacim sirasiyla sona
         rows += sorted((r for r in self.tech.liquid if r["sym"] not in radar_sym and (r.get("qvol") or 0) >= C.RADAR_MIN_VOL), key=lambda r: -r["qvol"])
-        rows = [r for r in rows if not self._hisse(r["sym"])]  # tokenize hisse/ETF ve altin kripto degil (testte ~%4 sinyaldi; altinda kural zarar)
+        rows = [r for r in rows if not self._hisse(r["sym"])]
         try:
             btc_ust = btc_rejim(self.tech._klines(C.BTC, "1d", limit=103), saat)
-        except Exception as e:  # rejim bilinmiyorsa senaryo acilmaz
+        except Exception as e:
             btc_ust = False
             hata.append(f"BTC rejim: {str(e)[:80]}")
         radar, senaryo, izleme = [], [], []
@@ -284,7 +265,7 @@ class AgresifBot(B.Bot):
             s = r["sym"]
             try:
                 d = kapali(s)
-                rt = radar_taze(d) if s in radar_sym else None  # radar kurali testte radar coinlerinde
+                rt = radar_taze(d) if s in radar_sym else None
                 if rt:
                     radar.append((r, rt))
                 sg, iz = senaryo_tara(d)
@@ -306,7 +287,7 @@ class AgresifBot(B.Bot):
     @staticmethod
     def _radar_plan(s, ask, rt):
         at = float(np.clip(rt.get("atr_pct") or 0.02, 0.004, 0.06))
-        stop, hedef = ask * (1 - RADAR_STOP), ask * 1.5  # testte sabit hedef yok; +%50 sadece ust sinir
+        stop, hedef = ask * (1 - RADAR_STOP), ask * 1.5
         return stop, hedef, at, (f"SENARYO (Radar): {s} 1 saatlik teknik özet bu mumda GÜÇLÜ AL'a döndü (puan {rt['rec']:+.2f}), önceki mumda değildi. "
                                  f"Giriş {_f(ask)}, stop {_f(stop)} (-%3). Saat başı kapanış girişin %0,5 üstündeyse kâr alınır "
                                  f"(en erken 1 saat sonra), en çok 12 saat tutulur.")
@@ -338,7 +319,7 @@ class AgresifBot(B.Bot):
             t = self.ex.fetch_ticker(s)
             if not t.get("ask") or not t.get("bid"):
                 return kayit("atlandı: fiyat yok")
-            with self.lock:  # manual_buy ile ayni hazirlik
+            with self.lock:
                 self.bid[s], self.ask[s] = t["bid"], t["ask"]
                 self.market.setdefault(s, {"sym": s}).update(price=t["last"], chg24=t.get("percentage"), qvol=t.get("quoteVolume"), px_t=time.time())
                 self.extra.add(s)
@@ -348,11 +329,11 @@ class AgresifBot(B.Bot):
                     "sure_h": KURAL[kind]["saat"], "atr_pct": at, "conviction": None, "p": None, "reason": metin}
             with self.lock:
                 self.px_t[s] = time.time()
-                eq0 = a.equity()  # kasa/8; stop olursa kayip kasanin RISK_PCT'sini gecmesin (genis senaryo stopu)
+                eq0 = a.equity()
                 plan["usdt"] = max(min(eq0 / 8, eq0 * C.RISK_PCT / 100 * t["ask"] / (t["ask"] - stop)) if t["ask"] > stop else eq0 / 8, en_az)
                 eq, n, ort = a.equity(), *karne_ozet(a.st["trades"], kind)
                 if t["ask"] > stop:
-                    plan["reason"] = metin = metin + (  # islem oncesi karar raporu
+                    plan["reason"] = metin = metin + (
                         f" Boyut {plan['usdt']:.0f} USDT, stop olursa kasanın %{plan['usdt'] * (1 - stop / t['ask']) / eq * 100:.2f}'i; "
                         + (f"ödül/risk {(hedef - t['ask']) / (t['ask'] - stop):.1f}; " if hedef < t['ask'] * 1.4 else "")
                         + f"tahmini maliyet %{2 * (C.FEE + C.SLIPPAGE) * 100:.2f} (komisyon + kayma). Kural güvenilirliği: geçmiş testte "
@@ -366,7 +347,6 @@ class AgresifBot(B.Bot):
             self.say(metin, kind="karar", acct="PAPER")
 
 
-# ---------------- skor tablosu ----------------
 def karne():
     out = {"uyari": UYARI, "hazir": False, "kurallar": {}, "acik": [], "senaryolar": [], "izleme": []}
     b = app.ENGINE.bot
@@ -393,28 +373,24 @@ def karne():
         out["acik"].append({"sym": s, "kind": p.get("kind"), "kural": (KURAL.get(p.get("kind")) or {}).get("ad", "-"), "giris": p["entry"], "fiyat": px, "stop": p["sl"],
                             "hedef": None if p.get("kind") == "agr_radar" and p["tp"] >= p["entry"] * 1.4 else p["tp"], "net": net, "net_pct": net / (p["qty0"] * p["entry"]) * 100, "kalan": max(p["sure_t"] - time.time(), 0) if p.get("sure_t") else None,
                             "why": p.get("why", "")})
-    kom = sum(x.get("qty", 0) * (x.get("entry", 0) + x.get("exit", 0)) * C.FEE for x in tr) + sum(p["fee"] for p in poz.values())  # Binance spot: her yon %0,1
+    kom = sum(x.get("qty", 0) * (x.get("entry", 0) + x.get("exit", 0)) * C.FEE for x in tr) + sum(p["fee"] for p in poz.values())
     out.update(komisyon=kom, fee=C.FEE * 100, kayma=C.SLIPPAGE * 100, hazir=True, kasa=eq, baslangic=bas, kasa_pct=(eq / bas - 1) * 100 if bas else None, btc_pct=(btc1 / btc0 - 1) * 100 if btc0 and btc1 else None,
                donem=curve[0][0] if curve else None, n=len(tr), engel=durdu, senaryolar=agr.get("senaryolar", [])[::-1], izleme=agr.get("izleme", []),
                son=agr.get("son"), hata=agr.get("hata"), btc_ust=agr.get("btc_ust"), evren=agr.get("evren"), radar_n=agr.get("radar_n"))
     return out
 
 
-# ---------------- HTTP kapisi: varsayilan red ----------------
 class Gated(app.Handler):
     def _red(self, code, msg):
         self._send(code, {"ok": False, "msg": msg, "error": msg})
 
     def _kim(self):
-        """Istemci anahtari. Bot sadece 127.0.0.1'i dinler; Caddy (trusted_proxies yok) X-Forwarded-For'u gercek uzak IP ile yazar."""
         return (self.headers.get("X-Forwarded-For") or "").split(",")[-1].strip()[:64] or self.client_address[0]
 
     def _genel(self):
-        """Istemci basina saniyede 20; gecerli oturumu olan sahip sayilmaz (yabanci trafik onu disarida birakamasin)."""
         return GENEL.izin(self._kim()) or bool(auth.session(self._token()))
 
     def _mum_kapisi(self, q):
-        """Hata cevabi verildiyse True. Yeni canli mum aboneligi (WebSocket mesaji) dakikada 30."""
         b = app.ENGINE.bot
         if not b:
             self._red(503, "Motor hazır değil.")
@@ -453,7 +429,7 @@ class Gated(app.Handler):
         return super().do_GET()
 
     def do_POST(self):
-        p = self.path  # app ile ayni karsilastirma: ham yol
+        p = self.path
         if not self._genel():
             return self._red(429, "Çok fazla istek.")
         if p not in POST_IZIN:
@@ -475,7 +451,6 @@ class Gated(app.Handler):
 
 
 def log_kur():
-    """app.main icindeki basicConfig kok gunlukte isleyici varsa bir sey yapmaz."""
     h = logging.handlers.RotatingFileHandler(C.LOG_FILE, maxBytes=5_000_000, backupCount=3, encoding="utf-8")
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     h.addFilter(C.Maske())

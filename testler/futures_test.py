@@ -1,4 +1,3 @@
-"""futures.py sanal adaptor: LONG/SHORT, stop/hedef, kismi dolum, cift emir, bosluk, ayni mum, likidasyon, fonlama, mutabakat. Ag yok."""
 import sys
 
 sys.path.insert(0, sys.argv[1])
@@ -17,7 +16,6 @@ def yeni(bal=1000.0):
     return F.FuturesPaper(bal, rules={"BTC/USDT": F.Rules(0.1, 0.001, 0.001, 5), "ETH/USDT": F.Rules(0.01, 0.001, 0.001, 5)})
 
 
-# 1) acilis kurallari
 f = yeni()
 check("stopsuz emir reddedilir (fail-closed)", f.open("BTC/USDT", "long", 0.002, 100000, None, cid="a1") == "stop zorunlu")
 check("LONG stop giris ustunde reddedilir", "yanlış" in f.open("BTC/USDT", "long", 0.002, 100000, 101000, cid="a2"))
@@ -33,15 +31,12 @@ check("giris kaymali, teminat 1x = nominal", abs(p["entry"] - 100050) < 1e-6 and
 check("1x LONG likidasyon ~0 (mmr)", abs(p["liq"] - 100050 * F.MMR) < 1e-6, p["liq"])
 check("ayni kimlikle ikinci emir reddedilir", "kullanıldı" in f.open("ETH/USDT", "long", 0.1, 3000, 2900, cid="L1"))
 check("ayni sembolde cakisan (ters) pozisyon reddedilir", "açık pozisyon" in f.open("BTC/USDT", "short", 0.001, 100000, 102000, cid="L2"))
-# 2) stop sadece lehe
 check("LONG stop asagi tasinamaz", "lehine" in f.move_stop("BTC/USDT", 97000) and p["sl"] == 98000)
 check("LONG stop yukari tasinir", f.move_stop("BTC/USDT", 99000) is None and p["sl"] == 99000)
-# 3) ayni mumda stop + hedef: once stop
 t = f.bar("BTC/USDT", 100000, 105000, 98500, 104000)
 check("ayni mumda stop ve hedef: stop sayilir", t and t["reason"] == "STOP" and "BTC/USDT" not in f.pos, t and t["reason"])
 check("stop dolumu stop fiyati - kayma", abs(t["exit"] - 99000 * (1 - F.SLIPPAGE)) < 1e-6, t["exit"])
 check("defter: nakit degisimi = islem net", abs((f.cash - cash0) - t["pnl"]) < 1e-6, (f.cash - cash0, t["pnl"]))
-# 4) SHORT, hedef, bosluk
 f = yeni()
 check("SHORT acilir", f.open("ETH/USDT", "short", 0.1, 3000, 3090, 2820, cid="S1") is None)
 ps = f.pos["ETH/USDT"]
@@ -57,7 +52,6 @@ check("bosluk: SHORT stop acilistan (3200) dolar, stoptan degil", abs(t["exit"] 
 f.open("BTC/USDT", "long", 0.004, 100000, 98000, cid="L9")
 t = f.bar("BTC/USDT", 95000, 96000, 94000, 95500)
 check("bosluk: LONG stop acilistan dolar, zarar planlanandan buyuk", abs(t["exit"] - 95000 * (1 - F.SLIPPAGE)) < 1e-6 and t["R"] < -2)
-# 5) kismi dolum: stop sadece dolan miktar
 f = yeni()
 f.open("BTC/USDT", "long", 0.004, 100000, 98000, cid="P1", fill=0.5)
 check("kismi dolum: pozisyon dolan miktar", abs(f.pos["BTC/USDT"]["qty"] - 0.002) < 1e-12 and f.pos["BTC/USDT"]["partial"])
@@ -67,7 +61,6 @@ f.open("BTC/USDT", "long", 0.004, 100000, 98000, cid="P3")
 f.close("BTC/USDT", 101000, "KISMI", qty=0.002, cid="P4")
 check("kismi kapanis: kalan yarisi, teminat yarisi", abs(f.pos["BTC/USDT"]["qty"] - 0.002) < 1e-12 and abs(f.pos["BTC/USDT"]["margin"] - 0.002 * 100050) < 1e-6)
 check("cikis kimligi de tekrar kullanilamaz", "kullanıldı" in f.close("BTC/USDT", 101000, "X", cid="P4"))
-# 6) fonlama ve likidasyon
 f = yeni()
 f.open("BTC/USDT", "long", 0.004, 100000, 98000, cid="F1")
 f.open("ETH/USDT", "short", 0.1, 3000, 3090, cid="F2")
@@ -79,13 +72,12 @@ check("10x LONG: stop likidasyon yolunun yarisindan uzaksa reddedilir", "likidas
 check("10x LONG acilir (stop yakin)", g.open("BTC/USDT", "long", 0.05, 100000, 97000, lev=10, cid="X2") is None)
 q = g.pos["BTC/USDT"]
 liq0 = q["liq"]
-for _ in range(40):  # fonlama teminati eritir: likidasyon yaklasir
+for _ in range(40):
     g.funding("BTC/USDT", 0.001, 100000)
 check("fonlama teminati eritince likidasyon fiyati yukselir", q["liq"] > liq0, (round(liq0), round(q["liq"])))
 t = g.bar("BTC/USDT", 99000, 99500, q["liq"] - 1, 99000)
 check("likidasyon stoptan once gelirse LIKIDASYON, zarar teminatla sinirli", t["reason"] in ("LIKIDASYON", "STOP") and g.cash >= 0, t["reason"])
 F.MAX_LEV = 1
-# 7) mutabakat + rapor
 f = yeni()
 f.open("BTC/USDT", "long", 0.004, 100000, 98000, cid="M1")
 bad = f.reconcile({"BTC/USDT": ("long", 0.003), "ETH/USDT": ("short", 0.1)})

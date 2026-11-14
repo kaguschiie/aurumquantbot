@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# Bir bota (varsayilan: fatih) KENDI kod kopyasini ve uygulama ici Gelistirme sayfasini acar (gelistir.py). Ubuntu, root.
-# - Kod kopyasi: /opt/crypto_bot/aurumquantbot-<ad>, dal <ad>. Melik'in botu ve agresif eski klasorden calismaya devam eder.
-# - Bu botun "Tek tikla guncelle"si ana surumu kendi dalina birlestirir (cakisirsa uygulamaz).
-# - Onay kodu: korunan koda (emir/stop/risk/giris) dokunan degisiklikleri uygulamak icin. Sadece ozeti saklanir; kodu bot sahibine VERMEYIN.
-# Tekrar calistirmak guvenlidir. Kullanim:  bash /opt/crypto_bot/aurumquantbot/sunucu_fatih_gelistirme.sh [ad]
-# Geri alma: rm -r /etc/systemd/system/kriptoquantbot-<ad>.service.d/gelistirme.conf && systemctl daemon-reload && systemctl restart kriptoquantbot-<ad>
 set -e
 AD=${1:-fatih}
 DIR=/opt/crypto_bot

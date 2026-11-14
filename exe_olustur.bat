@@ -2,12 +2,9 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 title KriptoQuantBot - exe olusturuluyor
-rem Kullanim: exe_olustur.bat          -> derle, masaustu kisayolu, uygulamayi ac
-rem           exe_olustur.bat yayin    -> sadece derle (guncelleme_yayinla.bat cagirir)
 if not exist surum.txt echo dev> surum.txt
 set DIST=dist
 if /i "%~1"=="yayin" set DIST=dist_yayin
-rem yayin derlemesi ayri klasore: calisan uygulamanin (dist) dosyalari kilitli olsa da derlenir
 echo [1/3] Paketler kontrol ediliyor...
 python -m pip install --disable-pip-version-check -q --no-warn-script-location -r requirements.txt pyinstaller
 if errorlevel 1 goto hata

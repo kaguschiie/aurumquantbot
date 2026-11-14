@@ -1,6 +1,3 @@
-"""Kullanici hesaplari: yerel SQLite veritabani, PBKDF2 sifre ozeti, kalici oturumlar (veritabaninda sadece token
-ozeti; guncelleme/yeniden baslatmada kimse cikis yapmaz). Roller: admin (her sey) ve user (gercek hesap + kendi
-Binance API'si)."""
 import hashlib
 import hmac
 import os
@@ -14,11 +11,11 @@ import config as C
 
 DB = os.path.join(C.APP_DIR, "kullanicilar.db")
 ROLES = ("admin", "user")
-TTL = 30 * 86400           # kullanilmayan oturum 30 gunde kapanir (her kullanimda uzar)
+TTL = 30 * 86400
 NAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 _lock = threading.Lock()
-SESSIONS = {}              # token -> {"user", "role", "t"}
-FAILS = {}                 # kullanici -> [hatali deneme, kilit bitis]
+SESSIONS = {}
+FAILS = {}
 
 
 def _db():
@@ -50,7 +47,6 @@ def users():
 
 
 def weak(pw):
-    """Yeni sifre kurali (2026-11-08): en az 10 karakter, harf ve rakam. Eski sifreler girise devam eder."""
     pw = pw or ""
     if len(pw) < 10 or not re.search(r"[^\W\d_]", pw) or not re.search(r"\d", pw):
         return "Şifre en az 10 karakter olmalı, harf ve rakam içermeli."
@@ -58,7 +54,6 @@ def weak(pw):
 
 
 def create(name, pw, role, first=False):
-    """Hata metni veya None dondurur. first: ilk kurulum (sadece hic kullanici yokken, tek islemde)."""
     if not NAME_RE.match(name or ""):
         return "Kullanıcı adı 3-32 karakter olmalı (harf, rakam, _ . -)."
     if weak(pw):
@@ -112,21 +107,20 @@ _flock = threading.Lock()
 
 
 def login(name, pw):
-    """(token, rol, None) veya (None, None, hata)."""
     key = (name or "").lower()[:64]
-    with _flock:  # deneme hakki sifre kontrolunden ONCE ayrilir: paralel isteklerle kilit asilamaz
+    with _flock:
         n, until = FAILS.get(key, [0, 0])
         if time.time() < until:
             return None, None, f"Çok fazla hatalı deneme. {int(until - time.time())} sn sonra tekrar deneyin."
-        FAILS[key] = [n + 1, time.time() + min(30 * 2 ** (n - 4), 3600) if n + 1 >= 5 else 0]  # 30 sn, 1, 2 dk... en cok 1 sa
-        if len(FAILS) > 1000:  # sahte adlarla tasirip kilit silinmesin: gercek hesabin sayaci hic atilmaz, olmayan adlardan en az denemeli, en eski atilir
+        FAILS[key] = [n + 1, time.time() + min(30 * 2 ** (n - 4), 3600) if n + 1 >= 5 else 0]
+        if len(FAILS) > 1000:
             with _lock, _db() as con:
                 real = {r[0].lower() for r in con.execute("SELECT name FROM users")}
             for k in sorted((x for x in FAILS if x not in real), key=lambda x: FAILS[x][0])[:len(FAILS) - 800]:
                 del FAILS[k]
     with _lock, _db() as con:
         row = con.execute("SELECT name, role, salt, hash FROM users WHERE name=?", (name or "",)).fetchone()
-    h = _hash(pw or "", row[2] if row else b"\0" * 16)  # olmayan kullanicida da ayni sure (ad tahmini zorlasir)
+    h = _hash(pw or "", row[2] if row else b"\0" * 16)
     if not row or not hmac.compare_digest(h, row[3]):
         return None, None, "Kullanıcı adı veya şifre hatalı."
     FAILS.pop(key, None)
@@ -141,7 +135,7 @@ def session(tok):
     if not tok:
         return None
     s = SESSIONS.get(tok)
-    if not s:  # yeniden baslatma sonrasi: veritabanindan
+    if not s:
         with _lock, _db() as con:
             r = con.execute("SELECT user, role, t FROM sessions WHERE th=?", (_th(tok),)).fetchone()
         if r:
@@ -150,7 +144,7 @@ def session(tok):
         logout(tok)
         return None
     s["t"] = time.time()
-    if s["t"] - s["saved"] > 600:  # son kullanim zamani 10 dk'da bir diske
+    if s["t"] - s["saved"] > 600:
         s["saved"] = s["t"]
         with _lock, _db() as con:
             con.execute("UPDATE sessions SET t=? WHERE th=?", (s["t"], _th(tok)))

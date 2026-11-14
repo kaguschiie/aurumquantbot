@@ -1,7 +1,3 @@
-"""Canli yapinin kopyasi: 30 gunde bir egitim, ayni gun satirlari, sabit 100 tur (erken durdurma yok), canli bantlar %3/%1.
-Eski test (yillik egitim, Pazartesi mumu, tek tohum) %26 gosteriyordu; canli bot Pazar mumunu kullaniyor ve %14 ediyordu.
-Gunler arasi farkin cogu haftalik BTC rejim orneklemesinin sansi (rastgele sepette de ayni desen). Carsamba test goruldukten sonra secildi,
-gercekci beklenti 7 gun ortalamasidir. Calistirma: python canli_kopya.py (indir_1d.py sonrasi, ~5 dk)."""
 import os, sys, warnings
 import numpy as np, pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor as HGB
@@ -23,7 +19,6 @@ GUN = "Pzt Sal Car Per Cum Cmt Paz".split()
 
 
 def scores(day, it=100, es=False, seed=0):
-    """day: egitim satirlarinin gunu. Tum gunler tahmin edilir."""
     rows = A[A.d.dt.dayofweek == day]
     cuts = list(pd.date_range("2020-01-01", c.index[-1], freq="30D")) + [c.index[-1] + pd.Timedelta(days=1)]
     pred = np.full(len(A), np.nan)
@@ -40,7 +35,6 @@ def scores(day, it=100, es=False, seed=0):
 
 
 def gate(day, n=3):
-    """Rejim sepet gunu okunur; hafta icinde n kapanis ust uste altindaysa cikis, geri donus sadece sepet gunu. n=None: sadece sepet gunu."""
     below = (~reg_d).astype(int).rolling(n or 1).sum() == (n or 1)
     cur, out = False, []
     for r, bl, x in zip(c.index.dayofweek == day, below.values, reg_d.values):

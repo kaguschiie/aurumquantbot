@@ -1,5 +1,3 @@
-"""Merkezi sunucu modu + uzaktan erisim: yerel ag adresleri, Tailscale (ozel ag) durumu ve tek tikla Cloudflare
-gecici tuneli (trycloudflare.com). Tunel/ag erisiminde de giris (kullanici + sifre) zorunludur."""
 import json
 import os
 import re
@@ -22,7 +20,7 @@ TUN = {"proc": None, "url": None, "error": "", "t": 0.0}
 def lan_ips():
     ips = set()
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:  # varsayilan ag kartinin adresi (paket gonderilmez)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("8.8.8.8", 80))
             ips.add(s.getsockname()[0])
     except OSError:
@@ -59,7 +57,6 @@ def cloudflared():
 
 
 def download_cloudflared():
-    """Cloudflare'in resmi cloudflared.exe'si (GitHub yayinindan) araclar klasorune."""
     os.makedirs(TOOLS, exist_ok=True)
     tmp = os.path.join(TOOLS, "cloudflared.exe.part")
     with requests.get(CF_URL, stream=True, timeout=60) as r:
@@ -71,7 +68,6 @@ def download_cloudflared():
 
 
 def tunnel_start():
-    """Gecici Cloudflare tuneli: https://xxxx.trycloudflare.com -> bu bilgisayardaki uygulama. Hata metni/None."""
     if TUN["proc"] and TUN["proc"].poll() is None:
         return None
     exe = cloudflared()
@@ -93,7 +89,7 @@ def tunnel_start():
                 TUN["url"] = m.group(0)
         TUN.update(url=None, error=TUN["error"] or "Tünel kapandı.")
     threading.Thread(target=read, daemon=True).start()
-    for _ in range(40):  # adres en fazla ~20 sn'de gelir
+    for _ in range(40):
         if TUN["url"] or p.poll() is not None:
             break
         time.sleep(0.5)
@@ -112,7 +108,7 @@ def tunnel_host():
 
 def status():
     up = TUN["proc"] is not None and TUN["proc"].poll() is None
-    active = getattr(C, "SERVER_ACTIVE", False)  # su an gercekten tum aga acik mi (ayar yeniden baslatinca gecer)
+    active = getattr(C, "SERVER_ACTIVE", False)
     ts = tailscale()
     return {"server_mode": C.SERVER_MODE, "active": active, "port": C.PORT, "local": f"http://127.0.0.1:{C.PORT}",
             "lan": [f"http://{ip}:{C.PORT}" for ip in lan_ips()] if active else [],

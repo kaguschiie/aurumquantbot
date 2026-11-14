@@ -1,4 +1,3 @@
-"""Elle alim satis secimleri: sure, suresiz, sadece stop+hedef, yapay zekaya birak (gercek emir ve ucretli Claude yok)."""
 import os
 import sys
 import time
@@ -28,7 +27,6 @@ pa = b.accounts["PAPER"]
 pa.mark()
 ETH, SOL, BNB, XRP = "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT"
 
-# gecersiz secimler
 px = b.ask[ETH]
 check("bilinmeyen secim reddedilir", "Geçersiz" in (b.manual_buy("PAPER", ETH, 100, px * .9, None, "taker", "t", "uydurma") or ""))
 check("sadece stop+hedef: hedefsiz reddedilir", "ikisini" in (b.manual_buy("PAPER", ETH, 100, px * .9, None, "taker", "t", "stop") or ""))
@@ -37,11 +35,9 @@ check("sure: saatsiz reddedilir", "Süre" in (b.manual_buy("PAPER", ETH, 100, px
 check("sure: sinir disi reddedilir", "Süre" in (b.manual_buy("PAPER", ETH, 100, px * .9, None, "taker", "t", "sure", 9999) or ""))
 check("reddedilenler pozisyon acmadi", ETH not in pa.st["positions"])
 
-# varsayilan cagri eski davranisla ayni
 check("eski cagri: stop+hedef ile Manuel Kilit", b.manual_buy("PAPER", XRP, 100, b.ask[XRP] * .9, b.ask[XRP] * 1.1) is None and pa.st["positions"][XRP]["manual"]
       and not pa.st["positions"][XRP]["ai"] and pa.st["positions"][XRP]["sure_t"] is None)
 
-# suresiz: stop bos -> felaket stopu, sure yok
 err = b.manual_buy("PAPER", ETH, 100, 0, None, "taker", "t", "suresiz")
 pos = pa.st["positions"].get(ETH)
 check("suresiz: stop bos, felaket stopu", not err and pos and abs(pos["sl"] / pos["entry"] - 0.65) < .01 and pos["manual"] and pos["sure_t"] is None, err or pos["sl"] / pos["entry"])
@@ -53,7 +49,6 @@ pa.manage_positions()
 check("suresiz: hedef yok, yukselince kapanmaz, kalkan stopu tasimaz", ETH in pa.st["positions"] and abs(pos["sl"] / pos["entry"] - .65) < .01)
 pa.close(ETH, "ELLE_KAPATILDI")
 
-# sure
 b.refresh_prices()
 err = b.manual_buy("PAPER", ETH, 100, b.ask[ETH] * .9, None, "taker", "t", "sure", 2)
 pos = pa.st["positions"].get(ETH)
@@ -68,7 +63,6 @@ pa.manage_positions()
 t = pa.st["trades"][-1]
 check("sure doldu: satildi", ETH not in pa.st["positions"] and t["reason"] == "SURE_DOLDU", t["reason"])
 
-# sure doldu ama stop once: stop nedeni yazilir
 b.refresh_prices()
 b.manual_buy("PAPER", ETH, 100, b.ask[ETH] * .9, None, "taker", "t", "sure", 2)
 pos = pa.st["positions"][ETH]
@@ -77,7 +71,6 @@ b.bid[ETH] = pos["sl"] * .99
 pa.manage_positions()
 check("ayni anda stop ve sure: stop oncelikli", pa.st["trades"][-1]["reason"] != "SURE_DOLDU", pa.st["trades"][-1]["reason"])
 
-# pasif emir: sure dolumdan sayilir
 b.refresh_prices()
 err = b.manual_buy("PAPER", SOL, 100, b.bid[SOL] * .9, None, "maker", "t", "sure", 3)
 check("pasif alis: emir bekliyor", not err and SOL in pa.st["pending"], err)
@@ -88,7 +81,6 @@ pos = pa.st["positions"].get(SOL)
 check("pasif alis: dolumda sure basladi", pos and pos["manual"] and abs(pos["sure_t"] - time.time() - 10800) < 5)
 pa.close(SOL, "ELLE_KAPATILDI")
 
-# uygulama kapaliyken sure doldu (sanal hesap)
 b.refresh_prices()
 b.manual_buy("PAPER", SOL, 100, b.bid[SOL] * .5, None, "taker", "t", "sure", 1)
 pos = pa.st["positions"][SOL]
@@ -102,7 +94,6 @@ pa.ex.fetch_ohlcv = real
 t = pa.st["trades"][-1]
 check("kapaliyken sure doldu: o andaki fiyattan satildi", closed and t["reason"] == "SURE_DOLDU" and abs(t["exit"] / (e * 1.02) - 1) < .01, f"{t['reason']} {t.get('exit')}")
 
-# yapay zekaya birak: stop bos -> %8 alti, kalkan calisir
 b.refresh_prices()
 err = b.manual_buy("PAPER", ETH, 100, 0, None, "taker", "t", "ai")
 pos = pa.st["positions"].get(ETH)
@@ -155,7 +146,6 @@ reply["v"] = A.AgentError("baglanti")
 b.ai_positions()
 check("ai: Claude hatasi pozisyona dokunmaz", ETH in pa.st["positions"])
 
-# kullanici geri aldi: Claude artik bakmaz
 pa.set_levels(BNB, sl=b.bid[BNB] * .9)
 check("elle stop: ai biter", pos2["manual"] and not pos2["ai"])
 n = len(calls)
@@ -163,7 +153,6 @@ reply["v"] = {"kararlar": [{"sym": BNB, "karar": "kapat", "stop": 0, "hedef": 0,
 b.ai_positions()
 check("Manuel Kilite alinan coine Claude dokunamaz", BNB in pa.st["positions"] and BNB not in calls[n], calls[n][:120])
 
-# devir sirasi: Claude cevabi beklenirken kullanici kilitledi
 def lock_then(system, prompt, schema, model=None):
     pa.set_levels(ETH, sl=b.bid[ETH] * .9)
     return {"kararlar": [{"sym": ETH, "karar": "kapat", "stop": 0, "hedef": 0, "neden": "x"}]}, 0, "sahte"
@@ -180,7 +169,6 @@ b.ai_positions()
 t = pa.st["trades"][-1]
 check("ai: kapat", ETH not in pa.st["positions"] and t["reason"] == "CLAUDE_KAPATTI", t["reason"])
 
-# portfoy pozisyonu
 b.refresh_prices()
 pa.pf_buy(ETH, 100, "test")
 pf = pa.st["positions"][ETH]
@@ -191,7 +179,6 @@ n = len(calls)
 b.ai_positions()
 check("portfoy: Claude'a sorulmaz", all(ETH not in c for c in calls[n:]))
 
-# saatlik is ai_positions'i cagirir, hata saatligi durdurmaz, OTO_SAATLIK kapaliyken de
 b.ensure_brain, b.scan = (lambda: None), (lambda *a, **k: None)
 hit = []
 b.ai_positions = lambda: (hit.append(1), 1 / 0)
@@ -200,7 +187,6 @@ b.hourly()
 check("saatlik: cagrildi, hata yutuldu", hit == [1])
 
 
-# gercek hesap: sure doldu -> piyasa satisi tek emir kapisindan; sonuc bilinmezse tekrar denenir
 class FakeEx:
     def market(self, s):
         return {"limits": {"cost": {"min": 5}}}

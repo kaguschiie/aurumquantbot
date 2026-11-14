@@ -1,10 +1,3 @@
-"""Ders Defteri: otopsi + kendi kendine ogrenen sinyal agirliklari (tamamen yerel, ucretsiz, SQLite).
-- Her kapanan islem otopsi edilir: giristeki sinyaller, cikistaki teknik durum, BTC hareketi -> ders.
-- Her kararda adaylar da 'ornek' olarak kaydedilir; 24 saat sonra botun cikis politikasiyla (stop 1,5 ATR, hedef
-  3,2 ATR, basabas + kar kilitleyen iz suren stop) sonucu Binance mumlarindan hesaplanir. Alinmayip sert yukselen
-  aday = kacan firsat.
-- Sinyal agirliklari bu orneklerin gercek sonucundan (R) guncellenir; tutarli zarar ettiren kombinasyonlar 'tuzak'
-  olur ve yerel risk yoneticisi onlari engeller (Claude dahil hicbir beyin ayni tuzaga tekrar giremez)."""
 import itertools
 import json
 import logging
@@ -18,18 +11,15 @@ import ccxt
 import config as C
 
 log = logging.getLogger("bot")
-HORIZON_H = 24         # radar ornegi bu kadar saat sonra sonuclandirilir
-WINDOW_D = 60          # ogrenme son 60 gunun orneklerine bakar (piyasa karakteri degisir)
-SHRINK = 20            # az ornekli sinyalin agirligi sifira cekilir: w = (ort - taban) * n / (n + 20)
-REAL_W = 2.0           # gercek islem otopsisi radar orneginden 2 kat agir sayilir
-SAMPLE_GAP_H = 2       # ayni coin icin iki radar ornegi arasi en az sure
-# tekli/ikili kombinasyon icin en az ornek ve ort R; kazanma orani olcut degil (cikis kuralinin urunu). Guven siniri:
-# tuzakta ust sinir < 0, altinda alt sinir > 0 (tek tuk sansli ornek kural olmasin)
-# 2026-11-08: 8-12 ornek tek gunluk rejimi kural sanıyordu; en az 30 ornek, 7 farkli gun ve TABANA gore fark sart
+HORIZON_H = 24
+WINDOW_D = 60
+SHRINK = 20
+REAL_W = 2.0
+SAMPLE_GAP_H = 2
 TRAP = {"n1": 30, "n2": 30, "avg": -0.15, "gun": 7}
 GOLD = {"n1": 30, "n2": 30, "avg": 0.15, "gun": 7}
-Z = 1.28  # tek yonlu %90 guven
-CONTEXT = {"rejim_dusus", "rejim_trend", "makro_riskoff", "altin"}  # tek basina tuzak olamaz (her seyi engellerdi)
+Z = 1.28
+CONTEXT = {"rejim_dusus", "rejim_trend", "makro_riskoff", "altin"}
 REG_TR = {"trend": "yükseliş trendi", "yatay": "yatay", "dusus": "sert düşüş"}
 REASON_TR = {"HEDEF": "hedef", "STOP": "stop", "IZ_STOP": "iz süren stop", "BASABAS": "başabaş stopu",
              "SURE_DOLDU": "süre doldu", "CLAUDE_KAPATTI": "karar beyni kapattı", "ELLE_KAPATILDI": "elle kapatıldı",
@@ -40,7 +30,6 @@ STATE = {"weights": {}, "traps": [], "golden": [], "real": [], "n": 0, "base": 0
          "regstats": {}, "wreg": {}}
 
 
-# ---------------- sinyaller ----------------
 def _n(r, k):
     v = r.get(k)
     return v if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v else None
@@ -59,7 +48,7 @@ def _lt(v, x):
     return v is not None and v < x
 
 
-SIGNALS = {  # ad: (Turkce aciklama, kosul(satir, baglam))
+SIGNALS = {
     "trend_1s": ("1s teknik güçlü al", lambda r, c: _ge(_t(r, "1h"), 0.5)),
     "trend_4s": ("4s teknik al", lambda r, c: _ge(_t(r, "4h"), 0.3)),
     "zayif_4s": ("4s trend zayıf", lambda r, c: _lt(_t(r, "4h"), 0.1)),
@@ -105,21 +94,16 @@ def feats(r, ctx):
     return out
 
 
-# ---------------- sifir zarar kalkani (canli bot ve geriye donuk simulasyon ayni kurali kullanir) ----------------
 def be_price(entry, atr=None):
-    """Basabas stopu: giris + iki yon komisyon + stop kaymasi + tampon. Tampon oynak coinde buyur (ATR'nin %20'si,
-    en fazla %2): bir saniyelik fiyat boslugunda bile cikis zararsiz kalsin."""
     lock = max(C.BE_LOCK_PCT / 100, min(0.2 * atr / entry, 0.02) if atr else 0)
     return entry * (1 + 2 * C.FEE + C.SLIPPAGE + lock)
 
 
 def be_trigger(entry, r0, be_r=None, atr=None):
-    """Stopun basabasa cekilmesi icin gereken kar: ilk riskin BE_TRIGGER_R kati, en az basabas seviyesi + %0,2."""
     return max((C.BE_TRIGGER_R if be_r is None else be_r) * r0, be_price(entry, atr) - entry + entry * 0.002)
 
 
 def trail(entry, r0, hi, atr, trail_atr=None):
-    """Kar kilidi: zirveden TRAIL_ATR geride; 1R yolu gecince kazanilan yolun en az LOCK_FRAC'i kilitli."""
     lock = hi - (C.TRAIL_ATR if trail_atr is None else trail_atr) * atr
     if hi - entry >= r0:
         lock = max(lock, entry + C.LOCK_FRAC * (hi - entry))
@@ -127,8 +111,6 @@ def trail(entry, r0, hi, atr, trail_atr=None):
 
 
 def simulate(entry, stop, tp, atr, bars, be_r=None, trail_atr=None):
-    """Botun cikis politikasi. bars: [(yuksek, dusuk, kapanis)]. Donus: (net R, net getiri, en yuksek yukselis).
-    Komisyon (iki yon) ve kayma dusulur. Ayni mumda stop ve hedef varsa once stop varsayilir (temkinli)."""
     r0 = entry - stop
     if r0 <= 0 or not bars:
         return 0.0, 0.0, 0.0
@@ -150,7 +132,6 @@ def simulate(entry, stop, tp, atr, bars, be_r=None, trail_atr=None):
     return ret * entry / r0, ret, max(h for h, _, _ in bars) / entry - 1
 
 
-# ---------------- veritabani ----------------
 @contextmanager
 def _db():
     con = sqlite3.connect(C.LESSON_DB, timeout=15)
@@ -174,7 +155,7 @@ def init():
             text TEXT, sigs TEXT, r REAL);
         CREATE TABLE IF NOT EXISTS kural (key TEXT PRIMARY KEY, kind TEXT, first_t REAL, last_t REAL, active INTEGER);
         """)
-        if "bars" not in {r[1] for r in con.execute("PRAGMA table_info(ornek)")}:  # kontrollu deney icin fiyat yolu
+        if "bars" not in {r[1] for r in con.execute("PRAGMA table_info(ornek)")}:
             con.execute("ALTER TABLE ornek ADD COLUMN bars TEXT")
 
 
@@ -185,7 +166,6 @@ def add_lesson(kind, sym, acct, title, text, sigs=(), r=None):
 
 
 def log_samples(rows, ctx, acted=(), why=None):
-    """Karar anindaki adaylari ogrenme ornegi olarak kaydeder (ayni coin en fazla 2 saatte bir)."""
     why, now, n = why or {}, time.time(), 0
     with _LOCK, _db() as con:
         recent = {r[0] for r in con.execute("SELECT DISTINCT sym FROM ornek WHERE src='radar' AND t>?",
@@ -202,9 +182,7 @@ def log_samples(rows, ctx, acted=(), why=None):
     return n
 
 
-# ---------------- otopsi ----------------
 def autopsy(acct, sym, pos, exit_px, reason, pnl, pct, now_row=None, btc_move=None):
-    """Kapanan gercek/sanal islemin otopsisi: ornek olarak kaydedilir (2 kat agirlik) ve ders yazilir."""
     e, sl0 = pos["entry"], pos.get("sl0") or pos["sl"]
     risk = pos.get("qty0", pos["qty"]) * (e - sl0)
     r = pnl / risk if risk > 0 else 0.0
@@ -287,7 +265,6 @@ def _ex():
 
 
 def evaluate(limit=200):
-    """Suresi dolan radar orneklerini 15 dk'lik Binance mumlariyla sonuclandirir. Donus: yeni ders metinleri."""
     now = time.time()
     with _LOCK, _db() as con:
         due = [dict(r) for r in con.execute("SELECT * FROM ornek WHERE done=0 AND t<? ORDER BY t LIMIT ?",
@@ -302,10 +279,10 @@ def evaluate(limit=200):
             log.debug("ders defteri ornek %s: %s", o["sym"], e)
             bars = None
         if not bars or len(bars) < HORIZON_H * 3:
-            if now - o["t"] > 4 * 86400:  # islemden kalkmis vb.: vazgec
+            if now - o["t"] > 4 * 86400:
                 res.append((o, None))
             continue
-        o["bars"] = json.dumps([[round(x / o["price"], 5) for x in b] for b in bars])  # girise gore goreli fiyat yolu
+        o["bars"] = json.dumps([[round(x / o["price"], 5) for x in b] for b in bars])
         res.append((o, simulate(o["price"], o["stop"], o["tp"], o["atr"], bars)))
     with _LOCK, _db() as con:
         for o, sim in res:
@@ -325,9 +302,7 @@ def evaluate(limit=200):
     return out
 
 
-# ---------------- ogrenme ----------------
 def recompute():
-    """Agirliklar ve kurallar son 60 gunun sonuclanmis orneklerinden yeniden hesaplanir. Donus: yeni kural dersleri."""
     since = time.time() - WINDOW_D * 86400
     with _LOCK, _db() as con:
         rows = con.execute("SELECT src, sigs, r, feats, t, sym FROM ornek WHERE done=1 AND r IS NOT NULL AND t>?", (since,)).fetchall()
@@ -337,7 +312,6 @@ def recompute():
     days = [int((r["t"] or 0) // 86400) for r in rows]
     tw = sum(w for _, _, w, _ in data)
     base = sum(r * w for _, r, w, _ in data) / tw if tw else 0.0
-    # adaptif katman icin: rejim x volatilite basarisi ve rejime ozel sinyal agirliklari
     regstats, racc = {}, {}
     for (sg, r, w, _), row in zip(data, rows):
         try:
@@ -351,7 +325,6 @@ def recompute():
             a = racc.setdefault(reg, {}).setdefault(s, [0.0, 0.0, 0])
             a[0], a[1], a[2] = a[0] + w, a[1] + r * w, a[2] + 1
     STATE["regstats"] = {k: {"n": n, "avg": round(sr / w, 3)} for k, (w, sr, n) in regstats.items()}
-    # agirlik MUTLAK beklentidir (tabana gore degil): zarar ettiren sinyal, taban daha kotu diye pozitif agirlik almaz
     STATE["wreg"] = {reg: {s: round(sr / w * n / (n + SHRINK), 3) for s, (w, sr, n) in d.items()}
                      for reg, d in racc.items()}
     acc = {}
@@ -360,11 +333,11 @@ def recompute():
             a = acc.setdefault(key, [0.0, 0.0, 0, 0.0, 0.0, set(), set()])
             a[0], a[1], a[2], a[3], a[4] = a[0] + w, a[1] + r * w, a[2] + 1, a[3] + w * (r > 0), a[4] + r * r * w
             a[5].add(dy)
-            a[6].add((row["sym"], dy))  # ayni coin + ayni gun ornekleri ust uste biner (24 sa ufuk): bagimsiz sayilmaz
+            a[6].add((row["sym"], dy))
     weights, traps, golden = {}, [], []
     for key, (w, sr, n, wins, sq, gun, kume) in acc.items():
         avg, win, ne = sr / w, wins / w, len(kume)
-        se = max(sq / w - avg * avg, 0.0) ** 0.5 / max(ne, 1) ** 0.5  # guven siniri etkin (bagimsiz) ornek sayisiyla
+        se = max(sq / w - avg * avg, 0.0) ** 0.5 / max(ne, 1) ** 0.5
         rule = {"sigs": list(key), "n": n, "n_etkin": ne, "gun": len(gun), "avg": round(avg, 3), "win": round(win, 3),
                 "taban": round(base, 3), "guven_z": round((avg - base) / se, 2) if se > 0 else None, "t": round(time.time())}
         if len(key) == 1:
@@ -372,7 +345,6 @@ def recompute():
                                "w": round(avg * ne / (ne + SHRINK), 3)}
         single = len(key) == 1
         if not (single and key[0] in CONTEXT):
-            # taban zaten negatifken "her sey kaybettirdi" tuzak sayilmaz: tabana gore belirgin fark + tekrarlayan desen
             if ne >= TRAP["n1" if single else "n2"] and len(gun) >= TRAP["gun"] and avg <= min(TRAP["avg"], base - 0.15)                     and avg + Z * se < base:
                 traps.append(dict(rule, kind="tuzak"))
             if ne >= GOLD["n1" if single else "n2"] and len(gun) >= GOLD["gun"] and avg >= max(GOLD["avg"], base + 0.15)                     and avg - Z * se > max(base, 0.0):
@@ -409,15 +381,13 @@ def recompute():
 
 
 def edge(sigs, regime=None):
-    """Ogrenilen avantaj (R): aktif sinyallerin agirliklari (o rejimde yeterli ornek varsa rejime ozel agirlik agirlikli)
-    + altin kural bonusu."""
     W, R = STATE["weights"], (STATE.get("wreg") or {}).get(regime) or {}
     e = 0.0
-    for s in sigs:  # rejime ozel agirlik zaten az ornekte sifira cekilmis (shrink): genel agirlikla ortalanir
+    for s in sigs:
         g = W.get(s, {}).get("w", 0.0)
         e += (g + R[s]) / 2 if s in R else g
     e += 0.15 * sum(1 for g in STATE["golden"] if set(g["sigs"]) <= set(sigs))
-    import gecmis  # 2 yillik onsel: binlerce ornekte sinyalin mutlak beklentisi (yari agirlikla)
+    import gecmis
     for s in sigs:
         st = gecmis.sig_stat((s,))
         if st and s not in CONTEXT:
@@ -427,13 +397,12 @@ def edge(sigs, regime=None):
 
 
 def check(sigs, regime=None):
-    """Risk yoneticisi icin: (red sebebi veya None, risk carpani, ogrenilen avantaj R)."""
     sigs, e = set(sigs), edge(sigs, regime)
     for t in STATE["traps"]:
         if set(t["sigs"]) <= sigs:
             return (f"Ders Defteri tuzağı: {labels(t['sigs'])} ({t['n']} örnekte kazanma %{t['win'] * 100:.0f}, "
                     f"ort {t['avg']:+.2f}R)"), 0.0, e
-    import gecmis  # 2 yillik Gecmis Okulu: egitim ve testte tutarli zarar ettiren kombinasyonlar
+    import gecmis
     for t in gecmis.traps():
         if set(t["sigs"]) <= sigs:
             return (f"Geçmiş Okulu tuzağı: {labels(t['sigs'])} (2 yılda {t['n']} örnek, test dönemi ort "
@@ -442,13 +411,12 @@ def check(sigs, regime=None):
     if len(sim) >= 2 and all(r < 0 for r in sim):
         return f"Ders Defteri: benzer şartlardaki son {len(sim)} işlem zararla kapandı", 0.0, e
     mult = 0.5 if sim and sum(r < 0 for r in sim) > len(sim) / 2 else 1.0
-    if STATE["n"] >= 40:  # kanitlanmis mutlak beklenti olmadan risk 1 katin ustune cikmaz
+    if STATE["n"] >= 40:
         mult *= max(min(1 + e, 1.0), 0.5)
     return None, round(mult, 2), round(e, 3)
 
 
 def brief_lines(admin=True):
-    """Claude'a giden Ders Defteri ozeti (normal kullanicinin sohbetinde sanal hesap otopsileri yok)."""
     W, L = STATE["weights"], []
     if W:
         top = sorted(W.items(), key=lambda kv: -abs(kv[1]["w"]))[:10]
@@ -473,7 +441,7 @@ def summary(admin=True):
     with _LOCK, _db() as con:
         ls = [dict(r) for r in con.execute("SELECT * FROM ders ORDER BY t DESC LIMIT 300")]
         cnt = {(r[0], r[1]): r[2] for r in con.execute("SELECT src, done, COUNT(*) FROM ornek GROUP BY src, done")}
-    if not admin:  # normal kullanici sanal hesap otopsilerini gormez
+    if not admin:
         ls = [dict(x, acct=None) for x in ls if x.get("acct") != "PAPER"]
     for x in ls:
         x["labels"] = [label(s) for s in (x.get("sigs") or "").split(",") if s]
@@ -486,7 +454,6 @@ def summary(admin=True):
 
 
 def loop(stop, say=lambda msg: None):
-    """Arka plan: 20 dk'da bir ornekleri sonuclandir, degisiklik olunca agirliklari yeniden hesapla."""
     last_eval = 0.0
     while not stop.is_set():
         try:
@@ -498,6 +465,6 @@ def loop(stop, say=lambda msg: None):
                 new += recompute()
             for t in new:
                 say(t)
-        except Exception as e:  # ag/disk hatasi: bir sonraki turda tekrar
+        except Exception as e:
             log.warning("ders defteri: %s", e)
         stop.wait(30)

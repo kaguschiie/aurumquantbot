@@ -1,7 +1,3 @@
-"""GUCLU AL 4s ve 1g - UZUN TUTMA: onceki test 4/12/24 SAATTE cikiyordu. Burada sinyal kendi zaman diliminde tutulur
-(gunler/haftalar) ve botun gercek teknik ozet fonksiyonu (teknik.rating_series) kullanilir.
-Olay: rec 0.5'i yukari keser (taze GUCLU AL), likit coin. Giris kapanis + maliyet.
-Kiyas: AYNI ZAMANDA tum likit coinlerin ortalama getirisi (piyasa) -> fazla getiri; gun kumelemeli t; medyan ve %1-99 kirpilmis ort."""
 import glob, os, sys, time, json
 import numpy as np, pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,7 +22,7 @@ def load_d1():
 
 def load_4h():
     out = {}
-    for f in glob.glob(os.path.join(S, "veri4h", "*.npz")):  # 4 saatlik veri depoda ve indir_1d.py'de yok
+    for f in glob.glob(os.path.join(S, "veri4h", "*.npz")):
         z = np.load(f)
         if not {"o", "h", "l", "c", "v", "qv"} <= set(z.files):
             continue
@@ -48,7 +44,7 @@ def study(fr, bpd, name, split, holds_d=(1, 3, 7, 14, 30), min_qv=3e6):
     QV = pd.DataFrame({s: d.qv for s, d in fr.items()}).reindex(C.index)
     liq = QV.rolling(bpd, min_periods=bpd).sum() >= min_qv
     fwd = {h: (C.shift(-h * bpd) * (1 - COST) / (C * (1 + COST)) - 1) for h in holds_d}
-    mkt = {h: f.where(liq).mean(1) for h, f in fwd.items()}   # ayni anda tum likit coinlerin ortalamasi
+    mkt = {h: f.where(liq).mean(1) for h, f in fwd.items()}
     rows = []
     for sym, df in fr.items():
         if len(df) < 300 or sym not in C:
