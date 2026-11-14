@@ -1,0 +1,142 @@
+KAP olay calismasi | 2022-09-01 - 2026-10-16 | kesim 2025-06-03 | deneme 72 | esik t >= 3.39 | maliyet %0.6
+
+red       KONTROL_rastgele_al_20                                     | egitim n 1299 gun  526 ort  +1.25% t +1.01 kaz  44% | test n  718 gun  257 ort  -0.68% t -0.81 kaz  38%
+          teshis: cikis {'giris': 448, 'cikis': 684, 'maliyet': 36} | rejimde kayip kotu 0.5822784810126582 iyi 0.5784832451499118
+red       KONTROL_rastgele_yonsuz_5                                  | egitim n 1299 gun  526 ort  +0.40% t -0.69 kaz  42% | test n  718 gun  257 ort  -0.71% t -2.95 kaz  39%
+          teshis: giris {'giris': 806, 'cikis': 313, 'maliyet': 77} | rejimde kayip kotu 0.6234177215189873 iyi 0.5873015873015873
+red       bedelli_kacin_20                                           | egitim n  181 gun  156 ort  -1.47% t -0.77 kaz  43% | test n  122 gun   99 ort  -2.63% t -0.73 kaz  32%
+          teshis: giris {'cikis': 86, 'giris': 100, 'maliyet': 4} | rejimde kayip kotu 0.6862745098039216 iyi 0.6150793650793651
+red       bedelli_kacin_5                                            | egitim n  181 gun  156 ort  -3.08% t -3.31 kaz  34% | test n  122 gun   99 ort  -2.89% t -2.37 kaz  33%
+red       bedelsiz_kacin_20                                          | egitim n  507 gun  311 ort  -2.55% t -2.43 kaz  40% | test n  255 gun  168 ort  -3.71% t -2.46 kaz  39%
+          teshis: cikis {'giris': 203, 'cikis': 258, 'maliyet': 15} | rejimde kayip kotu 0.5748031496062992 iyi 0.6346456692913386
+red       bedelsiz_kacin_5                                           | egitim n  507 gun  311 ort  -1.46% t -2.74 kaz  39% | test n  255 gun  168 ort  -0.14% t -0.18 kaz  43%
+          teshis: giris {'giris': 328, 'cikis': 128, 'maliyet': 16} | rejimde kayip kotu 0.6299212598425197 iyi 0.6173228346456693
+red       beklenti_al_20|oynak<=0.02608                              | egitim n  137 gun  100 ort  +3.69% t +2.36 kaz  53% | test n  115 gun   69 ort  -1.32% t -2.58 kaz  32%
+          teshis: cikis {'cikis': 71, 'maliyet': 4, 'giris': 67} | rejimde kayip kotu 0.6078431372549019 iyi 0.5522388059701493
+red       beklenti_al_20|rejim=True                                  | egitim n  211 gun  148 ort  +1.76% t +1.02 kaz  50% | test n  160 gun   93 ort  -1.03% t -1.53 kaz  35%
+          teshis: giris {'cikis': 98, 'giris': 108, 'maliyet': 4} | rejimde kayip kotu None iyi 0.5660377358490566
+red       beklenti_al_20|seans_ici=False                             | egitim n  239 gun  166 ort  +1.99% t +1.33 kaz  48% | test n  130 gun   75 ort  -0.61% t -1.04 kaz  34%
+          teshis: giris {'cikis': 94, 'giris': 112, 'maliyet': 5} | rejimde kayip kotu 0.6666666666666666 iyi 0.5555555555555556
+red       beklenti_kacin_5                                           | egitim n  273 gun  186 ort  -0.55% t -1.04 kaz  42% | test n  163 gun   96 ort  -0.58% t -1.12 kaz  42%
+          teshis: giris {'giris': 206, 'cikis': 48, 'maliyet': 17} | rejimde kayip kotu 0.6153846153846154 iyi 0.6226415094339622
+red       birlesme_al_20                                             | egitim n  170 gun  139 ort  +3.52% t +1.43 kaz  49% | test n  123 gun   94 ort  +4.34% t +1.34 kaz  46%
+          teshis: cikis {'giris': 71, 'cikis': 78, 'maliyet': 5} | rejimde kayip kotu 0.5172413793103449 iyi 0.5276595744680851
+red       birlesme_yonsuz_5                                          | egitim n  170 gun  139 ort  +0.12% t -0.75 kaz  45% | test n  123 gun   94 ort  +0.49% t -0.11 kaz  44%
+          teshis: giris {'giris': 120, 'cikis': 35, 'maliyet': 8} | rejimde kayip kotu 0.5517241379310345 iyi 0.5574468085106383
+red       dava_al_20                                                 | egitim n  117 gun  104 ort  +2.41% t +0.78 kaz  43% | test n   78 gun   61 ort  -3.09% t -2.04 kaz  33%
+          teshis: cikis {'giris': 46, 'cikis': 71, 'maliyet': 2} | rejimde kayip kotu 0.6153846153846154 iyi 0.6094674556213018
+red       dava_yonsuz_5                                              | egitim n  117 gun  104 ort  +0.28% t -0.38 kaz  38% | test n   78 gun   61 ort  -1.20% t -1.88 kaz  33%
+          teshis: giris {'giris': 87, 'cikis': 27, 'maliyet': 10} | rejimde kayip kotu 0.6538461538461539 iyi 0.6331360946745562
+red       diger_al_20                                                | egitim n 6973 gun  646 ort  +1.40% t +2.02 kaz  43% | test n 3747 gun  321 ort  -0.66% t -2.03 kaz  37%
+          teshis: cikis {'cikis': 3509, 'giris': 2620, 'maliyet': 211} | rejimde kayip kotu 0.6125232486050837 iyi 0.5876798067420665
+red       diger_yonsuz_5                                             | egitim n 6973 gun  646 ort  +0.31% t -1.27 kaz  41% | test n 3747 gun  321 ort  -0.59% t -4.72 kaz  37%
+          teshis: giris {'cikis': 1681, 'giris': 4406, 'maliyet': 424} | rejimde kayip kotu 0.5697458152510849 iyi 0.614033161304491
+red       finansal_rapor_al_20                                       | egitim n 5714 gun  391 ort  +0.92% t +0.49 kaz  44% | test n 2968 gun  155 ort  -0.93% t -1.63 kaz  41%
+          teshis: cikis {'cikis': 2458, 'giris': 2336, 'maliyet': 153} | rejimde kayip kotu 0.5850556438791733 iyi 0.5672144396551724
+red       finansal_rapor_kacin_5                                     | egitim n 5714 gun  391 ort  -0.86% t -2.83 kaz  41% | test n 2968 gun  155 ort  +0.18% t +0.33 kaz  44%
+          teshis: giris {'cikis': 1143, 'giris': 3919, 'maliyet': 301} | rejimde kayip kotu 0.6335453100158982 iyi 0.6150323275862069
+red       geri_alim_al_20                                            | egitim n  894 gun  390 ort  +2.38% t +2.52 kaz  52% | test n  469 gun  224 ort  +0.94% t +0.38 kaz  44%
+          teshis: cikis {'cikis': 396, 'giris': 258, 'maliyet': 42} | rejimde kayip kotu 0.5095367847411444 iyi 0.5110441767068273
+red       geri_alim_al_5|oynak>0.02981                               | egitim n  447 gun  235 ort  +1.26% t +1.05 kaz  49% | test n  206 gun  129 ort  +0.54% t -0.07 kaz  47%
+          teshis: giris {'giris': 221, 'cikis': 82, 'maliyet': 35} | rejimde kayip kotu 0.44502617801047123 iyi 0.5476190476190477
+red       geri_alim_al_5|rejim=False                                 | egitim n  242 gun   86 ort  +1.32% t +1.37 kaz  52% | test n  125 gun   33 ort  +0.24% t -0.40 kaz  48%
+          teshis: giris {'cikis': 53, 'giris': 110, 'maliyet': 18} | rejimde kayip kotu 0.49318801089918257 iyi None
+red       geri_alim_al_5|seans_ici=False                             | egitim n  802 gun  378 ort  +1.18% t +1.50 kaz  49% | test n  426 gun  214 ort  +0.08% t -1.34 kaz  44%
+          teshis: giris {'cikis': 185, 'giris': 403, 'maliyet': 59} | rejimde kayip kotu 0.5 iyi 0.5361050328227571
+red       geri_alim_program_al_20                                    | egitim n  133 gun   63 ort  +1.69% t +0.54 kaz  59% | test n   70 gun   44 ort  -5.16% t -2.02 kaz  34%
+          teshis: cikis {'cikis': 64, 'giris': 34, 'maliyet': 2} | rejimde kayip kotu 0.49473684210526314 iyi 0.49074074074074076
+red       geri_alim_program_al_5|oynak>0.03677                       | egitim n   66 gun   31 ort  +5.17% t +2.41 kaz  50% | test n   31 gun   22 ort  -1.98% t -1.38 kaz  42%
+          teshis: giris {'giris': 35, 'cikis': 15, 'maliyet': 1} | rejimde kayip kotu 0.5 iyi 0.5471698113207547
+red       geri_alim_program_al_5|rejim=False                         | egitim n   60 gun   25 ort  +1.52% t +0.63 kaz  63% | test n   35 gun   17 ort  -2.92% t -1.12 kaz  40%
+          teshis: giris {'cikis': 18, 'giris': 23, 'maliyet': 2} | rejimde kayip kotu 0.45263157894736844 iyi None
+red       geri_alim_program_al_5|seans_ici=True                      | egitim n   58 gun   34 ort  +2.45% t +1.25 kaz  53% | test n   28 gun   21 ort  -1.19% t -0.61 kaz  50%
+          teshis: giris {'giris': 27, 'cikis': 13, 'maliyet': 1} | rejimde kayip kotu 0.4 iyi 0.5609756097560976
+red       geri_alim_satis_al_20|likidite<=1.101e+08                  | egitim n   52 gun   48 ort  +3.27% t +0.76 kaz  46% | test n   16 gun   13 ort  -2.48% t -0.66 kaz  38%
+          teshis: giris {'giris': 20, 'cikis': 15, 'maliyet': 3} | rejimde kayip kotu 0.42857142857142855 iyi 0.5737704918032787
+red       geri_alim_satis_al_20|once>0.06209                         | egitim n   52 gun   48 ort  +6.77% t +1.97 kaz  56% | test n   16 gun   16 ort  -3.32% t -0.67 kaz  25%
+          teshis: cikis {'giris': 15, 'cikis': 19, 'maliyet': 1} | rejimde kayip kotu 0.4444444444444444 iyi 0.5254237288135594
+red       geri_alim_satis_al_20|oynak>0.03488                        | egitim n   52 gun   49 ort  +3.50% t +1.00 kaz  50% | test n   21 gun   21 ort  +1.34% t +0.13 kaz  43%
+          teshis: giris {'cikis': 17, 'giris': 20, 'maliyet': 1} | rejimde kayip kotu 0.25 iyi 0.5538461538461539
+red       geri_alim_satis_kacin_5                                    | egitim n  104 gun   93 ort  -0.41% t -0.41 kaz  39% | test n   42 gun   37 ort  +0.30% t +0.15 kaz  43%
+          teshis: ortam {'giris': 70, 'cikis': 17, 'maliyet': 4} | rejimde kayip kotu 0.7777777777777778 iyi 0.6015625
+red       ihale_kacin_20                                             | egitim n  281 gun  219 ort  -0.87% t -0.69 kaz  38% | test n  140 gun  114 ort  +1.31% t +0.72 kaz  45%
+          teshis: cikis {'giris': 122, 'cikis': 129, 'maliyet': 8} | rejimde kayip kotu 0.609375 iyi 0.6162464985994398
+red       ihale_kacin_5                                              | egitim n  281 gun  219 ort  -1.47% t -2.72 kaz  35% | test n  140 gun  114 ort  +0.42% t +0.53 kaz  45%
+          teshis: giris {'giris': 200, 'cikis': 60, 'maliyet': 13} | rejimde kayip kotu 0.65625 iyi 0.6470588235294118
+red       kar_payi_al_20                                             | egitim n 2292 gun  456 ort  +1.51% t +1.36 kaz  44% | test n 1113 gun  258 ort  -0.46% t -1.34 kaz  41%
+          teshis: cikis {'giris': 824, 'cikis': 1057, 'maliyet': 64} | rejimde kayip kotu 0.5341530054644809 iyi 0.5813692480359147
+red       kar_payi_kacin_5                                           | egitim n 2292 gun  456 ort  -0.54% t -1.86 kaz  45% | test n 1113 gun  258 ort  -0.16% t -0.38 kaz  45%
+          teshis: giris {'giris': 1386, 'maliyet': 154, 'cikis': 493} | rejimde kayip kotu 0.5382513661202186 iyi 0.6131687242798354
+red       konkordato_kacin_20                                        | egitim n   36 gun   36 ort  -2.37% t -0.56 kaz  42% | test n   23 gun   23 ort  -7.14% t -1.44 kaz  22%
+          teshis: cikis {'cikis': 26, 'giris': 13} | rejimde kayip kotu 0.625 iyi 0.6744186046511628
+red       nav_asim_al_20                                             | egitim n  230 gun  112 ort  +0.46% t -0.08 kaz  37% | test n  110 gun   42 ort  +3.60% t +0.96 kaz  44%
+          teshis: cikis {'cikis': 121, 'giris': 80, 'maliyet': 5} | rejimde kayip kotu 0.6825396825396826 iyi 0.5884476534296029
+red       nav_asim_yonsuz_5                                          | egitim n  230 gun  112 ort  +0.85% t +0.27 kaz  38% | test n  110 gun   42 ort  +0.72% t +0.07 kaz  39%
+          teshis: giris {'giris': 132, 'cikis': 66, 'maliyet': 12} | rejimde kayip kotu 0.6666666666666666 iyi 0.6064981949458483
+red       not_teyit_al_20                                            | egitim n  718 gun  337 ort  +1.99% t +1.85 kaz  46% | test n  447 gun  190 ort  -2.21% t -3.16 kaz  36%
+          teshis: cikis {'giris': 275, 'cikis': 381, 'maliyet': 19} | rejimde kayip kotu 0.6029411764705882 iyi 0.5744016649323621
+red       not_teyit_yonsuz_5                                         | egitim n  718 gun  337 ort  +0.21% t -1.36 kaz  43% | test n  447 gun  190 ort  -0.36% t -2.05 kaz  37%
+          teshis: giris {'giris': 461, 'cikis': 174, 'maliyet': 57} | rejimde kayip kotu 0.5931372549019608 iyi 0.5941727367325702
+red       olagandisi_al_20                                           | egitim n 1045 gun  468 ort  +1.03% t +0.45 kaz  42% | test n  842 gun  275 ort  -0.91% t -1.18 kaz  38%
+          teshis: cikis {'giris': 490, 'cikis': 614, 'maliyet': 25} | rejimde kayip kotu 0.5764331210191083 iyi 0.6026700572155118
+red       olagandisi_kacin_5                                         | egitim n 1045 gun  468 ort  +0.03% t +0.08 kaz  44% | test n  842 gun  275 ort  -0.09% t -0.15 kaz  43%
+          teshis: giris {'giris': 738, 'maliyet': 72, 'cikis': 330} | rejimde kayip kotu 0.6210191082802548 iyi 0.6007628734901462
+red       ozel_durum_al_20                                           | egitim n 7076 gun  646 ort  +1.20% t +1.81 kaz  43% | test n 3947 gun  326 ort  -1.00% t -3.71 kaz  38%
+          teshis: cikis {'cikis': 3647, 'giris': 2648, 'maliyet': 216} | rejimde kayip kotu 0.5992174399105645 iyi 0.5890188434048084
+red       ozel_durum_yonsuz_5                                        | egitim n 7076 gun  646 ort  +0.17% t -3.11 kaz  42% | test n 3947 gun  326 ort  -0.44% t -5.41 kaz  38%
+          teshis: giris {'giris': 4421, 'cikis': 1685, 'maliyet': 479} | rejimde kayip kotu 0.6053661263275573 iyi 0.5958414554905783
+red       pay_alim_satim_al_20                                       | egitim n 1275 gun  503 ort  +1.65% t +1.26 kaz  44% | test n  769 gun  265 ort  -2.53% t -3.06 kaz  37%
+          teshis: cikis {'giris': 493, 'cikis': 662, 'maliyet': 39} | rejimde kayip kotu 0.5549132947976878 iyi 0.5901060070671378
+red       pay_alim_satim_yonsuz_5                                    | egitim n 1275 gun  503 ort  +0.36% t -0.71 kaz  45% | test n  769 gun  265 ort  -1.26% t -3.93 kaz  38%
+          teshis: giris {'giris': 759, 'cikis': 353, 'maliyet': 62} | rejimde kayip kotu 0.5578034682080925 iyi 0.5777385159010601
+red       sermaye_al_20                                              | egitim n 1149 gun  492 ort  +1.44% t +1.14 kaz  41% | test n  647 gun  268 ort  -1.00% t -1.91 kaz  36%
+          teshis: cikis {'cikis': 627, 'giris': 429, 'maliyet': 32} | rejimde kayip kotu 0.6073619631901841 iyi 0.6054421768707483
+red       sermaye_yonsuz_5                                           | egitim n 1149 gun  492 ort  +0.24% t -1.10 kaz  39% | test n  647 gun  268 ort  -0.49% t -2.73 kaz  39%
+          teshis: giris {'cikis': 277, 'giris': 744, 'maliyet': 73} | rejimde kayip kotu 0.5736196319018405 iyi 0.6170068027210884
+red       sira_durdurma_al_20                                        | egitim n   68 gun   54 ort  +4.56% t +1.09 kaz  46% | test n   15 gun   14 ort +17.64% t +0.61 kaz  27%
+          teshis: cikis {'cikis': 34, 'giris': 14} | rejimde kayip kotu 0.6428571428571429 iyi 0.5652173913043478
+red       sira_durdurma_al_5                                         | egitim n   68 gun   54 ort  +3.01% t +1.14 kaz  52% | test n   15 gun   14 ort +19.41% t +0.82 kaz  27%
+          teshis: cikis {'cikis': 21, 'giris': 20, 'maliyet': 3} | rejimde kayip kotu 0.42857142857142855 iyi 0.5507246376811594
+red       soylenti_al_20                                             | egitim n  144 gun  113 ort  +2.43% t +0.67 kaz  42% | test n   70 gun   59 ort  -5.02% t -2.30 kaz  30%
+          teshis: cikis {'giris': 58, 'cikis': 70, 'maliyet': 4} | rejimde kayip kotu 0.5833333333333334 iyi 0.6235955056179775
+red       soylenti_yonsuz_5                                          | egitim n  144 gun  113 ort  +0.24% t -0.33 kaz  37% | test n   70 gun   59 ort  -1.63% t -2.03 kaz  39%
+          teshis: giris {'giris': 85, 'cikis': 40, 'maliyet': 9} | rejimde kayip kotu 0.5833333333333334 iyi 0.6348314606741573
+red       spk_tedbir_al_20|likidite<=6.229e+07                       | egitim n   43 gun   37 ort  +8.46% t +0.96 kaz  46% | test n   19 gun   15 ort -12.29% t -3.35 kaz  10%
+          teshis: giris {'maliyet': 1, 'giris': 23, 'cikis': 16} | rejimde kayip kotu 0.6 iyi 0.6491228070175439
+red       spk_tedbir_al_20|once>0.1738                               | egitim n   42 gun   40 ort +14.79% t +1.60 kaz  52% | test n   12 gun   11 ort  -1.94% t -0.27 kaz  17%
+          teshis: giris {'giris': 19, 'cikis': 9, 'maliyet': 2} | rejimde kayip kotu 0.5 iyi 0.5652173913043478
+red       spk_tedbir_al_20|oynak>0.04101                             | egitim n   42 gun   34 ort +14.21% t +1.30 kaz  50% | test n   18 gun   14 ort -20.02% t -1.91 kaz  17%
+          teshis: giris {'giris': 23, 'cikis': 13} | rejimde kayip kotu 0.5555555555555556 iyi 0.6078431372549019
+red       spk_tedbir_kacin_5                                         | egitim n   85 gun   71 ort  -3.36% t -2.44 kaz  29% | test n   48 gun   31 ort  -8.38% t -4.09 kaz  21%
+          teshis: giris {'giris': 80, 'cikis': 18, 'maliyet': 2} | rejimde kayip kotu 0.7222222222222222 iyi 0.7565217391304347
+red       tablo_duzeltme_al_20                                       | egitim n  245 gun  157 ort  +2.19% t +1.16 kaz  45% | test n   99 gun   59 ort  -3.02% t -1.77 kaz  42%
+          teshis: cikis {'cikis': 100, 'giris': 88, 'maliyet': 4} | rejimde kayip kotu 0.6031746031746031 iyi 0.5480427046263345
+red       tablo_duzeltme_kacin_5                                     | egitim n  245 gun  157 ort  -0.47% t -0.72 kaz  40% | test n   99 gun   59 ort  +1.27% t +1.26 kaz  48%
+          teshis: giris {'giris': 150, 'cikis': 48, 'maliyet': 17} | rejimde kayip kotu 0.6507936507936508 iyi 0.6192170818505338
+red       varlik_satisi_kacin_20                                     | egitim n  271 gun  210 ort  -0.22% t -0.21 kaz  41% | test n  147 gun  107 ort  -1.29% t -0.70 kaz  38%
+          teshis: cikis {'giris': 89, 'cikis': 162, 'maliyet': 5} | rejimde kayip kotu 0.6290322580645161 iyi 0.6095505617977528
+red       varlik_satisi_kacin_5                                      | egitim n  271 gun  210 ort  +0.00% t +0.00 kaz  51% | test n  147 gun  107 ort  -0.94% t -1.12 kaz  40%
+          teshis: giris {'giris': 146, 'cikis': 75, 'maliyet': 15} | rejimde kayip kotu 0.5645161290322581 iyi 0.5646067415730337
+red       vbts_kacin_20                                              | egitim n 1116 gun  468 ort  +0.20% t +0.17 kaz  40% | test n  517 gun  236 ort  +1.12% t +0.61 kaz  42%
+          teshis: cikis {'giris': 479, 'cikis': 498, 'maliyet': 17} | rejimde kayip kotu 0.6627906976744186 iyi 0.6023271731690623
+red       vbts_kacin_5                                               | egitim n 1116 gun  468 ort  -0.99% t -1.76 kaz  36% | test n  517 gun  236 ort  -2.41% t -3.13 kaz  38%
+          teshis: giris {'giris': 731, 'cikis': 300, 'maliyet': 22} | rejimde kayip kotu 0.6802325581395349 iyi 0.6406570841889117
+red       yeni_is_al_20                                              | egitim n  798 gun  444 ort  +2.13% t +1.59 kaz  42% | test n  407 gun  225 ort  -0.19% t -0.62 kaz  37%
+          teshis: cikis {'giris': 335, 'cikis': 368, 'maliyet': 15} | rejimde kayip kotu 0.6631016042780749 iyi 0.5834970530451866
+red       yeni_is_kacin_5                                            | egitim n  798 gun  444 ort  -0.57% t -1.45 kaz  40% | test n  407 gun  225 ort  -0.64% t -1.13 kaz  38%
+          teshis: giris {'giris': 556, 'maliyet': 34, 'cikis': 180} | rejimde kayip kotu 0.6898395721925134 iyi 0.6296660117878192
+emekli    beklenti_al_20                                             | egitim n  273 gun  186 ort  +1.24% t +0.66 kaz  45% | test n  163 gun   96 ort  -0.96% t -1.50 kaz  35%
+          teshis: giris {'cikis': 118, 'giris': 132, 'maliyet': 5} | rejimde kayip kotu 0.6923076923076923 iyi 0.5660377358490566
+emekli    geri_alim_al_5                                             | egitim n  894 gun  390 ort  +0.92% t +0.86 kaz  48% | test n  469 gun  224 ort  +0.24% t -0.90 kaz  45%
+          teshis: giris {'cikis': 199, 'giris': 457, 'maliyet': 65} | rejimde kayip kotu 0.49318801089918257 iyi 0.5421686746987951
+emekli    geri_alim_program_al_5                                     | egitim n  133 gun   63 ort  +3.00% t +2.27 kaz  56% | test n   70 gun   44 ort  -1.63% t -1.44 kaz  43%
+          teshis: giris {'giris': 58, 'cikis': 36, 'maliyet': 5} | rejimde kayip kotu 0.45263157894736844 iyi 0.5185185185185185
+emekli    geri_alim_satis_al_20                                      | egitim n  104 gun   93 ort  +4.04% t +1.52 kaz  47% | test n   42 gun   37 ort  +2.31% t +0.42 kaz  43%
+          teshis: giris {'giris': 39, 'cikis': 36, 'maliyet': 4} | rejimde kayip kotu 0.4444444444444444 iyi 0.5546875
+emekli    konkordato_al_5                                            | egitim n   36 gun   36 ort  +0.64% t +0.02 kaz  44% | test n   23 gun   23 ort  -5.05% t -1.90 kaz  22%
+          teshis: giris {'giris': 23, 'cikis': 15} | rejimde kayip kotu 0.75 iyi 0.6046511627906976
+emekli    spk_tedbir_al_20                                           | egitim n   85 gun   71 ort  +5.51% t +0.94 kaz  42% | test n   48 gun   31 ort -15.18% t -3.59 kaz  17%
+          teshis: giris {'maliyet': 4, 'giris': 54, 'cikis': 31} | rejimde kayip kotu 0.5555555555555556 iyi 0.6869565217391305
+yetersiz  konkordato_al_5|likidite<=2.556e+06                        | egitim n   18 gun   18 ort  +4.20% t +1.36 kaz  56% | test n   12 gun   12 ort  -2.97% t -2.68 kaz  17%
+yetersiz  konkordato_al_5|once>-0.0003741                            | egitim n   18 gun   18 ort  +3.76% t +1.11 kaz  50% | test n    2 gun    2 ort  -0.02% t -0.41 kaz  50%
+yetersiz  konkordato_al_5|oynak>0.04356                              | egitim n   18 gun   18 ort  +3.56% t +0.95 kaz  56% | test n    7 gun    7 ort -14.57% t -2.60 kaz  14%

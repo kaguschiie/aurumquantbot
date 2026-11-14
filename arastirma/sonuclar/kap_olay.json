@@ -1,0 +1,4183 @@
+{
+ "kesim": "2025-06-03",
+ "deneme": 72,
+ "esik": 3.39,
+ "maliyet": 0.006,
+ "hipotez": [
+  {
+   "ad": "KONTROL_rastgele_yonsuz_5",
+   "tur": "KONTROL_rastgele",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1299,
+     "gun": 526,
+     "ort": 0.00398,
+     "t": -0.69,
+     "kazanma": 0.416
+    },
+    "test": {
+     "n": 718,
+     "gun": 257,
+     "ort": -0.00707,
+     "t": -2.95,
+     "kazanma": 0.39
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 806,
+     "cikis": 313,
+     "maliyet": 77
+    },
+    "kayip": 1196,
+    "n": 2017,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6234177215189873,
+     "iyi": 0.5873015873015873
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "KONTROL_rastgele_al_20",
+   "tur": "KONTROL_rastgele",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1299,
+     "gun": 526,
+     "ort": 0.01247,
+     "t": 1.01,
+     "kazanma": 0.444
+    },
+    "test": {
+     "n": 718,
+     "gun": 257,
+     "ort": -0.0068,
+     "t": -0.81,
+     "kazanma": 0.379
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 448,
+     "cikis": 684,
+     "maliyet": 36
+    },
+    "kayip": 1168,
+    "n": 2017,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5822784810126582,
+     "iyi": 0.5784832451499118
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "bedelli_kacin_5",
+   "tur": "bedelli",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 181,
+     "gun": 156,
+     "ort": -0.03082,
+     "t": -3.31,
+     "kazanma": 0.343
+    },
+    "test": {
+     "n": 122,
+     "gun": 99,
+     "ort": -0.02888,
+     "t": -2.37,
+     "kazanma": 0.328
+    }
+   },
+   "durum": "red",
+   "esik": 3.39
+  },
+  {
+   "ad": "bedelli_kacin_20",
+   "tur": "bedelli",
+   "iddia": -1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 181,
+     "gun": 156,
+     "ort": -0.01474,
+     "t": -0.77,
+     "kazanma": 0.431
+    },
+    "test": {
+     "n": 122,
+     "gun": 99,
+     "ort": -0.02632,
+     "t": -0.73,
+     "kazanma": 0.32
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 86,
+     "giris": 100,
+     "maliyet": 4
+    },
+    "kayip": 190,
+    "n": 303,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6862745098039216,
+     "iyi": 0.6150793650793651
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      true
+     ],
+     "ort_ic": 0.01767,
+     "n_ic": 144,
+     "ort_dis": -0.10915,
+     "n_dis": 37,
+     "fark": 0.12682
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      45320083.69103575
+     ],
+     "ort_ic": 0.04125,
+     "n_ic": 91,
+     "ort_dis": -0.0583,
+     "n_dis": 90,
+     "fark": 0.09954
+    },
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      true
+     ],
+     "ort_ic": 0.04577,
+     "n_ic": 65,
+     "ort_dis": -0.03852,
+     "n_dis": 116,
+     "fark": 0.08429
+    }
+   ]
+  },
+  {
+   "ad": "bedelsiz_kacin_5",
+   "tur": "bedelsiz",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 507,
+     "gun": 311,
+     "ort": -0.01456,
+     "t": -2.74,
+     "kazanma": 0.389
+    },
+    "test": {
+     "n": 255,
+     "gun": 168,
+     "ort": -0.00135,
+     "t": -0.18,
+     "kazanma": 0.427
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 328,
+     "cikis": 128,
+     "maliyet": 16
+    },
+    "kayip": 472,
+    "n": 762,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6299212598425197,
+     "iyi": 0.6173228346456693
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      61609142.559311375
+     ],
+     "ort_ic": -0.00186,
+     "n_ic": 254,
+     "ort_dis": -0.01952,
+     "n_dis": 253,
+     "fark": 0.01766
+    },
+    {
+     "kosul": [
+      "oynak",
+      "<=",
+      0.0308780845948449
+     ],
+     "ort_ic": -0.00516,
+     "n_ic": 254,
+     "ort_dis": -0.0162,
+     "n_dis": 253,
+     "fark": 0.01104
+    },
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      false
+     ],
+     "ort_ic": -0.00194,
+     "n_ic": 105,
+     "ort_dis": -0.01295,
+     "n_dis": 402,
+     "fark": 0.01101
+    }
+   ]
+  },
+  {
+   "ad": "bedelsiz_kacin_20",
+   "tur": "bedelsiz",
+   "iddia": -1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 507,
+     "gun": 311,
+     "ort": -0.02553,
+     "t": -2.43,
+     "kazanma": 0.398
+    },
+    "test": {
+     "n": 255,
+     "gun": 168,
+     "ort": -0.03705,
+     "t": -2.46,
+     "kazanma": 0.388
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 203,
+     "cikis": 258,
+     "maliyet": 15
+    },
+    "kayip": 476,
+    "n": 762,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5748031496062992,
+     "iyi": 0.6346456692913386
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "beklenti_kacin_5",
+   "tur": "beklenti",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 273,
+     "gun": 186,
+     "ort": -0.00545,
+     "t": -1.04,
+     "kazanma": 0.418
+    },
+    "test": {
+     "n": 163,
+     "gun": 96,
+     "ort": -0.00577,
+     "t": -1.12,
+     "kazanma": 0.417
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 206,
+     "cikis": 48,
+     "maliyet": 17
+    },
+    "kayip": 271,
+    "n": 436,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6153846153846154,
+     "iyi": 0.6226415094339622
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "oynak",
+      "<=",
+      0.026080901418751093
+     ],
+     "ort_ic": 0.00111,
+     "n_ic": 137,
+     "ort_dis": -0.01325,
+     "n_dis": 136,
+     "fark": 0.01436
+    },
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      false
+     ],
+     "ort_ic": -0.00439,
+     "n_ic": 239,
+     "ort_dis": -0.01772,
+     "n_dis": 34,
+     "fark": 0.01334
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      174143592.59667522
+     ],
+     "ort_ic": -0.0006,
+     "n_ic": 137,
+     "ort_dis": -0.01153,
+     "n_dis": 136,
+     "fark": 0.01094
+    }
+   ]
+  },
+  {
+   "ad": "beklenti_al_20",
+   "tur": "beklenti",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 273,
+     "gun": 186,
+     "ort": 0.01237,
+     "t": 0.66,
+     "kazanma": 0.454
+    },
+    "test": {
+     "n": 163,
+     "gun": 96,
+     "ort": -0.00964,
+     "t": -1.5,
+     "kazanma": 0.35
+    }
+   },
+   "durum": "emekli",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 118,
+     "giris": 132,
+     "maliyet": 5
+    },
+    "kayip": 255,
+    "n": 436,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6923076923076923,
+     "iyi": 0.5660377358490566
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      false
+     ],
+     "ort_ic": 0.02445,
+     "n_ic": 239,
+     "ort_dis": -0.0371,
+     "n_dis": 34,
+     "fark": 0.06156
+    },
+    {
+     "kosul": [
+      "oynak",
+      "<=",
+      0.026080901418751093
+     ],
+     "ort_ic": 0.03328,
+     "n_ic": 137,
+     "ort_dis": 0.00018,
+     "n_dis": 136,
+     "fark": 0.0331
+    },
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      true
+     ],
+     "ort_ic": 0.02413,
+     "n_ic": 211,
+     "ort_dis": -0.00819,
+     "n_dis": 62,
+     "fark": 0.03232
+    }
+   ]
+  },
+  {
+   "ad": "birlesme_yonsuz_5",
+   "tur": "birlesme",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 170,
+     "gun": 139,
+     "ort": 0.00124,
+     "t": -0.75,
+     "kazanma": 0.447
+    },
+    "test": {
+     "n": 123,
+     "gun": 94,
+     "ort": 0.00494,
+     "t": -0.11,
+     "kazanma": 0.439
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 120,
+     "cikis": 35,
+     "maliyet": 8
+    },
+    "kayip": 163,
+    "n": 293,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5517241379310345,
+     "iyi": 0.5574468085106383
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "birlesme_al_20",
+   "tur": "birlesme",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 170,
+     "gun": 139,
+     "ort": 0.03525,
+     "t": 1.43,
+     "kazanma": 0.488
+    },
+    "test": {
+     "n": 123,
+     "gun": 94,
+     "ort": 0.04342,
+     "t": 1.34,
+     "kazanma": 0.455
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 71,
+     "cikis": 78,
+     "maliyet": 5
+    },
+    "kayip": 154,
+    "n": 293,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5172413793103449,
+     "iyi": 0.5276595744680851
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "dava_yonsuz_5",
+   "tur": "dava",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 117,
+     "gun": 104,
+     "ort": 0.00279,
+     "t": -0.38,
+     "kazanma": 0.385
+    },
+    "test": {
+     "n": 78,
+     "gun": 61,
+     "ort": -0.012,
+     "t": -1.88,
+     "kazanma": 0.333
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 87,
+     "cikis": 27,
+     "maliyet": 10
+    },
+    "kayip": 124,
+    "n": 195,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6538461538461539,
+     "iyi": 0.6331360946745562
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "dava_al_20",
+   "tur": "dava",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 117,
+     "gun": 104,
+     "ort": 0.02409,
+     "t": 0.78,
+     "kazanma": 0.427
+    },
+    "test": {
+     "n": 78,
+     "gun": 61,
+     "ort": -0.03091,
+     "t": -2.04,
+     "kazanma": 0.333
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 46,
+     "cikis": 71,
+     "maliyet": 2
+    },
+    "kayip": 119,
+    "n": 195,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6153846153846154,
+     "iyi": 0.6094674556213018
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "diger_yonsuz_5",
+   "tur": "diger",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 6973,
+     "gun": 646,
+     "ort": 0.00308,
+     "t": -1.27,
+     "kazanma": 0.406
+    },
+    "test": {
+     "n": 3747,
+     "gun": 321,
+     "ort": -0.00586,
+     "t": -4.72,
+     "kazanma": 0.367
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 1681,
+     "giris": 4406,
+     "maliyet": 424
+    },
+    "kayip": 6511,
+    "n": 10720,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5697458152510849,
+     "iyi": 0.614033161304491
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "diger_al_20",
+   "tur": "diger",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 6973,
+     "gun": 646,
+     "ort": 0.01397,
+     "t": 2.02,
+     "kazanma": 0.43
+    },
+    "test": {
+     "n": 3747,
+     "gun": 321,
+     "ort": -0.00656,
+     "t": -2.03,
+     "kazanma": 0.369
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 3509,
+     "giris": 2620,
+     "maliyet": 211
+    },
+    "kayip": 6340,
+    "n": 10720,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6125232486050837,
+     "iyi": 0.5876798067420665
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "finansal_rapor_kacin_5",
+   "tur": "finansal_rapor",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 5714,
+     "gun": 391,
+     "ort": -0.00859,
+     "t": -2.83,
+     "kazanma": 0.406
+    },
+    "test": {
+     "n": 2968,
+     "gun": 155,
+     "ort": 0.00181,
+     "t": 0.33,
+     "kazanma": 0.438
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 1143,
+     "giris": 3919,
+     "maliyet": 301
+    },
+    "kayip": 5363,
+    "n": 8682,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6335453100158982,
+     "iyi": 0.6150323275862069
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      true
+     ],
+     "ort_ic": 0.00085,
+     "n_ic": 112,
+     "ort_dis": -0.00713,
+     "n_dis": 5602,
+     "fark": 0.00798
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      48706022.42113839
+     ],
+     "ort_ic": -0.00412,
+     "n_ic": 2857,
+     "ort_dis": -0.00983,
+     "n_dis": 2857,
+     "fark": 0.00571
+    },
+    {
+     "kosul": [
+      "oynak",
+      "<=",
+      0.030130057601324763
+     ],
+     "ort_ic": -0.00503,
+     "n_ic": 2857,
+     "ort_dis": -0.00892,
+     "n_dis": 2857,
+     "fark": 0.00388
+    }
+   ]
+  },
+  {
+   "ad": "finansal_rapor_al_20",
+   "tur": "finansal_rapor",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 5714,
+     "gun": 391,
+     "ort": 0.00921,
+     "t": 0.49,
+     "kazanma": 0.441
+    },
+    "test": {
+     "n": 2968,
+     "gun": 155,
+     "ort": -0.00934,
+     "t": -1.63,
+     "kazanma": 0.409
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 2458,
+     "giris": 2336,
+     "maliyet": 153
+    },
+    "kayip": 4947,
+    "n": 8682,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5850556438791733,
+     "iyi": 0.5672144396551724
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "geri_alim_al_5",
+   "tur": "geri_alim",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 894,
+     "gun": 390,
+     "ort": 0.0092,
+     "t": 0.86,
+     "kazanma": 0.482
+    },
+    "test": {
+     "n": 469,
+     "gun": 224,
+     "ort": 0.00242,
+     "t": -0.9,
+     "kazanma": 0.45
+    }
+   },
+   "durum": "emekli",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 199,
+     "giris": 457,
+     "maliyet": 65
+    },
+    "kayip": 721,
+    "n": 1363,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.49318801089918257,
+     "iyi": 0.5421686746987951
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      false
+     ],
+     "ort_ic": 0.01367,
+     "n_ic": 802,
+     "ort_dis": -0.00266,
+     "n_dis": 92,
+     "fark": 0.01632
+    },
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      false
+     ],
+     "ort_ic": 0.02113,
+     "n_ic": 242,
+     "ort_dis": 0.00859,
+     "n_dis": 652,
+     "fark": 0.01253
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.02981135143137688
+     ],
+     "ort_ic": 0.01659,
+     "n_ic": 447,
+     "ort_dis": 0.00739,
+     "n_dis": 447,
+     "fark": 0.0092
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_al_20",
+   "tur": "geri_alim",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 894,
+     "gun": 390,
+     "ort": 0.0238,
+     "t": 2.52,
+     "kazanma": 0.518
+    },
+    "test": {
+     "n": 469,
+     "gun": 224,
+     "ort": 0.00937,
+     "t": 0.38,
+     "kazanma": 0.435
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 396,
+     "giris": 258,
+     "maliyet": 42
+    },
+    "kayip": 696,
+    "n": 1363,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5095367847411444,
+     "iyi": 0.5110441767068273
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "geri_alim_program_al_5",
+   "tur": "geri_alim_program",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 133,
+     "gun": 63,
+     "ort": 0.03001,
+     "t": 2.27,
+     "kazanma": 0.556
+    },
+    "test": {
+     "n": 70,
+     "gun": 44,
+     "ort": -0.01628,
+     "t": -1.44,
+     "kazanma": 0.429
+    }
+   },
+   "durum": "emekli",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 58,
+     "cikis": 36,
+     "maliyet": 5
+    },
+    "kayip": 99,
+    "n": 203,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.45263157894736844,
+     "iyi": 0.5185185185185185
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      false
+     ],
+     "ort_ic": 0.03822,
+     "n_ic": 60,
+     "ort_dis": 0.01949,
+     "n_dis": 73,
+     "fark": 0.01873
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.03676979467526733
+     ],
+     "ort_ic": 0.03701,
+     "n_ic": 66,
+     "ort_dis": 0.01901,
+     "n_dis": 67,
+     "fark": 0.018
+    },
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      true
+     ],
+     "ort_ic": 0.03616,
+     "n_ic": 58,
+     "ort_dis": 0.02158,
+     "n_dis": 75,
+     "fark": 0.01458
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_program_al_20",
+   "tur": "geri_alim_program",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 133,
+     "gun": 63,
+     "ort": 0.01691,
+     "t": 0.54,
+     "kazanma": 0.594
+    },
+    "test": {
+     "n": 70,
+     "gun": 44,
+     "ort": -0.05155,
+     "t": -2.02,
+     "kazanma": 0.343
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 64,
+     "giris": 34,
+     "maliyet": 2
+    },
+    "kayip": 100,
+    "n": 203,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.49473684210526314,
+     "iyi": 0.49074074074074076
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "geri_alim_satis_kacin_5",
+   "tur": "geri_alim_satis",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 104,
+     "gun": 93,
+     "ort": -0.00407,
+     "t": -0.41,
+     "kazanma": 0.394
+    },
+    "test": {
+     "n": 42,
+     "gun": 37,
+     "ort": 0.00296,
+     "t": 0.15,
+     "kazanma": 0.429
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 70,
+     "cikis": 17,
+     "maliyet": 4
+    },
+    "kayip": 91,
+    "n": 146,
+    "baskin": "ortam",
+    "oneri": "Kayıplar kötü piyasa rejiminde toplanıyor: rejim kapısı dene (BIST100 200 günlük ortalamanın üstü).",
+    "rejim_kayip": {
+     "kotu": 0.7777777777777778,
+     "iyi": 0.6015625
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "geri_alim_satis_al_20",
+   "tur": "geri_alim_satis",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 104,
+     "gun": 93,
+     "ort": 0.04038,
+     "t": 1.52,
+     "kazanma": 0.471
+    },
+    "test": {
+     "n": 42,
+     "gun": 37,
+     "ort": 0.02314,
+     "t": 0.42,
+     "kazanma": 0.429
+    }
+   },
+   "durum": "emekli",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 39,
+     "cikis": 36,
+     "maliyet": 4
+    },
+    "kayip": 79,
+    "n": 146,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.4444444444444444,
+     "iyi": 0.5546875
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "once",
+      ">",
+      0.06208797817924877
+     ],
+     "ort_ic": 0.0702,
+     "n_ic": 52,
+     "ort_dis": 0.02024,
+     "n_dis": 52,
+     "fark": 0.04996
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.034879045526383705
+     ],
+     "ort_ic": 0.04859,
+     "n_ic": 52,
+     "ort_dis": 0.04184,
+     "n_dis": 52,
+     "fark": 0.00675
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      110147958.9342148
+     ],
+     "ort_ic": 0.04601,
+     "n_ic": 52,
+     "ort_dis": 0.04443,
+     "n_dis": 52,
+     "fark": 0.00158
+    }
+   ]
+  },
+  {
+   "ad": "ihale_kacin_5",
+   "tur": "ihale",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 281,
+     "gun": 219,
+     "ort": -0.01465,
+     "t": -2.72,
+     "kazanma": 0.349
+    },
+    "test": {
+     "n": 140,
+     "gun": 114,
+     "ort": 0.00423,
+     "t": 0.53,
+     "kazanma": 0.45
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 200,
+     "cikis": 60,
+     "maliyet": 13
+    },
+    "kayip": 273,
+    "n": 421,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.65625,
+     "iyi": 0.6470588235294118
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      true
+     ],
+     "ort_ic": -0.00746,
+     "n_ic": 164,
+     "ort_dis": -0.02436,
+     "n_dis": 117,
+     "fark": 0.0169
+    },
+    {
+     "kosul": [
+      "likidite",
+      ">",
+      160125918.56395417
+     ],
+     "ort_ic": -0.00906,
+     "n_ic": 140,
+     "ort_dis": -0.01989,
+     "n_dis": 141,
+     "fark": 0.01082
+    },
+    {
+     "kosul": [
+      "once",
+      ">",
+      -0.007285795620713742
+     ],
+     "ort_ic": -0.0097,
+     "n_ic": 140,
+     "ort_dis": -0.01925,
+     "n_dis": 141,
+     "fark": 0.00955
+    }
+   ]
+  },
+  {
+   "ad": "ihale_kacin_20",
+   "tur": "ihale",
+   "iddia": -1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 281,
+     "gun": 219,
+     "ort": -0.00871,
+     "t": -0.69,
+     "kazanma": 0.381
+    },
+    "test": {
+     "n": 140,
+     "gun": 114,
+     "ort": 0.01307,
+     "t": 0.72,
+     "kazanma": 0.45
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 122,
+     "cikis": 129,
+     "maliyet": 8
+    },
+    "kayip": 259,
+    "n": 421,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.609375,
+     "iyi": 0.6162464985994398
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "kar_payi_kacin_5",
+   "tur": "kar_payi",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 2292,
+     "gun": 456,
+     "ort": -0.0054,
+     "t": -1.86,
+     "kazanma": 0.447
+    },
+    "test": {
+     "n": 1113,
+     "gun": 258,
+     "ort": -0.00158,
+     "t": -0.38,
+     "kazanma": 0.451
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 1386,
+     "maliyet": 154,
+     "cikis": 493
+    },
+    "kayip": 2033,
+    "n": 3405,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5382513661202186,
+     "iyi": 0.6131687242798354
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      49947370.319213465
+     ],
+     "ort_ic": 0.00533,
+     "n_ic": 1146,
+     "ort_dis": -0.01018,
+     "n_dis": 1146,
+     "fark": 0.01551
+    },
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      false
+     ],
+     "ort_ic": 0.00649,
+     "n_ic": 637,
+     "ort_dis": -0.00585,
+     "n_dis": 1655,
+     "fark": 0.01234
+    },
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      true
+     ],
+     "ort_ic": 0.00454,
+     "n_ic": 805,
+     "ort_dis": -0.00619,
+     "n_dis": 1487,
+     "fark": 0.01073
+    }
+   ]
+  },
+  {
+   "ad": "kar_payi_al_20",
+   "tur": "kar_payi",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 2292,
+     "gun": 456,
+     "ort": 0.01513,
+     "t": 1.36,
+     "kazanma": 0.438
+    },
+    "test": {
+     "n": 1113,
+     "gun": 258,
+     "ort": -0.00457,
+     "t": -1.34,
+     "kazanma": 0.41
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 824,
+     "cikis": 1057,
+     "maliyet": 64
+    },
+    "kayip": 1945,
+    "n": 3405,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5341530054644809,
+     "iyi": 0.5813692480359147
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "konkordato_al_5",
+   "tur": "konkordato",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 36,
+     "gun": 36,
+     "ort": 0.00644,
+     "t": 0.02,
+     "kazanma": 0.444
+    },
+    "test": {
+     "n": 23,
+     "gun": 23,
+     "ort": -0.05052,
+     "t": -1.9,
+     "kazanma": 0.217
+    }
+   },
+   "durum": "emekli",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 23,
+     "cikis": 15
+    },
+    "kayip": 38,
+    "n": 59,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.75,
+     "iyi": 0.6046511627906976
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      2555822.5367141725
+     ],
+     "ort_ic": 0.04195,
+     "n_ic": 18,
+     "ort_dis": -0.02908,
+     "n_dis": 18,
+     "fark": 0.07103
+    },
+    {
+     "kosul": [
+      "once",
+      ">",
+      -0.00037413332827784807
+     ],
+     "ort_ic": 0.03758,
+     "n_ic": 18,
+     "ort_dis": -0.0247,
+     "n_dis": 18,
+     "fark": 0.06228
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.04356188427745792
+     ],
+     "ort_ic": 0.03563,
+     "n_ic": 18,
+     "ort_dis": -0.02276,
+     "n_dis": 18,
+     "fark": 0.05839
+    }
+   ]
+  },
+  {
+   "ad": "konkordato_kacin_20",
+   "tur": "konkordato",
+   "iddia": -1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 36,
+     "gun": 36,
+     "ort": -0.02372,
+     "t": -0.56,
+     "kazanma": 0.417
+    },
+    "test": {
+     "n": 23,
+     "gun": 23,
+     "ort": -0.07144,
+     "t": -1.44,
+     "kazanma": 0.217
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 26,
+     "giris": 13
+    },
+    "kayip": 39,
+    "n": 59,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.625,
+     "iyi": 0.6744186046511628
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "nav_asim_yonsuz_5",
+   "tur": "nav_asim",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 230,
+     "gun": 112,
+     "ort": 0.00853,
+     "t": 0.27,
+     "kazanma": 0.378
+    },
+    "test": {
+     "n": 110,
+     "gun": 42,
+     "ort": 0.0072,
+     "t": 0.07,
+     "kazanma": 0.391
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 132,
+     "cikis": 66,
+     "maliyet": 12
+    },
+    "kayip": 210,
+    "n": 340,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6666666666666666,
+     "iyi": 0.6064981949458483
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "nav_asim_al_20",
+   "tur": "nav_asim",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 230,
+     "gun": 112,
+     "ort": 0.00462,
+     "t": -0.08,
+     "kazanma": 0.374
+    },
+    "test": {
+     "n": 110,
+     "gun": 42,
+     "ort": 0.03603,
+     "t": 0.96,
+     "kazanma": 0.436
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 121,
+     "giris": 80,
+     "maliyet": 5
+    },
+    "kayip": 206,
+    "n": 340,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6825396825396826,
+     "iyi": 0.5884476534296029
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "not_teyit_yonsuz_5",
+   "tur": "not_teyit",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 718,
+     "gun": 337,
+     "ort": 0.00213,
+     "t": -1.36,
+     "kazanma": 0.428
+    },
+    "test": {
+     "n": 447,
+     "gun": 190,
+     "ort": -0.00365,
+     "t": -2.05,
+     "kazanma": 0.371
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 461,
+     "cikis": 174,
+     "maliyet": 57
+    },
+    "kayip": 692,
+    "n": 1165,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5931372549019608,
+     "iyi": 0.5941727367325702
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "not_teyit_al_20",
+   "tur": "not_teyit",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 718,
+     "gun": 337,
+     "ort": 0.01995,
+     "t": 1.85,
+     "kazanma": 0.461
+    },
+    "test": {
+     "n": 447,
+     "gun": 190,
+     "ort": -0.02215,
+     "t": -3.16,
+     "kazanma": 0.356
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 275,
+     "cikis": 381,
+     "maliyet": 19
+    },
+    "kayip": 675,
+    "n": 1165,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6029411764705882,
+     "iyi": 0.5744016649323621
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "olagandisi_kacin_5",
+   "tur": "olagandisi",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1045,
+     "gun": 468,
+     "ort": 0.00031,
+     "t": 0.08,
+     "kazanma": 0.436
+    },
+    "test": {
+     "n": 842,
+     "gun": 275,
+     "ort": -0.00088,
+     "t": -0.15,
+     "kazanma": 0.431
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 738,
+     "maliyet": 72,
+     "cikis": 330
+    },
+    "kayip": 1140,
+    "n": 1887,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6210191082802548,
+     "iyi": 0.6007628734901462
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      65345354.08259783
+     ],
+     "ort_ic": 0.00576,
+     "n_ic": 523,
+     "ort_dis": -0.00862,
+     "n_dis": 522,
+     "fark": 0.01438
+    },
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      true
+     ],
+     "ort_ic": 0.00037,
+     "n_ic": 867,
+     "ort_dis": -0.01015,
+     "n_dis": 178,
+     "fark": 0.01052
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.03490933151696712
+     ],
+     "ort_ic": 0.00095,
+     "n_ic": 522,
+     "ort_dis": -0.00379,
+     "n_dis": 523,
+     "fark": 0.00474
+    }
+   ]
+  },
+  {
+   "ad": "olagandisi_al_20",
+   "tur": "olagandisi",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1045,
+     "gun": 468,
+     "ort": 0.01034,
+     "t": 0.45,
+     "kazanma": 0.422
+    },
+    "test": {
+     "n": 842,
+     "gun": 275,
+     "ort": -0.00913,
+     "t": -1.18,
+     "kazanma": 0.376
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 490,
+     "cikis": 614,
+     "maliyet": 25
+    },
+    "kayip": 1129,
+    "n": 1887,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5764331210191083,
+     "iyi": 0.6026700572155118
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "ozel_durum_yonsuz_5",
+   "tur": "ozel_durum",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 7076,
+     "gun": 646,
+     "ort": 0.00169,
+     "t": -3.11,
+     "kazanma": 0.416
+    },
+    "test": {
+     "n": 3947,
+     "gun": 326,
+     "ort": -0.00441,
+     "t": -5.41,
+     "kazanma": 0.379
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 4421,
+     "cikis": 1685,
+     "maliyet": 479
+    },
+    "kayip": 6585,
+    "n": 11023,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6053661263275573,
+     "iyi": 0.5958414554905783
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "ozel_durum_al_20",
+   "tur": "ozel_durum",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 7076,
+     "gun": 646,
+     "ort": 0.01199,
+     "t": 1.81,
+     "kazanma": 0.427
+    },
+    "test": {
+     "n": 3947,
+     "gun": 326,
+     "ort": -0.01002,
+     "t": -3.71,
+     "kazanma": 0.378
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 3647,
+     "giris": 2648,
+     "maliyet": 216
+    },
+    "kayip": 6511,
+    "n": 11023,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5992174399105645,
+     "iyi": 0.5890188434048084
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "pay_alim_satim_yonsuz_5",
+   "tur": "pay_alim_satim",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1275,
+     "gun": 503,
+     "ort": 0.00358,
+     "t": -0.71,
+     "kazanma": 0.452
+    },
+    "test": {
+     "n": 769,
+     "gun": 265,
+     "ort": -0.0126,
+     "t": -3.93,
+     "kazanma": 0.382
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 759,
+     "cikis": 353,
+     "maliyet": 62
+    },
+    "kayip": 1174,
+    "n": 2044,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5578034682080925,
+     "iyi": 0.5777385159010601
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "pay_alim_satim_al_20",
+   "tur": "pay_alim_satim",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1275,
+     "gun": 503,
+     "ort": 0.01648,
+     "t": 1.26,
+     "kazanma": 0.445
+    },
+    "test": {
+     "n": 769,
+     "gun": 265,
+     "ort": -0.02525,
+     "t": -3.06,
+     "kazanma": 0.367
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 493,
+     "cikis": 662,
+     "maliyet": 39
+    },
+    "kayip": 1194,
+    "n": 2044,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5549132947976878,
+     "iyi": 0.5901060070671378
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "sermaye_yonsuz_5",
+   "tur": "sermaye",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1149,
+     "gun": 492,
+     "ort": 0.00242,
+     "t": -1.1,
+     "kazanma": 0.393
+    },
+    "test": {
+     "n": 647,
+     "gun": 268,
+     "ort": -0.00491,
+     "t": -2.73,
+     "kazanma": 0.388
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 277,
+     "giris": 744,
+     "maliyet": 73
+    },
+    "kayip": 1094,
+    "n": 1796,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5736196319018405,
+     "iyi": 0.6170068027210884
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "sermaye_al_20",
+   "tur": "sermaye",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1149,
+     "gun": 492,
+     "ort": 0.01442,
+     "t": 1.14,
+     "kazanma": 0.412
+    },
+    "test": {
+     "n": 647,
+     "gun": 268,
+     "ort": -0.00997,
+     "t": -1.91,
+     "kazanma": 0.363
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 627,
+     "giris": 429,
+     "maliyet": 32
+    },
+    "kayip": 1088,
+    "n": 1796,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6073619631901841,
+     "iyi": 0.6054421768707483
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "sira_durdurma_al_5",
+   "tur": "sira_durdurma",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 68,
+     "gun": 54,
+     "ort": 0.03012,
+     "t": 1.14,
+     "kazanma": 0.515
+    },
+    "test": {
+     "n": 15,
+     "gun": 14,
+     "ort": 0.19413,
+     "t": 0.82,
+     "kazanma": 0.267
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 21,
+     "giris": 20,
+     "maliyet": 3
+    },
+    "kayip": 44,
+    "n": 83,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.42857142857142855,
+     "iyi": 0.5507246376811594
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "sira_durdurma_al_20",
+   "tur": "sira_durdurma",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 68,
+     "gun": 54,
+     "ort": 0.0456,
+     "t": 1.09,
+     "kazanma": 0.456
+    },
+    "test": {
+     "n": 15,
+     "gun": 14,
+     "ort": 0.17645,
+     "t": 0.61,
+     "kazanma": 0.267
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 34,
+     "giris": 14
+    },
+    "kayip": 48,
+    "n": 83,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6428571428571429,
+     "iyi": 0.5652173913043478
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "soylenti_yonsuz_5",
+   "tur": "soylenti",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 144,
+     "gun": 113,
+     "ort": 0.00238,
+     "t": -0.33,
+     "kazanma": 0.368
+    },
+    "test": {
+     "n": 70,
+     "gun": 59,
+     "ort": -0.01627,
+     "t": -2.03,
+     "kazanma": 0.386
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 85,
+     "cikis": 40,
+     "maliyet": 9
+    },
+    "kayip": 134,
+    "n": 214,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5833333333333334,
+     "iyi": 0.6348314606741573
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "soylenti_al_20",
+   "tur": "soylenti",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 144,
+     "gun": 113,
+     "ort": 0.02431,
+     "t": 0.67,
+     "kazanma": 0.424
+    },
+    "test": {
+     "n": 70,
+     "gun": 59,
+     "ort": -0.05023,
+     "t": -2.3,
+     "kazanma": 0.3
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 58,
+     "cikis": 70,
+     "maliyet": 4
+    },
+    "kayip": 132,
+    "n": 214,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.5833333333333334,
+     "iyi": 0.6235955056179775
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "spk_tedbir_kacin_5",
+   "tur": "spk_tedbir",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 85,
+     "gun": 71,
+     "ort": -0.03359,
+     "t": -2.44,
+     "kazanma": 0.294
+    },
+    "test": {
+     "n": 48,
+     "gun": 31,
+     "ort": -0.08377,
+     "t": -4.09,
+     "kazanma": 0.208
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 80,
+     "cikis": 18,
+     "maliyet": 2
+    },
+    "kayip": 100,
+    "n": 133,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.7222222222222222,
+     "iyi": 0.7565217391304347
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "once",
+      ">",
+      0.1738421536478123
+     ],
+     "ort_ic": -0.01748,
+     "n_ic": 42,
+     "ort_dis": -0.04842,
+     "n_dis": 43,
+     "fark": 0.03094
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.0410054623253513
+     ],
+     "ort_ic": -0.02003,
+     "n_ic": 42,
+     "ort_dis": -0.04593,
+     "n_dis": 43,
+     "fark": 0.02591
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      62285977.184135154
+     ],
+     "ort_ic": -0.02827,
+     "n_ic": 43,
+     "ort_dis": -0.03811,
+     "n_dis": 42,
+     "fark": 0.00985
+    }
+   ]
+  },
+  {
+   "ad": "spk_tedbir_al_20",
+   "tur": "spk_tedbir",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 85,
+     "gun": 71,
+     "ort": 0.05515,
+     "t": 0.94,
+     "kazanma": 0.424
+    },
+    "test": {
+     "n": 48,
+     "gun": 31,
+     "ort": -0.15177,
+     "t": -3.59,
+     "kazanma": 0.167
+    }
+   },
+   "durum": "emekli",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "maliyet": 4,
+     "giris": 54,
+     "cikis": 31
+    },
+    "kayip": 89,
+    "n": 133,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5555555555555556,
+     "iyi": 0.6869565217391305
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "once",
+      ">",
+      0.1738421536478123
+     ],
+     "ort_ic": 0.14662,
+     "n_ic": 42,
+     "ort_dis": -0.05924,
+     "n_dis": 43,
+     "fark": 0.20587
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.0410054623253513
+     ],
+     "ort_ic": 0.12385,
+     "n_ic": 42,
+     "ort_dis": -0.037,
+     "n_dis": 43,
+     "fark": 0.16085
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      62285977.184135154
+     ],
+     "ort_ic": 0.07965,
+     "n_ic": 43,
+     "ort_dis": 0.00442,
+     "n_dis": 42,
+     "fark": 0.07523
+    }
+   ]
+  },
+  {
+   "ad": "tablo_duzeltme_kacin_5",
+   "tur": "tablo_duzeltme",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 245,
+     "gun": 157,
+     "ort": -0.0047,
+     "t": -0.72,
+     "kazanma": 0.404
+    },
+    "test": {
+     "n": 99,
+     "gun": 59,
+     "ort": 0.01273,
+     "t": 1.26,
+     "kazanma": 0.475
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 150,
+     "cikis": 48,
+     "maliyet": 17
+    },
+    "kayip": 215,
+    "n": 344,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6507936507936508,
+     "iyi": 0.6192170818505338
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      true
+     ],
+     "ort_ic": 0.00138,
+     "n_ic": 162,
+     "ort_dis": -0.0194,
+     "n_dis": 83,
+     "fark": 0.02077
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      41517086.069835946
+     ],
+     "ort_ic": 0.00314,
+     "n_ic": 123,
+     "ort_dis": -0.01453,
+     "n_dis": 122,
+     "fark": 0.01767
+    },
+    {
+     "kosul": [
+      "oynak",
+      "<=",
+      0.032308293944358274
+     ],
+     "ort_ic": -0.00253,
+     "n_ic": 123,
+     "ort_dis": -0.00882,
+     "n_dis": 122,
+     "fark": 0.0063
+    }
+   ]
+  },
+  {
+   "ad": "tablo_duzeltme_al_20",
+   "tur": "tablo_duzeltme",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 245,
+     "gun": 157,
+     "ort": 0.02191,
+     "t": 1.16,
+     "kazanma": 0.449
+    },
+    "test": {
+     "n": 99,
+     "gun": 59,
+     "ort": -0.03017,
+     "t": -1.77,
+     "kazanma": 0.424
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 100,
+     "giris": 88,
+     "maliyet": 4
+    },
+    "kayip": 192,
+    "n": 344,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6031746031746031,
+     "iyi": 0.5480427046263345
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "varlik_satisi_kacin_5",
+   "tur": "varlik_satisi",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 271,
+     "gun": 210,
+     "ort": 2e-05,
+     "t": 0.0,
+     "kazanma": 0.509
+    },
+    "test": {
+     "n": 147,
+     "gun": 107,
+     "ort": -0.00939,
+     "t": -1.12,
+     "kazanma": 0.401
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 146,
+     "cikis": 75,
+     "maliyet": 15
+    },
+    "kayip": 236,
+    "n": 418,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5645161290322581,
+     "iyi": 0.5646067415730337
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "oynak",
+      "<=",
+      0.030804970953633357
+     ],
+     "ort_ic": 0.00278,
+     "n_ic": 136,
+     "ort_dis": -0.00773,
+     "n_dis": 135,
+     "fark": 0.01051
+    },
+    {
+     "kosul": [
+      "likidite",
+      ">",
+      56537808.94627762
+     ],
+     "ort_ic": 0.00265,
+     "n_ic": 135,
+     "ort_dis": -0.00753,
+     "n_dis": 136,
+     "fark": 0.01018
+    },
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      false
+     ],
+     "ort_ic": -0.00094,
+     "n_ic": 214,
+     "ort_dis": -0.00815,
+     "n_dis": 57,
+     "fark": 0.00721
+    }
+   ]
+  },
+  {
+   "ad": "varlik_satisi_kacin_20",
+   "tur": "varlik_satisi",
+   "iddia": -1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 271,
+     "gun": 210,
+     "ort": -0.00221,
+     "t": -0.21,
+     "kazanma": 0.41
+    },
+    "test": {
+     "n": 147,
+     "gun": 107,
+     "ort": -0.01291,
+     "t": -0.7,
+     "kazanma": 0.381
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 89,
+     "cikis": 162,
+     "maliyet": 5
+    },
+    "kayip": 256,
+    "n": 418,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6290322580645161,
+     "iyi": 0.6095505617977528
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "vbts_kacin_5",
+   "tur": "vbts",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1116,
+     "gun": 468,
+     "ort": -0.00992,
+     "t": -1.76,
+     "kazanma": 0.362
+    },
+    "test": {
+     "n": 517,
+     "gun": 236,
+     "ort": -0.02409,
+     "t": -3.13,
+     "kazanma": 0.383
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 731,
+     "cikis": 300,
+     "maliyet": 22
+    },
+    "kayip": 1053,
+    "n": 1633,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6802325581395349,
+     "iyi": 0.6406570841889117
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "once",
+      ">",
+      0.26701360753896464
+     ],
+     "ort_ic": 0.00655,
+     "n_ic": 558,
+     "ort_dis": -0.03097,
+     "n_dis": 558,
+     "fark": 0.03752
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      64415054.082036644
+     ],
+     "ort_ic": 0.0009,
+     "n_ic": 558,
+     "ort_dis": -0.02532,
+     "n_dis": 558,
+     "fark": 0.02622
+    },
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      true
+     ],
+     "ort_ic": -0.00905,
+     "n_ic": 971,
+     "ort_dis": -0.03334,
+     "n_dis": 145,
+     "fark": 0.02429
+    }
+   ]
+  },
+  {
+   "ad": "vbts_kacin_20",
+   "tur": "vbts",
+   "iddia": -1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 1116,
+     "gun": 468,
+     "ort": 0.00201,
+     "t": 0.17,
+     "kazanma": 0.395
+    },
+    "test": {
+     "n": 517,
+     "gun": 236,
+     "ort": 0.01118,
+     "t": 0.61,
+     "kazanma": 0.416
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 479,
+     "cikis": 498,
+     "maliyet": 17
+    },
+    "kayip": 994,
+    "n": 1633,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6627906976744186,
+     "iyi": 0.6023271731690623
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "yeni_is_kacin_5",
+   "tur": "yeni_is",
+   "iddia": -1,
+   "ufuk": 5,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 798,
+     "gun": 444,
+     "ort": -0.0057,
+     "t": -1.45,
+     "kazanma": 0.396
+    },
+    "test": {
+     "n": 407,
+     "gun": 225,
+     "ort": -0.00643,
+     "t": -1.13,
+     "kazanma": 0.376
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 556,
+     "maliyet": 34,
+     "cikis": 180
+    },
+    "kayip": 770,
+    "n": 1205,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6898395721925134,
+     "iyi": 0.6296660117878192
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      true
+     ],
+     "ort_ic": -0.00312,
+     "n_ic": 653,
+     "ort_dis": -0.01159,
+     "n_dis": 145,
+     "fark": 0.00847
+    },
+    {
+     "kosul": [
+      "likidite",
+      ">",
+      112577421.09506407
+     ],
+     "ort_ic": -0.00073,
+     "n_ic": 399,
+     "ort_dis": -0.00858,
+     "n_dis": 399,
+     "fark": 0.00784
+    },
+    {
+     "kosul": [
+      "once",
+      ">",
+      -0.0010425725737686076
+     ],
+     "ort_ic": -0.00237,
+     "n_ic": 399,
+     "ort_dis": -0.00694,
+     "n_dis": 399,
+     "fark": 0.00457
+    }
+   ]
+  },
+  {
+   "ad": "yeni_is_al_20",
+   "tur": "yeni_is",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": null,
+   "ust": null,
+   "olcum": {
+    "egitim": {
+     "n": 798,
+     "gun": 444,
+     "ort": 0.02126,
+     "t": 1.59,
+     "kazanma": 0.422
+    },
+    "test": {
+     "n": 407,
+     "gun": 225,
+     "ort": -0.00186,
+     "t": -0.62,
+     "kazanma": 0.369
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 335,
+     "cikis": 368,
+     "maliyet": 15
+    },
+    "kayip": 718,
+    "n": 1205,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6631016042780749,
+     "iyi": 0.5834970530451866
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "beklenti_al_20|seans_ici=False",
+   "tur": "beklenti",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": [
+    "seans_ici",
+    "==",
+    false
+   ],
+   "ust": "beklenti_al_20",
+   "olcum": {
+    "egitim": {
+     "n": 239,
+     "gun": 166,
+     "ort": 0.01994,
+     "t": 1.33,
+     "kazanma": 0.477
+    },
+    "test": {
+     "n": 130,
+     "gun": 75,
+     "ort": -0.00609,
+     "t": -1.04,
+     "kazanma": 0.338
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 94,
+     "giris": 112,
+     "maliyet": 5
+    },
+    "kayip": 211,
+    "n": 369,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6666666666666666,
+     "iyi": 0.5555555555555556
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "oynak",
+      "<=",
+      0.026030534267374707
+     ],
+     "ort_ic": 0.04306,
+     "n_ic": 120,
+     "ort_dis": 0.00569,
+     "n_dis": 119,
+     "fark": 0.03737
+    },
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      true
+     ],
+     "ort_ic": 0.03208,
+     "n_ic": 187,
+     "ort_dis": -0.00297,
+     "n_dis": 52,
+     "fark": 0.03505
+    },
+    {
+     "kosul": [
+      "once",
+      "<=",
+      -0.011592613331000368
+     ],
+     "ort_ic": 0.03725,
+     "n_ic": 120,
+     "ort_dis": 0.01155,
+     "n_dis": 119,
+     "fark": 0.0257
+    }
+   ]
+  },
+  {
+   "ad": "beklenti_al_20|oynak<=0.02608",
+   "tur": "beklenti",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": [
+    "oynak",
+    "<=",
+    0.026080901418751093
+   ],
+   "ust": "beklenti_al_20",
+   "olcum": {
+    "egitim": {
+     "n": 137,
+     "gun": 100,
+     "ort": 0.03694,
+     "t": 2.36,
+     "kazanma": 0.533
+    },
+    "test": {
+     "n": 115,
+     "gun": 69,
+     "ort": -0.01324,
+     "t": -2.58,
+     "kazanma": 0.322
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 71,
+     "maliyet": 4,
+     "giris": 67
+    },
+    "kayip": 142,
+    "n": 252,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.6078431372549019,
+     "iyi": 0.5522388059701493
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "beklenti_al_20|rejim=True",
+   "tur": "beklenti",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": [
+    "rejim",
+    "==",
+    true
+   ],
+   "ust": "beklenti_al_20",
+   "olcum": {
+    "egitim": {
+     "n": 211,
+     "gun": 148,
+     "ort": 0.01758,
+     "t": 1.02,
+     "kazanma": 0.498
+    },
+    "test": {
+     "n": 160,
+     "gun": 93,
+     "ort": -0.0103,
+     "t": -1.53,
+     "kazanma": 0.35
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 98,
+     "giris": 108,
+     "maliyet": 4
+    },
+    "kayip": 210,
+    "n": 371,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": null,
+     "iyi": 0.5660377358490566
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      false
+     ],
+     "ort_ic": 0.03208,
+     "n_ic": 187,
+     "ort_dis": -0.03784,
+     "n_dis": 24,
+     "fark": 0.06991
+    },
+    {
+     "kosul": [
+      "oynak",
+      "<=",
+      0.028634055658801616
+     ],
+     "ort_ic": 0.04651,
+     "n_ic": 106,
+     "ort_dis": 0.00153,
+     "n_dis": 105,
+     "fark": 0.04498
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      204394848.29097852
+     ],
+     "ort_ic": 0.04074,
+     "n_ic": 106,
+     "ort_dis": 0.00736,
+     "n_dis": 105,
+     "fark": 0.03338
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_al_5|seans_ici=False",
+   "tur": "geri_alim",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": [
+    "seans_ici",
+    "==",
+    false
+   ],
+   "ust": "geri_alim_al_5",
+   "olcum": {
+    "egitim": {
+     "n": 802,
+     "gun": 378,
+     "ort": 0.01175,
+     "t": 1.5,
+     "kazanma": 0.489
+    },
+    "test": {
+     "n": 426,
+     "gun": 214,
+     "ort": 0.00076,
+     "t": -1.34,
+     "kazanma": 0.444
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 185,
+     "giris": 403,
+     "maliyet": 59
+    },
+    "kayip": 647,
+    "n": 1228,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5,
+     "iyi": 0.5361050328227571
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      false
+     ],
+     "ort_ic": 0.02218,
+     "n_ic": 209,
+     "ort_dis": 0.01066,
+     "n_dis": 593,
+     "fark": 0.01152
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.029338829745772337
+     ],
+     "ort_ic": 0.01906,
+     "n_ic": 401,
+     "ort_dis": 0.00827,
+     "n_dis": 401,
+     "fark": 0.01078
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      59237423.76165645
+     ],
+     "ort_ic": 0.01481,
+     "n_ic": 401,
+     "ort_dis": 0.01252,
+     "n_dis": 401,
+     "fark": 0.00229
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_al_5|rejim=False",
+   "tur": "geri_alim",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": [
+    "rejim",
+    "==",
+    false
+   ],
+   "ust": "geri_alim_al_5",
+   "olcum": {
+    "egitim": {
+     "n": 242,
+     "gun": 86,
+     "ort": 0.01316,
+     "t": 1.37,
+     "kazanma": 0.521
+    },
+    "test": {
+     "n": 125,
+     "gun": 33,
+     "ort": 0.0024,
+     "t": -0.4,
+     "kazanma": 0.48
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 53,
+     "giris": 110,
+     "maliyet": 18
+    },
+    "kayip": 181,
+    "n": 367,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.49318801089918257,
+     "iyi": null
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.028659134518582957
+     ],
+     "ort_ic": 0.04002,
+     "n_ic": 121,
+     "ort_dis": 0.00223,
+     "n_dis": 121,
+     "fark": 0.03779
+    },
+    {
+     "kosul": [
+      "likidite",
+      ">",
+      63678972.79933132
+     ],
+     "ort_ic": 0.02732,
+     "n_ic": 121,
+     "ort_dis": 0.01494,
+     "n_dis": 121,
+     "fark": 0.01238
+    },
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      false
+     ],
+     "ort_ic": 0.02218,
+     "n_ic": 209,
+     "ort_dis": 0.01443,
+     "n_dis": 33,
+     "fark": 0.00775
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_al_5|oynak>0.02981",
+   "tur": "geri_alim",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": [
+    "oynak",
+    ">",
+    0.02981135143137688
+   ],
+   "ust": "geri_alim_al_5",
+   "olcum": {
+    "egitim": {
+     "n": 447,
+     "gun": 235,
+     "ort": 0.01259,
+     "t": 1.05,
+     "kazanma": 0.49
+    },
+    "test": {
+     "n": 206,
+     "gun": 129,
+     "ort": 0.00542,
+     "t": -0.07,
+     "kazanma": 0.466
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 221,
+     "cikis": 82,
+     "maliyet": 35
+    },
+    "kayip": 338,
+    "n": 653,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.44502617801047123,
+     "iyi": 0.5476190476190477
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      false
+     ],
+     "ort_ic": 0.04119,
+     "n_ic": 113,
+     "ort_dis": 0.00826,
+     "n_dis": 334,
+     "fark": 0.03293
+    },
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      false
+     ],
+     "ort_ic": 0.0195,
+     "n_ic": 390,
+     "ort_dis": -0.00336,
+     "n_dis": 57,
+     "fark": 0.02286
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.03878931412679081
+     ],
+     "ort_ic": 0.02079,
+     "n_ic": 223,
+     "ort_dis": 0.0124,
+     "n_dis": 224,
+     "fark": 0.00838
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_program_al_5|rejim=False",
+   "tur": "geri_alim_program",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": [
+    "rejim",
+    "==",
+    false
+   ],
+   "ust": "geri_alim_program_al_5",
+   "olcum": {
+    "egitim": {
+     "n": 60,
+     "gun": 25,
+     "ort": 0.01519,
+     "t": 0.63,
+     "kazanma": 0.633
+    },
+    "test": {
+     "n": 35,
+     "gun": 17,
+     "ort": -0.02916,
+     "t": -1.12,
+     "kazanma": 0.4
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 18,
+     "giris": 23,
+     "maliyet": 2
+    },
+    "kayip": 43,
+    "n": 95,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.45263157894736844,
+     "iyi": null
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      true
+     ],
+     "ort_ic": 0.05598,
+     "n_ic": 30,
+     "ort_dis": 0.02046,
+     "n_dis": 30,
+     "fark": 0.03552
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      77585824.62711266
+     ],
+     "ort_ic": 0.05174,
+     "n_ic": 30,
+     "ort_dis": 0.0247,
+     "n_dis": 30,
+     "fark": 0.02704
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.03416639333974832
+     ],
+     "ort_ic": 0.05155,
+     "n_ic": 30,
+     "ort_dis": 0.02489,
+     "n_dis": 30,
+     "fark": 0.02666
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_program_al_5|oynak>0.03677",
+   "tur": "geri_alim_program",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": [
+    "oynak",
+    ">",
+    0.03676979467526733
+   ],
+   "ust": "geri_alim_program_al_5",
+   "olcum": {
+    "egitim": {
+     "n": 66,
+     "gun": 31,
+     "ort": 0.05175,
+     "t": 2.41,
+     "kazanma": 0.5
+    },
+    "test": {
+     "n": 31,
+     "gun": 22,
+     "ort": -0.01977,
+     "t": -1.38,
+     "kazanma": 0.419
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 35,
+     "cikis": 15,
+     "maliyet": 1
+    },
+    "kayip": 51,
+    "n": 97,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5,
+     "iyi": 0.5471698113207547
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      false
+     ],
+     "ort_ic": 0.06881,
+     "n_ic": 23,
+     "ort_dis": 0.02,
+     "n_dis": 43,
+     "fark": 0.04881
+    },
+    {
+     "kosul": [
+      "seans_ici",
+      "==",
+      true
+     ],
+     "ort_ic": 0.06002,
+     "n_ic": 33,
+     "ort_dis": 0.01399,
+     "n_dis": 33,
+     "fark": 0.04603
+    },
+    {
+     "kosul": [
+      "likidite",
+      ">",
+      49933857.05134793
+     ],
+     "ort_ic": 0.04087,
+     "n_ic": 33,
+     "ort_dis": 0.03315,
+     "n_dis": 33,
+     "fark": 0.00772
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_program_al_5|seans_ici=True",
+   "tur": "geri_alim_program",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": [
+    "seans_ici",
+    "==",
+    true
+   ],
+   "ust": "geri_alim_program_al_5",
+   "olcum": {
+    "egitim": {
+     "n": 58,
+     "gun": 34,
+     "ort": 0.02448,
+     "t": 1.25,
+     "kazanma": 0.534
+    },
+    "test": {
+     "n": 28,
+     "gun": 21,
+     "ort": -0.01185,
+     "t": -0.61,
+     "kazanma": 0.5
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 27,
+     "cikis": 13,
+     "maliyet": 1
+    },
+    "kayip": 41,
+    "n": 86,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.4,
+     "iyi": 0.5609756097560976
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.04057048445293645
+     ],
+     "ort_ic": 0.06204,
+     "n_ic": 29,
+     "ort_dis": 0.01029,
+     "n_dis": 29,
+     "fark": 0.05175
+    },
+    {
+     "kosul": [
+      "rejim",
+      "==",
+      false
+     ],
+     "ort_ic": 0.05598,
+     "n_ic": 30,
+     "ort_dis": 0.01493,
+     "n_dis": 28,
+     "fark": 0.04105
+    },
+    {
+     "kosul": [
+      "once",
+      ">",
+      -0.02881350801605642
+     ],
+     "ort_ic": 0.03955,
+     "n_ic": 29,
+     "ort_dis": 0.03278,
+     "n_dis": 29,
+     "fark": 0.00677
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_satis_al_20|once>0.06209",
+   "tur": "geri_alim_satis",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": [
+    "once",
+    ">",
+    0.06208797817924877
+   ],
+   "ust": "geri_alim_satis_al_20",
+   "olcum": {
+    "egitim": {
+     "n": 52,
+     "gun": 48,
+     "ort": 0.06772,
+     "t": 1.97,
+     "kazanma": 0.558
+    },
+    "test": {
+     "n": 16,
+     "gun": 16,
+     "ort": -0.03319,
+     "t": -0.67,
+     "kazanma": 0.25
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 15,
+     "cikis": 19,
+     "maliyet": 1
+    },
+    "kayip": 35,
+    "n": 68,
+    "baskin": "cikis",
+    "oneri": "Fiyat önce lehe gidip geri veriyor: çıkışı dene (kâr al, daha kısa süre).",
+    "rejim_kayip": {
+     "kotu": 0.4444444444444444,
+     "iyi": 0.5254237288135594
+    }
+   },
+   "kristal": []
+  },
+  {
+   "ad": "geri_alim_satis_al_20|oynak>0.03488",
+   "tur": "geri_alim_satis",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": [
+    "oynak",
+    ">",
+    0.034879045526383705
+   ],
+   "ust": "geri_alim_satis_al_20",
+   "olcum": {
+    "egitim": {
+     "n": 52,
+     "gun": 49,
+     "ort": 0.03504,
+     "t": 1.0,
+     "kazanma": 0.5
+    },
+    "test": {
+     "n": 21,
+     "gun": 21,
+     "ort": 0.01339,
+     "t": 0.13,
+     "kazanma": 0.429
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "cikis": 17,
+     "giris": 20,
+     "maliyet": 1
+    },
+    "kayip": 38,
+    "n": 73,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.25,
+     "iyi": 0.5538461538461539
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.04220391177510878
+     ],
+     "ort_ic": 0.08596,
+     "n_ic": 26,
+     "ort_dis": 0.01123,
+     "n_dis": 26,
+     "fark": 0.07473
+    },
+    {
+     "kosul": [
+      "once",
+      ">",
+      0.12537570579578827
+     ],
+     "ort_ic": 0.06159,
+     "n_ic": 26,
+     "ort_dis": 0.0356,
+     "n_dis": 26,
+     "fark": 0.02599
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      169627762.2591252
+     ],
+     "ort_ic": 0.05806,
+     "n_ic": 26,
+     "ort_dis": 0.03912,
+     "n_dis": 26,
+     "fark": 0.01894
+    }
+   ]
+  },
+  {
+   "ad": "geri_alim_satis_al_20|likidite<=1.101e+08",
+   "tur": "geri_alim_satis",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": [
+    "likidite",
+    "<=",
+    110147958.9342148
+   ],
+   "ust": "geri_alim_satis_al_20",
+   "olcum": {
+    "egitim": {
+     "n": 52,
+     "gun": 48,
+     "ort": 0.03274,
+     "t": 0.76,
+     "kazanma": 0.462
+    },
+    "test": {
+     "n": 16,
+     "gun": 13,
+     "ort": -0.02477,
+     "t": -0.66,
+     "kazanma": 0.375
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 20,
+     "cikis": 15,
+     "maliyet": 3
+    },
+    "kayip": 38,
+    "n": 68,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.42857142857142855,
+     "iyi": 0.5737704918032787
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "once",
+      ">",
+      0.029861235034521982
+     ],
+     "ort_ic": 0.08536,
+     "n_ic": 26,
+     "ort_dis": 0.00665,
+     "n_dis": 26,
+     "fark": 0.0787
+    },
+    {
+     "kosul": [
+      "oynak",
+      "<=",
+      0.03258245957234347
+     ],
+     "ort_ic": 0.06634,
+     "n_ic": 26,
+     "ort_dis": 0.02567,
+     "n_dis": 26,
+     "fark": 0.04067
+    },
+    {
+     "kosul": [
+      "likidite",
+      ">",
+      54681653.85906401
+     ],
+     "ort_ic": 0.06569,
+     "n_ic": 26,
+     "ort_dis": 0.02632,
+     "n_dis": 26,
+     "fark": 0.03937
+    }
+   ]
+  },
+  {
+   "ad": "konkordato_al_5|likidite<=2.556e+06",
+   "tur": "konkordato",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": [
+    "likidite",
+    "<=",
+    2555822.5367141725
+   ],
+   "ust": "konkordato_al_5",
+   "olcum": {
+    "egitim": {
+     "n": 18,
+     "gun": 18,
+     "ort": 0.04195,
+     "t": 1.36,
+     "kazanma": 0.556
+    },
+    "test": {
+     "n": 12,
+     "gun": 12,
+     "ort": -0.0297,
+     "t": -2.68,
+     "kazanma": 0.167
+    }
+   },
+   "durum": "yetersiz",
+   "esik": 3.39
+  },
+  {
+   "ad": "konkordato_al_5|once>-0.0003741",
+   "tur": "konkordato",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": [
+    "once",
+    ">",
+    -0.00037413332827784807
+   ],
+   "ust": "konkordato_al_5",
+   "olcum": {
+    "egitim": {
+     "n": 18,
+     "gun": 18,
+     "ort": 0.03758,
+     "t": 1.11,
+     "kazanma": 0.5
+    },
+    "test": {
+     "n": 2,
+     "gun": 2,
+     "ort": -0.0002,
+     "t": -0.41,
+     "kazanma": 0.5
+    }
+   },
+   "durum": "yetersiz",
+   "esik": 3.39
+  },
+  {
+   "ad": "konkordato_al_5|oynak>0.04356",
+   "tur": "konkordato",
+   "iddia": 1,
+   "ufuk": 5,
+   "kosul": [
+    "oynak",
+    ">",
+    0.04356188427745792
+   ],
+   "ust": "konkordato_al_5",
+   "olcum": {
+    "egitim": {
+     "n": 18,
+     "gun": 18,
+     "ort": 0.03563,
+     "t": 0.95,
+     "kazanma": 0.556
+    },
+    "test": {
+     "n": 7,
+     "gun": 7,
+     "ort": -0.14571,
+     "t": -2.6,
+     "kazanma": 0.143
+    }
+   },
+   "durum": "yetersiz",
+   "esik": 3.39
+  },
+  {
+   "ad": "spk_tedbir_al_20|once>0.1738",
+   "tur": "spk_tedbir",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": [
+    "once",
+    ">",
+    0.1738421536478123
+   ],
+   "ust": "spk_tedbir_al_20",
+   "olcum": {
+    "egitim": {
+     "n": 42,
+     "gun": 40,
+     "ort": 0.14786,
+     "t": 1.6,
+     "kazanma": 0.524
+    },
+    "test": {
+     "n": 12,
+     "gun": 11,
+     "ort": -0.01945,
+     "t": -0.27,
+     "kazanma": 0.167
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 19,
+     "cikis": 9,
+     "maliyet": 2
+    },
+    "kayip": 30,
+    "n": 54,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5,
+     "iyi": 0.5652173913043478
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.0416549628462749
+     ],
+     "ort_ic": 0.3308,
+     "n_ic": 21,
+     "ort_dis": -0.03755,
+     "n_dis": 21,
+     "fark": 0.36835
+    },
+    {
+     "kosul": [
+      "once",
+      ">",
+      0.31300876926252397
+     ],
+     "ort_ic": 0.28303,
+     "n_ic": 21,
+     "ort_dis": 0.01022,
+     "n_dis": 21,
+     "fark": 0.27281
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      59745296.57952742
+     ],
+     "ort_ic": 0.20185,
+     "n_ic": 21,
+     "ort_dis": 0.0914,
+     "n_dis": 21,
+     "fark": 0.11045
+    }
+   ]
+  },
+  {
+   "ad": "spk_tedbir_al_20|oynak>0.04101",
+   "tur": "spk_tedbir",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": [
+    "oynak",
+    ">",
+    0.0410054623253513
+   ],
+   "ust": "spk_tedbir_al_20",
+   "olcum": {
+    "egitim": {
+     "n": 42,
+     "gun": 34,
+     "ort": 0.14214,
+     "t": 1.3,
+     "kazanma": 0.5
+    },
+    "test": {
+     "n": 18,
+     "gun": 14,
+     "ort": -0.20015,
+     "t": -1.91,
+     "kazanma": 0.167
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "giris": 23,
+     "cikis": 13
+    },
+    "kayip": 36,
+    "n": 60,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.5555555555555556,
+     "iyi": 0.6078431372549019
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "once",
+      ">",
+      0.2320674587754059
+     ],
+     "ort_ic": 0.30508,
+     "n_ic": 21,
+     "ort_dis": -0.05738,
+     "n_dis": 21,
+     "fark": 0.36247
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.05164258799266014
+     ],
+     "ort_ic": 0.23374,
+     "n_ic": 21,
+     "ort_dis": 0.01396,
+     "n_dis": 21,
+     "fark": 0.21978
+    },
+    {
+     "kosul": [
+      "likidite",
+      "<=",
+      55398833.83859408
+     ],
+     "ort_ic": 0.18331,
+     "n_ic": 21,
+     "ort_dis": 0.06439,
+     "n_dis": 21,
+     "fark": 0.11892
+    }
+   ]
+  },
+  {
+   "ad": "spk_tedbir_al_20|likidite<=6.229e+07",
+   "tur": "spk_tedbir",
+   "iddia": 1,
+   "ufuk": 20,
+   "kosul": [
+    "likidite",
+    "<=",
+    62285977.184135154
+   ],
+   "ust": "spk_tedbir_al_20",
+   "olcum": {
+    "egitim": {
+     "n": 43,
+     "gun": 37,
+     "ort": 0.08455,
+     "t": 0.96,
+     "kazanma": 0.465
+    },
+    "test": {
+     "n": 19,
+     "gun": 15,
+     "ort": -0.12294,
+     "t": -3.35,
+     "kazanma": 0.105
+    }
+   },
+   "durum": "red",
+   "esik": 3.39,
+   "teshis": {
+    "sebep": {
+     "maliyet": 1,
+     "giris": 23,
+     "cikis": 16
+    },
+    "kayip": 40,
+    "n": 62,
+    "baskin": "giris",
+    "oneri": "Sinyalin girişte avantajı yok: stop/çıkış/filtre denemesi YAPMA. Kazanan ile kaybedeni ayıran koşula (kristal) bak.",
+    "rejim_kayip": {
+     "kotu": 0.6,
+     "iyi": 0.6491228070175439
+    }
+   },
+   "kristal": [
+    {
+     "kosul": [
+      "once",
+      ">",
+      0.2104446282771114
+     ],
+     "ort_ic": 0.21674,
+     "n_ic": 21,
+     "ort_dis": -0.0512,
+     "n_dis": 22,
+     "fark": 0.26794
+    },
+    {
+     "kosul": [
+      "oynak",
+      ">",
+      0.041147245869785284
+     ],
+     "ort_ic": 0.18545,
+     "n_ic": 21,
+     "ort_dis": -0.02134,
+     "n_dis": 22,
+     "fark": 0.20679
+    },
+    {
+     "kosul": [
+      "likidite",
+      ">",
+      22245075.220931817
+     ],
+     "ort_ic": 0.15491,
+     "n_ic": 21,
+     "ort_dis": 0.00782,
+     "n_dis": 22,
+     "fark": 0.14708
+    }
+   ]
+  }
+ ]
+}
