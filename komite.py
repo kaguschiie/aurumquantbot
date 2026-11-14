@@ -1,11 +1,3 @@
-"""Kurumsal Ajan Komitesi (TradingAgents mimarisi; yerel, ucretsiz). Her alis onerisi dort asamadan gecer ve karar
-karti olarak kaydedilir (arayuz Kararlar sayfasi + Telegram):
-1) ANALISTLER: teknik (4 zaman dilimi, RSI, ATR, hacim, BTC'den ayrisma), zincir (balina akisi, likidasyon
-   kumeleri), makro/haber (risk istahi, VIX/DXY, altin).
-2) BOGA / AYI TARTISMASI: her iki tarafin tezleri sinyallerden uretilir ve kanitla TARTILIR: Gecmis Okulu (2 yil,
-   binlerce ornek) ve Ders Defteri (canli sonuc) o sinyalin gercek ortalama R'sini yazar; kanitsiz tez agirlik almaz.
-3) TRADER: oneri (yerel motor veya Claude): giris, stop, hedef, risk.
-4) RISK YONETIMI: bot.vet_buy kontrolleri -> ONAY ya da VETO (sebebiyle). Veto edilen oneri borsaya gitmez."""
 import dersler as L
 import gecmis as G
 
@@ -17,7 +9,6 @@ def _f(v, fmt="+.2f", d="-"):
 
 
 def analysts(row, ctx, whale=None, liq=None, macro=None):
-    """Uc analistin notu (sadece eldeki veriden; ag cagrisi yok)."""
     te = row.get("tech") or {}
     tek = (f"Teknik 15dk/1s/4s/1g {_f(te.get('15m'))}/{_f(te.get('1h'))}/{_f(te.get('4h'))}/{_f(te.get('1d'))}"
            f" · RSI {_f(row.get('rsi'), '.0f')} · ATR %{_f((row.get('atr_pct') or 0) * 100, '.2f')}"
@@ -38,7 +29,6 @@ def analysts(row, ctx, whale=None, liq=None, macro=None):
 
 
 def _evidence(sig, regime):
-    """Sinyalin kaniti: Gecmis Okulu (oncelik, binlerce ornek) yoksa Ders Defteri. Donus: (ort R, n, kaynak) | None."""
     st = G.sig_stat((sig,))
     if st:
         return st["avg"], st["n"], "2 yıl"
@@ -49,7 +39,6 @@ def _evidence(sig, regime):
 
 
 def debate(sigs, regime, row, kind=None):
-    """Boga/ayi tezleri, kanit agirlikli. Donus: {bull, bear, edge}"""
     bull, bear, edge = [], [], 0.0
     for s in sorted(sigs):
         ev = _evidence(s, regime)
@@ -80,7 +69,6 @@ BEARISH = {"zayif_4s", "gunluk_asagi", "rsi_asiri", "pompa", "defter_satici", "f
 
 
 def card(a, out, row, ctx, sigs, checks, memory, whale=None, liq=None, macro=None):
-    """Tek oneri icin komite karti (arayuz + Telegram + hafiza)."""
     kind = a.get("kind") or ("elle" if a.get("manual") else None)
     d = debate(sigs, ctx.get("regime"), row, kind) if a.get("type") == "buy" else {"bull": [], "bear": [], "edge": 0}
     if a.get("bull_case"):
@@ -90,7 +78,7 @@ def card(a, out, row, ctx, sigs, checks, memory, whale=None, liq=None, macro=Non
     ok = "emir verildi" in (out.get("result") or "") or out.get("result") in ("kapatıldı", "güncellendi")
     veto = next((c for c in checks if not c[1]), None)
     return {"kind": kind, "kind_tr": KIND_TR.get(kind, "-"), "analyst": analysts(row, ctx, whale, liq, macro),
-            "bull": d["bull"], "bear": d["bear"], "edge": a.get("_edge"),  # risk yoneticisinin kullandigi tek avantaj
+            "bull": d["bull"], "bear": d["bear"], "edge": a.get("_edge"),
             "checks": [{"name": n, "ok": bool(o), "detail": t} for n, o, t in checks],
             "verdict": "ONAY" if ok else "VETO" if veto else "RED",
             "veto": veto[2] if veto else (None if ok else out.get("result")),

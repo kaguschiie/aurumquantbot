@@ -1,7 +1,3 @@
-"""Claude kontrolor (portfoy alimlari icin) + karnesi.
-Gunluk dengelemede alinacak coinleri Claude inceler; SADECE alimi ertele / yariya indir diyebilir (satislara karisamaz).
-Her itiraz 7 gun sonra puanlanir: coin o 7 gunde dustuyse itiraz dogruydu. Son 20 itirazin isabeti %50'nin altina
-inerse itirazlar uygulanmaz, sadece kaydedilir (golge mod); tekrar ustune cikinca soz hakki geri gelir."""
 import json
 import logging
 import os
@@ -44,7 +40,6 @@ def _save(d):
 
 
 def card():
-    """Karne: isabet, ortalama kacinilan dusus, soz hakki."""
     with _LOCK:
         it = _load()["items"]
     done = [x for x in it if x.get("dogru") is not None][-WINDOW:]
@@ -56,7 +51,6 @@ def card():
 
 
 def score(ex):
-    """7 gunu dolan itirazlari puanla (gunluk mum: itirazdan 7 gun sonraki kapanis)."""
     with _LOCK:
         d = _load()
         todo = [x for x in d["items"] if x.get("dogru") is None and time.time() - x["t"] >= 7 * 86400]
@@ -65,7 +59,7 @@ def score(ex):
             k = ex.fetch_ohlcv(x["sym"], "1d", since=int((x["t"] + 7 * 86400) * 1000), limit=1)
             if k:
                 x["ret7"] = round(k[0][4] / x["px"] - 1, 4)
-                x["dogru"] = x["ret7"] < 0  # ertelenen/kucultulen alim o hafta dustu: itiraz isabetli
+                x["dogru"] = x["ret7"] < 0
         except Exception:
             continue
     if todo:
@@ -77,8 +71,6 @@ def score(ex):
 
 
 def _valid(dec, known):
-    """Claude ciktisi yerelde denetlenir: itirazlar liste, her kalem sozluk, sym bugunun aliminda, karar izinli; coin basina ilk kalem.
-    Bozuk kalem kaydedilir ve yok sayilir. Donus: (gecerli kalemler, bozuk sayisi)."""
     raw = dec.get("itirazlar") if isinstance(dec, dict) else None
     if not isinstance(raw, list):
         if raw is not None or not isinstance(dec, dict):
@@ -97,8 +89,6 @@ def _valid(dec, known):
 
 
 def review(ask, buys, lines):
-    """buys: [(sym, hedef_agirlik, simdiki_agirlik, fiyat, aciklama)]. ask: agent.ask_json.
-    Donus: (ozet, {sym: 'ertele'|'yarim'} uygulanacaklar, kayit notu)."""
     kc = card()
     hist = (f"Karnen: son {kc['n']} itirazin isabeti %{kc['isabet'] * 100:.0f}"
             if kc["isabet"] is not None else "Karnen: henuz puanlanmis itirazin yok")

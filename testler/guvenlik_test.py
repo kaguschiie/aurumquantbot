@@ -1,6 +1,4 @@
-"""Guvenlik: sifre kurali, POST govde siniri, guncellemede dogrulama + geri alma, SHA-256 zorunlu. Ag yok (yerel sunucu)."""
 import http.client
-import os
 import subprocess
 import sys
 import threading
@@ -21,7 +19,6 @@ def check(name, cond, info=""):
     print(("OK  " if cond else "HATA"), name, str(info)[:200], flush=True)
 
 
-# 1) sifre kurali
 check("kisa sifre reddedilir", auth.weak("abc12345") and auth.weak("123456"))
 check("sadece harf reddedilir", auth.weak("sadeceharfler"))
 check("sadece rakam reddedilir", auth.weak("1234567890"))
@@ -29,7 +26,6 @@ check("10+ karakter harf+rakam kabul", auth.weak("guclu-sifre-42") is None and a
 check("create zayif sifreyi reddeder", "10 karakter" in (auth.create("zayif_kul", "123456", "user") or ""))
 check("set_password zayif sifreyi reddeder", "10 karakter" in (auth.set_password("yok", "kisa1") or ""))
 
-# 2) POST govde siniri (gercek yerel HTTP sunucusu, rastgele port)
 srv = ThreadingHTTPServer(("127.0.0.1", 0), app.Handler)
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 port = srv.server_address[1]
@@ -55,7 +51,6 @@ b = b'{"user": "yok", "password": "yanlis-sifre-1"}'
 check("normal giris istegi islenir (413 degil)", post(len(b), b) == 200)
 srv.shutdown()
 
-# 3) guncelleme: dogrulama basarisizsa geri al, servis yeniden baslatilmaz
 calls, quit_ = [], []
 
 
@@ -97,7 +92,6 @@ r = G.apply(lambda: quit_.append(1))
 check("dogrulama gecerse geri alma yok, yeniden baslatilir", r is None and quit_ and not any(c[0] == "reset" for c in calls), r)
 G.subprocess.run = _run
 
-# 4) exe yolu: SHA-256 dosyasi olmayan paket kurulmaz
 G.GIT = False
 G.sys = types.SimpleNamespace(frozen=True, executable=sys.executable, argv=sys.argv)
 G.STATE["latest"] = {"version": "2099.01.01.0000", "newer": True, "zip": {"browser_download_url": "x", "url": "x"}, "sha": None}

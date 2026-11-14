@@ -23,7 +23,6 @@ button{font:inherit}
 .wbtn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.2}
 .shell{flex:1;display:flex;min-height:0}
 ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#262d3a;border-radius:10px;border:2px solid var(--bg)}::-webkit-scrollbar-thumb:hover{background:#323b4c}
-/* ---- menu ---- */
 nav{width:226px;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:16px 12px;flex:none}
 .logo{display:flex;align-items:center;gap:10px;padding:0 8px 18px;font-weight:700;font-size:15px}
 .logo svg{width:30px;height:30px}.logo small{display:block;font-weight:500;color:var(--dim);font-size:11px}
@@ -39,7 +38,6 @@ nav .sp{flex:1}.navhint{color:var(--dim);font-size:11px;padding:6px 12px 10px;li
 .me:hover{border-color:var(--line2)}
 .avatar{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;flex:none}
 .me b{display:block;font-size:13px}.me small{color:var(--mute);font-size:11.5px}
-/* ---- ust bar ---- */
 main{flex:1;display:flex;flex-direction:column;min-width:0}
 header{display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1px solid var(--line);background:rgba(14,18,26,.85);backdrop-filter:blur(10px);flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;white-space:nowrap}
@@ -60,7 +58,6 @@ header{display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1
 .btn:disabled{opacity:.5;cursor:default}
 .ib{border:0;background:none;color:var(--mute);cursor:pointer;padding:4px 6px;border-radius:7px;display:inline-grid;place-items:center;transition:all .15s}
 .ib:hover{background:var(--panel3);color:var(--text)}.ib svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
-/* ---- sayfalar ---- */
 .workspace{flex:1;display:flex;min-height:0}
 #pages{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
 section.page{display:none;padding:18px 20px;overflow:auto;flex:1;container-type:inline-size}
@@ -114,7 +111,6 @@ textarea{resize:vertical;min-height:70px}
 .toggle{position:relative;width:42px;height:24px;border-radius:99px;background:var(--panel3);border:1px solid var(--line2);cursor:pointer;transition:background .2s}
 .toggle::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#cfd5e2;transition:transform .2s var(--ease)}
 .toggle.on{background:var(--up);border-color:var(--up)}.toggle.on::after{transform:translateX(18px)}
-/* ---- Claude karar kartlari ---- */
 .dec{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--panel);animation:enter .25s var(--ease)}
 .dec .dh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .dec .view{color:var(--text);margin:4px 0 8px;user-select:text}
@@ -131,7 +127,6 @@ textarea{resize:vertical;min-height:70px}
 .mcbox{margin-top:10px}.mcbox h5{margin:0 0 2px;font-size:11.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
 .skp{font-size:12px;margin-top:6px}.skp summary{cursor:pointer;color:var(--mute)}.skp div{margin:2px 0 2px 12px}
 .conv{display:inline-block;width:60px;height:6px;border-radius:6px;background:var(--panel3);overflow:hidden;vertical-align:middle}.conv i{display:block;height:100%;background:linear-gradient(90deg,var(--warn),var(--up))}
-/* ---- sohbet ---- */
 section#chat.on{display:flex;flex-direction:column}
 #chatwrap{display:flex;flex-direction:column;flex:1;min-height:0;max-width:1100px;width:100%;margin:0 auto}
 #msgs{flex:1;overflow:auto;padding:6px 2px;min-height:120px}
@@ -142,7 +137,6 @@ section#chat.on{display:flex;flex-direction:column}
 .chathead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .msg.me{background:linear-gradient(135deg,var(--acc),#6b7bff);margin-left:auto;border-bottom-right-radius:4px}.msg.bot{background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
 .ask{display:flex;gap:8px;margin-top:10px}.ask input{flex:1;padding:12px 14px}
-/* ---- sag panel (dock) ---- */
 #dock{display:none;flex:none;width:var(--dockw,440px);border-left:1px solid var(--line);background:#0c1017;position:relative;flex-direction:column;min-height:0}
 #dock.open{display:flex;animation:slidein .25s var(--ease)}
 @keyframes slidein{from{opacity:0;transform:translateX(24px)}}
@@ -167,7 +161,6 @@ section#chat.on{display:flex;flex-direction:column}
   h2{font-size:15px}
 }
 @container (max-width:1100px) and (min-width:761px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.g2:not(.g11){grid-template-columns:minmax(0,1fr)}.g2.g31 .chart.big{height:min(62vh,560px)}}
-/* ---- giris ---- */
 .login{position:fixed;inset:38px 0 0 0;z-index:40;display:flex;align-items:safe center;justify-content:safe center;padding:16px;background:radial-gradient(ellipse at top,#121a2c,#090c12 60%);overflow:auto}
 .login.hide{opacity:0;pointer-events:none;transition:opacity .35s}
 .blob{position:absolute;width:520px;height:520px;border-radius:50%;filter:blur(90px);opacity:.35;animation:float 16s ease-in-out infinite}
@@ -180,7 +173,6 @@ section#chat.on{display:flex;flex-direction:column}
 .btn.big{padding:11px;margin-top:12px;font-weight:600}
 .lfoot{margin-top:12px;color:var(--dim);font-size:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .shake{animation:shake .4s}@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
-/* ---- bildirim, palet, menu ---- */
 #toasts{position:fixed;right:18px;bottom:18px;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 .toast{max-width:380px;padding:11px 14px;border-radius:12px;background:rgba(25,32,43,.95);border:1px solid var(--line2);box-shadow:0 12px 40px rgba(0,0,0,.4);backdrop-filter:blur(8px);animation:tin .3s var(--ease);font-size:13px;display:flex;gap:9px;align-items:flex-start}
 .toast.out{animation:tout .3s forwards}.toast i{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none;background:var(--acc)}
@@ -197,7 +189,6 @@ section#chat.on{display:flex;flex-direction:column}
 .menu button{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}.menu button:hover{background:var(--panel2)}
 kbd{font:11px/1 inherit;padding:2px 5px;border-radius:5px;border:1px solid var(--line2);color:var(--mute)}
 .tvbox{border-radius:12px;overflow:hidden}.tvnote{font-size:11.5px;color:var(--dim);margin-top:6px}.tvnote a{color:var(--mute)}
-/* ---- kasa, radar, ders defteri, makro ---- */
 .kpi.hero{background:linear-gradient(135deg,rgba(91,140,255,.16),rgba(124,91,255,.08)),var(--panel);border-color:#2a3a66}.kpi.hero b{font-size:23px}
 #kasapill b{font-weight:650}
 .sig{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:6px;margin:1px 2px 1px 0;background:rgba(34,195,142,.1);color:var(--up);white-space:nowrap}
@@ -252,7 +243,6 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
   </div>
 </div>
 
-<!-- GIRIS -->
 <div class="login" id="login">
   <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
   <form class="lcard" id="lform" autocomplete="on">
@@ -296,7 +286,6 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
   <div class="workspace">
   <div id="pages">
 
-  <!-- KOMUTA MERKEZI -->
   <section id="home" class="page">
     <div id="homebanner"></div>
     <div class="kpis">
@@ -320,7 +309,6 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
     <div class="card feed"><h3>Son olaylar<span class="grow"></span><button class="btn sm" onclick="go('decisions')">Claude kararları</button><button class="btn sm" onclick="go('notes')">Günlük</button></h3><div id="feed"></div></div>
   </section>
 
-  <!-- GRAFIK -->
   <section id="chartp" class="page">
     <div class="chips">
       <select id="csym"></select>
@@ -336,13 +324,11 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
     </div>
   </section>
 
-  <!-- TARAYICI -->
   <section id="screen" class="page">
     <div class="chips"><input id="sq" placeholder="Coin ara..." style="width:220px"><span class="grow"></span><span class="mute" id="sinfo"></span></div>
     <div class="card scrollbox" style="padding:0;overflow:auto;max-height:calc(100vh - 150px)"><table id="scr"></table></div>
   </section>
 
-  <!-- RADAR (tum piyasa) -->
   <section id="opps" class="page">
     <div class="chips"><span class="mute" id="rinfo">Radar hazırlanıyor (ilk tarama 1-2 dk)...</span><span class="grow"></span><input id="rq" placeholder="Coin ara..." style="width:180px"></div>
     <div class="card" id="whalecard"><h3>Balina akışı<span class="grow"></span><span class="dim" style="font-weight:400" id="whaleinfo"></span></h3><div id="whale" class="big-empty" style="padding:8px">Balina verisi toplanıyor (1 dk)...</div></div>
@@ -350,7 +336,6 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
     <div class="card"><h3>TradingView kripto tarayıcısı<span class="grow"></span><span class="dim" style="font-weight:400">TradingView kuralları gereği sadece gösterim; bot kararlarında kullanılmaz</span></h3><div id="tvscr" class="tvbox"></div></div>
   </section>
 
-  <!-- BORSA / MAKRO -->
   <section id="macro" class="page">
     <div id="mrisk"></div>
     <div class="card scrollbox" style="padding:0;overflow:auto"><table id="mtab"></table></div>
@@ -360,7 +345,6 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
     </div>
   </section>
 
-  <!-- DERS DEFTERI -->
   <section id="lessons" class="page">
     <div class="banner info" style="display:block">Her kapanan işlem incelenir. Sürekli zarar ettiren durumlar <b>tuzak</b> olarak engellenir.</div>
     <div class="kpis" id="lk"></div>
@@ -374,7 +358,6 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
     <div class="card" data-admin id="lmemo"></div>
   </section>
 
-  <!-- ISLEMLER -->
   <section id="trades" class="page">
     <div class="kpis" id="tstats"></div>
     <div class="card"><h3>Açık pozisyonlar</h3><div id="pos2"></div></div>
@@ -385,7 +368,6 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
     <div class="card scrollbox" style="padding:0;overflow:auto"><table id="tr"></table></div>
   </section>
 
-  <!-- CLAUDE KARARLARI -->
   <section id="news" class="page">
     <div class="chips"><span class="mute" id="nst"></span><span class="grow"></span><label class="mute" style="font-size:12.5px"><input type="checkbox" id="nall" onchange="loadNews()"> Elenenleri de göster</label></div>
     <div id="nblock"></div>
@@ -399,20 +381,17 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
     <div id="declist"></div>
   </section>
 
-  <!-- GUNLUK -->
   <section id="notes" class="page">
     <div class="chips" id="chips"></div>
     <div class="card" id="notelist"></div>
   </section>
 
-  <!-- ML GECMIS TEST (admin) -->
   <section id="bt" class="page">
     <div class="kpis" id="btk"></div>
     <div class="card"><h3>Görülmemiş veride ML geçmiş testi (walk-forward, komisyon dahil)</h3><div id="btchart" class="chart" style="height:340px"></div></div>
     <div class="card"><h3>Model raporu</h3><div id="btmodel" class="mute" style="user-select:text"></div></div>
   </section>
 
-  <!-- SOHBET -->
   <section id="chat" class="page"><div id="chatwrap">
     <div class="chathead"><span id="chatban" class="pill">-</span><span class="grow"></span><button class="btn sm" id="newchat">Yeni sohbet</button></div>
     <div id="msgs"></div>
@@ -425,7 +404,6 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
     <div class="ask"><input id="q" placeholder="Claude'a sor... (Enter)"><button class="btn pri" id="send">Gönder</button></div>
   </div></section>
 
-  <!-- AYARLAR -->
   <section id="hazirlik" class="page"><div id="hzwrap"></div></section>
   <section id="settings" class="page"><div id="setwrap"></div></section>
   </div>
@@ -442,7 +420,7 @@ td.sigs{white-space:normal;min-width:260px;max-width:380px;line-height:1.9}
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const AGR = window.KISILIK === "agresif";  // agresif.py enjekte eder; melik/fatih'te hep false
+const AGR = window.KISILIK === "agresif";
 let ME = null, S = null, SCR = [], TAB = "home", DOCK = [], PREV = "home", ACCT = "PAPER";
 let csym = "BTC/USDT", ctf = "1h", cmode = "bot", sortKey = "qvol", sortDir = -1, noteFilter = "hepsi", lastNoteT = 0;
 const fmt = (v, d = 2) => v == null || isNaN(v) ? "-" : Number(v).toLocaleString("tr-TR", {minimumFractionDigits: d, maximumFractionDigits: d});
@@ -475,7 +453,6 @@ const AGR_SAYFA = ["home", "chartp", "opps", "trades", "notes", "agresif"], AGRK
 const title = t => (PAGES.find(p => p[0] === t) || [, t])[1];
 const allowed = t => AGR ? AGR_SAYFA.includes(t) : PAGES.some(p => p[0] === t && (!p[2] || ME?.role === "admin"));
 const BOT_HOST = /^[a-z]+\.\d+-\d+-\d+-\d+\.sslip\.io$/.test(location.host), BOT_AD = location.host.split(".")[0];
-// melik ve fatih birbirine baglanmaz: her biri sadece agresife gecer; agresif sadece geldigi hesaba doner
 const GERI = (() => { let g = (location.hash.match(/^#geri=(melik|fatih)$/) || [])[1];
   try { if (g) { localStorage.setItem("kqb.geri", g); history.replaceState(null, "", location.pathname + location.search); } else g = localStorage.getItem("kqb.geri"); } catch (e) {}
   return ["melik", "fatih"].includes(g) ? g : null; })();
@@ -485,31 +462,28 @@ const visible = t => TAB === t || DOCK.includes(t);
 const store = (k, v) => { try { v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
 
-/* ---------- API ---------- */
 async function api(p, body) {
   const sep = p.includes("?") ? "&" : "?";
   const url = body === undefined && ME?.role === "admin" && !p.startsWith("/api/auth") ? p + sep + "acct=" + ACCT : p;
   const r = await fetch(url, body === undefined ? {} : {method: "POST", headers: {"X-KQB": "1", "Content-Type": "application/json"}, body: JSON.stringify(body)});
   if (r.status === 401) { showLogin(); throw new Error("401"); }
-  if (AGR && (r.status === 403 || r.status === 429) && !p.startsWith("/api/auth")) throw new Error("kapali");  // kapali uc: sessiz
+  if (AGR && (r.status === 403 || r.status === 429) && !p.startsWith("/api/auth")) throw new Error("kapali");
   return r.json();
 }
 const post = (p, body = {}) => api(p, ME?.role === "admin" ? {acct: ACCT, ...body} : body);
 
-/* ---------- bildirim ---------- */
 function toast(text, kind = "", ms = 4200) {
   const d = document.createElement("div"); d.className = "toast " + kind; d.innerHTML = `<i></i><div>${esc(text)}</div>`;
   $("#toasts").appendChild(d); while ($("#toasts").children.length > 4) $("#toasts").firstChild.remove();
   setTimeout(() => { d.classList.add("out"); setTimeout(() => d.remove(), 300); }, ms);
 }
 
-/* ---------- giris ---------- */
 let SETUP = false;
 function showLogin(setup) {
   ME = null; SETUP = !!setup; $("#login").classList.remove("hide"); $("#login").hidden = false;
   $("#ltitle").textContent = SETUP ? "Kurulum: admin hesabı" : "Giriş yap";
   $("#lsub").textContent = SETUP ? "İlk çalıştırma. Tüm ayarlara erişen admin hesabını oluşturun." : "Hesabınızla devam edin.";
-  if (BOT_HOST && !SETUP) {  // her botun hesabi ayri: yanlis bota sifre girilmesin
+  if (BOT_HOST && !SETUP) {
     const ad = {melik: "Melik'in botu", fatih: "Fatih'in botu", agresif: "Agresif (sanal)"}[BOT_AD] || BOT_AD;
     $("#lsub").innerHTML = `Bu sayfa: <b>${esc(ad)}</b>. Sadece bu botun hesabıyla girilir. <a href="${location.protocol}//${location.host.split(".").slice(1).join(".")}/?sec=1">Başka bot seç</a>`;
   }
@@ -529,7 +503,6 @@ $("#lform").onsubmit = async e => {
 };
 async function logout() { await api("/api/auth/logout", {}); location.reload(); }
 
-/* ---------- profil fotografi (yerel dosyadan, veri klasorunde saklanir) ---------- */
 const avUrl = (u, v) => `/api/avatar?u=${encodeURIComponent(u)}&v=${v || 0}`;
 function setAv(el, user, ver) { if (!el) return; el.classList.toggle("img", !!ver); el.style.backgroundImage = ver ? `url("${avUrl(user, ver)}")` : ""; }
 function paintAvatars() { setAv($("#av"), ME.user, ME.avatar); setAv($("#avprev"), ME.user, ME.avatar); }
@@ -539,7 +512,7 @@ $("#avfile").onchange = async e => {
   if (!/^image\//.test(f.type)) return toast("Lütfen bir resim dosyası seçin (png, jpg, webp).", "down");
   try {
     const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = URL.createObjectURL(f); });
-    const c = document.createElement("canvas"), s = Math.min(img.width, img.height); c.width = c.height = 256;  // kare kirp + 256 px
+    const c = document.createElement("canvas"), s = Math.min(img.width, img.height); c.width = c.height = 256;
     c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 256, 256);
     let data = c.toDataURL("image/webp", 0.88); if (!data.startsWith("data:image/webp")) data = c.toDataURL("image/jpeg", 0.88);
     const r = await api("/api/avatar", {data}); toast(r.msg, r.ok ? "up" : "down");
@@ -548,12 +521,11 @@ $("#avfile").onchange = async e => {
 };
 async function removeAvatar() { const r = await api("/api/avatar", {data: null}); toast(r.msg, "up"); ME.avatar = 0; paintAvatars(); }
 let lavT;
-$("#luser").addEventListener("input", () => { clearTimeout(lavT); lavT = setTimeout(() => {  // giris ekraninda kullanicinin fotografi
+$("#luser").addEventListener("input", () => { clearTimeout(lavT); lavT = setTimeout(() => {
   const u = $("#luser").value.trim(), el = $("#lav"); if (u.length < 3) { el.hidden = true; return; }
   const i = new Image(); i.onload = () => { setAv(el, u, Date.now()); el.hidden = false; }; i.onerror = () => { el.hidden = true; }; i.src = avUrl(u, Date.now());
 }, 300); });
 
-/* ---------- Telegram baglantisi ---------- */
 async function loadTelegram() {
   const el = $("#tgdyn"); if (!el) return;
   const t = await api("/api/telegram"), admin = ME.role === "admin";
@@ -584,7 +556,6 @@ function tgCard(admin) {
     <div class="dim" style="font-size:12px;margin-top:8px">Telefona düşenler: işlem açılış/kapanış, sıfır zarar kalkanı, radar kırılımları, strateji kararları, Ders Defteri otopsileri. Menüde: kasa, radar, makro, son karar, şimdi analiz, duraklat/başlat, acil kapat. Normal mesaj = Claude sohbeti.</div></div>`;
 }
 
-/* ---------- menu ve sag panel ---------- */
 function buildNav() {
   $("#navitems").innerHTML = PAGES.filter(p => allowed(p[0])).map(([t, l]) => `<button class="navbtn" data-t="${t}" aria-label="${l}" title="Çift tık: sağ panele ekle"><svg viewBox="0 0 24 24">${ICON[t]}</svg>${l}</button>`).join("");
   $$("#navitems .navbtn").forEach(b => {
@@ -631,7 +602,7 @@ function show(t) {
   ({home: () => { if (S) renderHome(S); loadPF().catch(() => {}); }, agresif: loadAgr, settings: loadSettings, chartp: () => { loadCandles(true).finally(tvLoad); }, screen: loadScreener, opps: loadOpps, macro: loadMacro, lessons: loadLessons, notes: loadNotes, trades: loadTrades,
     news: loadNews, decisions: loadDecisions, bt: renderBT, hazirlik: loadHazirlik, gelistir: loadGel, chat: () => setTimeout(() => $("#msgs").scrollTop = 1e9, 50)}[t] || (() => {}))();
 }
-(() => { // sag panel genisligi: surukle
+(() => {
   const r = $("#resizer"); let x0 = 0, w0 = 0;
   const mv = e => { const w = Math.min(Math.max(w0 + x0 - e.clientX, 320), window.innerWidth * 0.62); document.documentElement.style.setProperty("--dockw", w + "px"); };
   r.onmousedown = e => { x0 = e.clientX; w0 = $("#dock").offsetWidth; r.classList.add("drag"); document.body.style.cursor = "col-resize";
@@ -640,7 +611,6 @@ function show(t) {
   const w = load("kqb.dockw"); if (w) document.documentElement.style.setProperty("--dockw", w + "px");
 })();
 
-/* ---------- grafik yardimcilari ---------- */
 const LW = window.LightweightCharts;
 const tfmt = t => new Date(t * 1000).toLocaleString("tr-TR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
 const chartOpts = el => ({width: el.clientWidth, height: el.clientHeight, layout: {background: {color: "transparent"}, textColor: "#8790a3", fontFamily: "Segoe UI"},
@@ -650,7 +620,7 @@ const chartOpts = el => ({width: el.clientWidth, height: el.clientHeight, layout
 function mkChart(id) {
   const el = $("#" + id); if (!LW) { el.innerHTML = `<div class="big-empty">Grafik kütüphanesi yüklenemedi (internet?).</div>`; return null; }
   const c = LW.createChart(el, chartOpts(el));
-  let w0 = el.clientWidth;  // gizliyken (0 genislik) olusan grafik gorunur olunca veriyi sigdirsin
+  let w0 = el.clientWidth;
   new ResizeObserver(() => { if (!el.clientWidth) return; c.applyOptions({width: el.clientWidth, height: el.clientHeight}); if (!w0) c.timeScale().fitContent(); w0 = el.clientWidth; }).observe(el);
   return c;
 }
@@ -665,7 +635,6 @@ function setVal(id, html, num) {
 const techChip = v => v == null ? '<span class="chipr">-</span>' : `<span class="chipr ${v > .5 ? "sb" : v > .1 ? "b" : v < -.5 ? "ss" : v < -.1 ? "s" : ""}" title="${fmt(v)}">${v > .5 ? "GÜÇLÜ AL" : v > .1 ? "AL" : v < -.5 ? "GÜÇLÜ SAT" : v < -.1 ? "SAT" : "NÖTR"}</span>`;
 const techs = (t, tfs = ["15m", "1h", "4h", "1d"]) => `<span class="techs">${tfs.map(k => techChip((t || {})[k])).join("")}</span>`;
 
-/* ---------- komuta merkezi ---------- */
 function renderHeader(s) {
   const admin = ME.role === "admin";
   $("#acctseg").hidden = !admin || AGR; $("#acctpill").hidden = admin && !AGR;
@@ -703,7 +672,7 @@ function renderHome(s) {
   const pct = s.start_equity ? (s.equity / s.start_equity - 1) * 100 : 0;
   if (!s.no_account) {
   setVal("#k-eq", fmt(s.equity) + " $", Math.round(s.equity * 100)); $("#k-eq2").innerHTML = "komisyonlar düşülmüş net · başlangıç " + fmt(s.start_equity) + " $";
-  const tot = s.equity - (s.start_equity || s.equity);  // canli: kapanan + acik pozisyonlar (saniyelik)
+  const tot = s.equity - (s.start_equity || s.equity);
   setVal("#k-pnl", sg(tot, 2, " $"), Math.round(tot * 100)); $("#k-pnl2").innerHTML = `kapanan ${sg(s.pnl, 2, " $")} · açık ${sg(s.open_pnl, 2, " $")}`;
   setVal("#k-day", sg(s.day_pct), Math.round(s.day_pct * 100)); $("#k-day2").textContent = "gün başına göre (UTC)";
   const PO = s.payoff || {};
@@ -715,7 +684,6 @@ function renderHome(s) {
   const K = s.kasa || {};
   setVal("#k-ai", K.risk_usd == null ? "—" : fmt(K.risk_usd) + " $"); $("#k-ai2").textContent = K.mult == null ? "" : `kasanın %${fmt(K.risk_pct * Math.min(K.mult, 1), 2)}'i · çarpan ×${fmt(K.mult)}`;
   renderKasa(s);
-  // kasa egrisi + BTC al-tut kiyasi
   if (!eqC) { eqC = mkChart("eqchart"); if (eqC) { eqB = eqC.addLineSeries({color: "#f5b04188", lineWidth: 1, lineStyle: 2, title: "BTC al-tut"}); eqS = eqC.addAreaSeries({lineColor: "#5b8cff", topColor: "rgba(91,140,255,.22)", bottomColor: "rgba(91,140,255,0)", lineWidth: 2, title: "Kasa"}); } }
   if (eqC && s.curve.length) {
     const b0 = (s.curve.find(c => c[2]) || [])[2];
@@ -724,7 +692,6 @@ function renderHome(s) {
     const last = s.curve[s.curve.length - 1], bt = b0 && last[2] ? (last[2] / b0 - 1) * 100 : null;
     $("#eqhint").innerHTML = `kasa ${sg(pct)} · BTC al-tut ${sg(bt)}`;
   }
-  // Claude karti
   const dec = s.decision, nx = ag.next || 0;
   $("#act").innerHTML = [
     ["Beyin", `<span class="${{api: "up", cli: "up", local: "warn"}[s.brain] || "mute"}">${esc(s.chat_info)}</span>`],
@@ -740,7 +707,7 @@ function renderHome(s) {
   renderPositions(s, "#pos"); renderProtections(s);
   $("#feed").innerHTML = s.notes.slice().reverse().map(noteHtml).join("") || `<div class="big-empty">Henüz not yok.</div>`;
 }
-function noteToasts(s) {  // Ana Sayfa gorunmese de bildirim kaybolmasin
+function noteToasts(s) {
   for (const n of s.notes) if (n.t > lastNoteT) { if (lastNoteT && ["islem", "karar", "uyari"].includes(n.kind)) toast(n.text.split("\n")[0].slice(0, 160), n.kind === "uyari" ? "down" : n.kind === "islem" ? "up" : ""); }
   lastNoteT = Math.max(lastNoteT, ...s.notes.map(n => n.t), 0);
 }
@@ -775,7 +742,7 @@ function renderPositions(s, sel) {
     (s.positions.length ? `<tr><td class="dim">Toplam</td><td class="r"><b>${fmt(inv)} $</b><div class="dim" style="font-size:11.5px">şimdi ${fmt(now)} $</div></td><td colspan="8" class="dim">nakit ${fmt(s.cash)} $${s.earn > 0 ? ` (+ ${fmt(s.earn)} $ Earn'de)` : ""} · Binance komisyonu (alış + satış, %${fmt((s.fee ?? 0.001) * 100, 2)}) K/Z'den düşülmüş</td></tr>` : "") +
     s.pending.map(p => `<tr><td><b>${base(p.sym)}</b></td><td class="r">${fmt(p.qty * p.price)} $</td><td class="r">${px(p.price)}</td><td class="r">${px(p.price_now)}</td><td class="r">-</td><td class="hide-sm"></td><td class="r hide-sm">${px(p.stop)}</td><td class="r hide-sm">${px(p.tp2)}</td><td class="warn hide-sm">Pasif alış emri</td><td class="r"><button class="btn sm" onclick="closePos('${p.sym}')">İptal</button></td></tr>`).join("") + "</table>";
 }
-function kalan(sn) {  // kalan sure: 3 sa 12 dk / 12 dk 05 sn
+function kalan(sn) {
   const s = Math.floor(sn), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), d = String(s % 60).padStart(2, "0");
   return h >= 24 ? `${Math.floor(h / 24)} gün ${h % 24} sa` : h ? `${h} sa ${m} dk` : `${m} dk ${d} sn`;
 }
@@ -795,12 +762,11 @@ $("#closeall").onclick = async () => { if (!confirm("TÜM açık pozisyonlar piy
 async function decideNow() { const r = await api("/api/decide", {}); toast(r.msg, r.ok ? "" : "warn"); }
 $("#decnow").onclick = decideNow;
 
-/* ---------- tarayici ---------- */
 const COLS = [["sym", "Coin"], ["price", "Fiyat", 1], ["chg24", "24s", 1], ["qvol", "Hacim 24s", 1], ["tech", "Teknik özet 15dk · 1s · 4s · 1g"], ["rsi", "RSI", 1, 1], ["funding", "Fonlama", 1, 1],
   ["flow24", "Alıcı akışı", 1, 1], ["oi24", "OI 24s", 1, 1], ["ob", "Defter (ilk 20)", 1, 1], ["p", "ML p", 1, 1], ["state", "Durum"]];
 async function loadScreener() {
   SCR = await api("/api/screener");
-  const opts = SCR.map(r => r.sym); if (!opts.includes(csym)) opts.unshift(csym);  // radardan acilan coin derin izleme listesinde olmayabilir
+  const opts = SCR.map(r => r.sym); if (!opts.includes(csym)) opts.unshift(csym);
   if ($("#csym").dataset.v !== opts.join()) { $("#csym").innerHTML = opts.map(o => `<option>${o}</option>`).join(""); $("#csym").dataset.v = opts.join(); }
   $("#csym").value = csym;
   if (visible("screen")) renderScreener(); if (visible("chartp")) renderCoinDetail();
@@ -825,9 +791,8 @@ function renderScreener() {
 }
 $("#sq").oninput = renderScreener;
 
-/* ---------- firsatlar ---------- */
 const BAD = new Set(["zayif_4s", "gunluk_asagi", "rsi_asiri", "pompa", "defter_satici", "fonlama_yuksek"]), CTX = new Set(["rejim_dusus", "rejim_trend", "makro_riskoff", "altin"]);
-const sigHtml = (keys, labels, max = 4) => {  // once kotu (kirmizi) sinyaller, sonra iyiler; fazlasi "+N" (uzerine gelince hepsi)
+const sigHtml = (keys, labels, max = 4) => {
   const ix = (keys || []).map((k, i) => i).sort((a, b) => BAD.has(keys[b]) - BAD.has(keys[a]) || CTX.has(keys[a]) - CTX.has(keys[b]));
   const chip = i => `<span class="sig${BAD.has(keys[i]) ? " bad" : CTX.has(keys[i]) ? " ctx" : ""}">${esc(labels[i])}</span>`;
   return ix.slice(0, max).map(chip).join("") + (ix.length > max ? `<span class="sig ctx" title="${esc(ix.slice(max).map(i => labels[i]).join(", "))}">+${ix.length - max}</span>` : "");
@@ -865,7 +830,6 @@ function renderOpps() {
 }
 $("#rq").oninput = renderOpps;
 
-/* ---------- borsa / makro ---------- */
 const spark = a => { if (!a || a.length < 2) return ""; const lo = Math.min(...a), hi = Math.max(...a), w = 96, h = 26, r = hi - lo || 1;
   const pts = a.map((v, i) => `${(i / (a.length - 1) * w).toFixed(1)},${(h - 2 - (v - lo) / r * (h - 4)).toFixed(1)}`).join(" ");
   return `<svg class="spark" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${a[a.length - 1] >= a[0] ? "#22c38e" : "#ff5c6c"}" stroke-width="1.5"/></svg>`; };
@@ -888,7 +852,6 @@ async function loadMacro() {
       {title: "Hisseler", symbols: [{s: "NASDAQ:NVDA", d: "Nvidia"}, {s: "NASDAQ:AAPL", d: "Apple"}, {s: "NASDAQ:MSFT", d: "Microsoft"}, {s: "NASDAQ:TSLA", d: "Tesla"}, {s: "NASDAQ:COIN", d: "Coinbase"}]}]}); }
 }
 
-/* ---------- ders defteri ---------- */
 const LKIND = {zarar: "Zarar otopsisi", kar: "Kâr otopsisi", basabas: "Başabaş", kacan: "Kaçan fırsat", kural: "Yeni kural", deney: "Kontrollü deney", mc: "Monte Carlo"};
 let LES = null, lessonFilter = "hepsi";
 $("#lchips").innerHTML = Object.entries({hepsi: "Hepsi", ...LKIND}).map(([k, v]) => `<button class="btn sm${k === "hepsi" ? " on" : ""}" data-k="${k}">${v}</button>`).join(" ");
@@ -896,7 +859,7 @@ $("#lchips").onclick = e => { if (!e.target.dataset.k) return; lessonFilter = e.
 const lessonHtml = x => `<div class="lesson"><time>${tm(x.t)}</time><div><div class="lh"><span class="tag ${x.kind}">${LKIND[x.kind] || x.kind}</span>${x.sym ? `<b>${esc(base(x.sym))}</b>` : ""}${x.acct && ME.role === "admin" ? ` <span class="tag ${x.acct}">${x.acct === "LIVE" ? "gerçek" : "sanal"}</span>` : ""}${x.r != null ? ` <span class="mute">${sg(x.r, 2, "R")}</span>` : ""}</div><div>${esc(x.text)}</div></div></div>`;
 async function loadLessons() { LES = await api("/api/lessons"); renderLessons(); if (ME.role === "admin") { loadSchool().catch(() => {}); api("/api/memory").then(m => $("#memtxt").textContent = (m.text || "Henüz kayıt yok.").split("\n").slice(-400).join("\n")).catch(() => {}); } }
 async function runSchool() { const r = await post("/api/history/run", {}); toast(r.msg, r.ok ? "ok" : "bad"); setTimeout(loadSchool, 1500); }
-function eqSvg(a, b) {  // Gecmis Okulu kasa egrisi: yeni politika vs eski
+function eqSvg(a, b) {
   const all = [...(a || []), ...(b || [])]; if (all.length < 2) return "";
   const t0 = Math.min(...all.map(x => x[0])), t1 = Math.max(...all.map(x => x[0])), lo = Math.min(1, ...all.map(x => x[1])), hi = Math.max(1, ...all.map(x => x[1])), W = 600, H = 120;
   const pts = s => s.map(([t, e]) => `${((t - t0) / (t1 - t0 || 1) * W).toFixed(1)},${(H - 4 - (e - lo) / (hi - lo || 1) * (H - 8)).toFixed(1)}`).join(" ");
@@ -997,9 +960,7 @@ function renderLessons() {
   if (ME.role === "admin") $("#lmemo").innerHTML = `<h3>Karar beyninin strateji notu</h3><div style="user-select:text;white-space:pre-line">${esc(d.memo || "Henüz not yok (Claude bağlıyken her kararda güncellenir).")}</div>`;
 }
 
-/* ---------- TradingView widget'lari (resmi, sadece gosterim) ---------- */
 function tvEmbed(el, kind, cfg) {
-  // TradingView'un kendi gomme sayfasi ayri origin'li cercevede: hicbir dis betik uygulamanin icinde calismaz
   const h = cfg.autosize ? "100%" : (cfg.height || 420) + "px";
   el.innerHTML = "";
   const f = document.createElement("iframe");
@@ -1019,30 +980,29 @@ function tvLoad() {
 }
 function tvScreener() { if (tvScr) return; tvScr = true; tvEmbed($("#tvscr"), "screener", {width: "100%", height: 560, defaultColumn: "overview", defaultScreen: "general", market: "crypto", showToolbar: true, screener_type: "crypto_mkt", displayCurrency: "USD", colorTheme: "dark", locale: "tr", isTransparent: true}); }
 
-/* ---------- mum grafigi ---------- */
 const TFS = ["15m", "1h", "4h", "1d"], TF_TR = {"15m": "15dk", "1h": "1s", "4h": "4s", "1d": "1g"};
 $("#tfs").innerHTML = TFS.map(t => `<button class="btn sm${t === ctf ? " on" : ""}" data-tf="${t}">${TF_TR[t]}</button>`).join(" ");
 $("#tfs").onclick = e => { if (!e.target.dataset.tf) return; ctf = e.target.dataset.tf; $$("#tfs .btn").forEach(b => b.classList.toggle("on", b.dataset.tf === ctf)); loadCandles(true).finally(tvLoad); };
 $("#csym").onchange = e => { csym = e.target.value; loadCandles(true).finally(tvLoad); renderCoinDetail(); };
 $("#cmode").onclick = e => { const m = e.target.dataset.m; if (!m) return; cmode = m; $$("#cmode button").forEach(b => b.classList.toggle("on", b.dataset.m === m)); $("#candle").hidden = m !== "bot"; $("#tvchart").hidden = m !== "tv"; tvLoad(); window.dispatchEvent(new Event("resize")); };
 function openChart(sym) { csym = sym; if (!visible("chartp")) { PREV = TAB; go("chartp"); } else { $("#csym").value = sym; loadCandles(true).finally(tvLoad); renderCoinDetail(); } }
-const CC = new Map();  // coin+zaman dilimi basina son mumlar: geri donunce aninda cizilir
+const CC = new Map();
 let cGoster = "", cLinesK = "", cMarkK = "";
 const cVol = c => ({time: c.time, value: c.volume, color: c.close >= c.open ? "rgba(34,195,142,.35)" : "rgba(255,92,108,.35)"});
 function cSet(a) { cS.setData(a); cV.setData(a.map(cVol)); }
 async function loadCandles(fit) {
   if (!cC) { cC = mkChart("candle"); if (!cC) return; cS = cC.addCandlestickSeries({upColor: "#22c38e", downColor: "#ff5c6c", borderVisible: false, wickUpColor: "#22c38e", wickDownColor: "#ff5c6c"});
     cV = cC.addHistogramSeries({priceFormat: {type: "volume"}, priceScaleId: "", color: "#2a3346"}); cV.priceScale().applyOptions({scaleMargins: {top: .82, bottom: 0}});
-    cC.subscribeClick(prm => {  // "Stop/Hedef sec" modunda grafikte tiklanan fiyat
+    cC.subscribeClick(prm => {
       if (!TP.pick || !prm.point) return; const v = cS.coordinateToPrice(prm.point.y); if (v == null || v <= 0) return;
       const k = TP.pick; tpSetPrice(k, v); tpPick(null); toast(`${k === "sl" ? "Stop" : "Hedef"}: ${px(v)} — kaydetmek için ${TP.pos ? "Kaydet" : "Al"}'a basın.`); }); }
   const want = csym + ctf; let e = CC.get(want);
-  if (cGoster !== want) {  // coin/zaman dilimi degisti: once eldeki mum, yoksa "yukleniyor"; eski coinin cizgileri kalmasin
+  if (cGoster !== want) {
     cGoster = want; cLines.forEach(l => cS.removePriceLine(l)); cLines = []; cLinesK = cMarkK = ""; cS.setMarkers([]);
     cSet(e ? e.c : []); if (e && fit) cC.timeScale().fitContent();
     if (!e) $("#cinfo").textContent = `${csym} yükleniyor...`;
   }
-  const tam = fit || !e?.c.length || Date.now() - e.t > 60000;  // tam yukleme: coin/zaman dilimi degisince ve 60 sn'de bir
+  const tam = fit || !e?.c.length || Date.now() - e.t > 60000;
   const d = await api(`/api/candles?sym=${encodeURIComponent(csym)}&tf=${ctf}${tam ? "" : "&son=1"}`);
   if (want !== csym + ctf) return;
   if (!d.candles) { if (!CC.get(want)?.c.length) $("#cinfo").textContent = `${csym} verisi alınamadı, yeniden deneniyor...`; return; }
@@ -1052,28 +1012,26 @@ async function loadCandles(fit) {
   if (tam || !e?.c.length || d.candles.length > 2) {
     CC.delete(want); CC.set(want, e = {c: d.candles, t: Date.now()}); if (CC.size > 40) CC.delete(CC.keys().next().value);
     cSet(e.c);
-  } else for (const k of d.candles) {  // eski mum gelirse atla (update hata atar)
+  } else for (const k of d.candles) {
     const a = e.c, n = a.length - 1; if (k.time < a[n].time) continue;
     if (k.time === a[n].time) a[n] = k; else a.push(k);
     cS.update(k); cV.update(cVol(k));
   }
-  const lk = JSON.stringify(d.levels);  // cizgiler ve markerlar sadece degisince yeniden kurulur
+  const lk = JSON.stringify(d.levels);
   if (lk !== cLinesK) { cLinesK = lk; cLines.forEach(l => cS.removePriceLine(l)); cLines = d.levels.map(([t, p, c]) => cS.createPriceLine({price: p, color: c, lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: t})); }
   const step = {"15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}[ctf], t0 = e.c[0]?.time || 0, mk = t0 + JSON.stringify(d.markers);
   if (mk !== cMarkK) { cMarkK = mk; cS.setMarkers(d.markers.map(m => ({...m, time: m.time - m.time % step})).filter(m => m.time >= t0).sort((a, b) => a.time - b.time)); }
   if (fit) cC.timeScale().fitContent();
   const last = e.c[e.c.length - 1]; $("#cinfo").innerHTML = last ? `${csym} · ${px(last.close)} · ${d.levels.length ? "bot seviyeleri gösteriliyor" : "bu coinde açık pozisyon yok"}` : "";
 }
-/* ---------- islem paneli: grafikten stop/hedef sec, Manuel Kilit, elle alis ---------- */
 const TP = {pick: null, sig: "", last: null, pos: null, drafts: []};
 function tpRef() { return TP.pos ? TP.pos.entry : TP.last; }
-function tpSetPrice(k, v) {  // k: sl | tp ; fiyat <-> % (girise / anlik fiyata gore)
+function tpSetPrice(k, v) {
   const p = $("#tp-" + k), q = $("#tp-" + k + "p"); if (!p) return;
   p.value = v == null ? "" : +(+v).toPrecision(6); q.value = v == null || !tpRef() ? "" : fmt((v / tpRef() - 1) * 100, 2).replace(",", ".");
   tpDraw();
 }
 function tpPct(k) { const q = parseFloat($("#tp-" + k + "p").value); if (!isNaN(q) && tpRef()) { $("#tp-" + k).value = +(tpRef() * (1 + q / 100)).toPrecision(6); tpDraw(); } }
-/* ---------- Monte Carlo ihtimal cubugu (10.000 yol, botun cikis kurallariyla) ---------- */
 const mcBar = (m, small) => !m || m.error ? `<div class="dim" style="font-size:11.5px">${esc(m?.error || "")}</div>` :
   `<div class="mcb${small ? " sm" : ""}" title="Hedef önce %${fmt(m.tp * 100, 1)} · Stop önce %${fmt(m.stop * 100, 1)} · Nötr %${fmt(m.neutral * 100, 1)}"><i class="g" style="width:${m.tp * 100}%"></i><i class="r" style="width:${m.stop * 100}%"></i><i class="n" style="width:${m.neutral * 100}%"></i></div>` +
   (small ? "" : `<div class="mcl"><span class="up">Hedef önce %${fmt(m.tp * 100, 1)}</span> · <span class="down">Stop önce %${fmt(m.stop * 100, 1)}</span> · <span class="mute">Nötr %${fmt(m.neutral * 100, 1)}</span> · beklenen ${sg(m.ev_r, 2, "R")}</div>`);
@@ -1087,7 +1045,7 @@ function mcLoad() { if (AGR) return; clearTimeout(MCT); MCT = setTimeout(async (
       (m.src ? `<div class="dim" style="font-size:11px">${esc(m.src)} · botun çıkış kurallarıyla${m.calibrated ? " · gerçek sonuçlarla kalibre" : ""}</div>` : "");
   } catch (e) { el.innerHTML = ""; } }, 700); }
 const MCR = {};
-async function mcRadar() {  // radarin ilk 10 satiri: varsayilan plan, 5 dk onbellek
+async function mcRadar() {
   if (AGR || mcRadar.busy) return; mcRadar.busy = true;
   try { await mcRadarRun(); } finally { mcRadar.busy = false; }
 }
@@ -1099,7 +1057,7 @@ async function mcRadarRun() {
       const td2 = document.querySelector(`#opt td.mcc[data-s="${s}"]`); if (td2) td2.innerHTML = mcBar(m, true); } catch (e) {}
   }
 }
-function tpDraw() {  // taslak cizgiler (kaydedilmemis yeni stop/hedef)
+function tpDraw() {
   mcLoad();
   if (!cS) return; TP.drafts.forEach(l => cS.removePriceLine(l)); TP.drafts = [];
   [["sl", "Yeni stop", "#f5b041"], ["tp", "Yeni hedef", "#2dd4bf"]].forEach(([k, t, c]) => { const v = parseFloat($("#tp-" + k)?.value);
@@ -1111,7 +1069,7 @@ function renderTradePanel(pos) {
   if (AGR) return;
   TP.pos = pos || null;
   const sig = csym + "|" + ACCT + "|" + JSON.stringify(pos || {});
-  if (sig === TP.sig || document.activeElement?.closest?.("#tpanel")) return;  // yazarken yeniden cizme
+  if (sig === TP.sig || document.activeElement?.closest?.("#tpanel")) return;
   TP.sig = sig; tpPick(null);
   const row = (k, l) => `<div class="tp-row"><label class="mute">${l}</label><input id="tp-${k}" type="number" step="any" placeholder="fiyat" oninput="tpSetPrice('${k}', this.value || null)">
     <input id="tp-${k}p" type="number" step="any" placeholder="%" title="${pos ? "girişe" : "anlık fiyata"} göre %" oninput="tpPct('${k}')"></div>`;
@@ -1146,7 +1104,7 @@ async function tpSave() {
 }
 async function tpAuto() { const r = await post("/api/position/auto", {sym: csym}); toast(r.msg, r.ok ? "up" : "down"); TP.sig = ""; loadCandles(false); }
 const SUREKUTU = `<input id="tp-saat" type="number" min="1" step="1" placeholder="kaç"><select id="tp-birim" style="min-width:86px;flex:none"><option value="dakika">dakika</option><option value="saat" selected>saat</option><option value="gün">gün</option></select>`;
-const sureSaat = () => +$("#tp-saat").value * {dakika: 1 / 60, saat: 1, "gün": 24}[$("#tp-birim").value];  // arka uc saat ister
+const sureSaat = () => +$("#tp-saat").value * {dakika: 1 / 60, saat: 1, "gün": 24}[$("#tp-birim").value];
 const sureYazi = () => `${$("#tp-saat").value} ${$("#tp-birim").value}`;
 const CIKIS = {
   suresiz: "Siz satana kadar açık kalır. Stop boşsa %35 altına felaket stopu konur; hedef isteğe bağlı.",
@@ -1186,7 +1144,6 @@ function renderCoinDetail() {
   if ($("#cdet").dataset.v !== html) { $("#cdet").innerHTML = html; $("#cdet").dataset.v = html; }
 }
 
-/* ---------- islemler ---------- */
 async function loadTrades() {
   const tr = await api("/api/trades"); if (S?.ready) renderPositions(S, "#pos2");
   const w = tr.filter(t => t.pnl > 0), l = tr.filter(t => t.pnl <= 0), sum = a => a.reduce((x, t) => x + t.pnl, 0);
@@ -1204,8 +1161,7 @@ async function loadTrades() {
     (tr.slice().reverse().map(t => `<tr class="click" onclick="openChart('${t.sym}')" title="${esc(t.why || "")}"><td class="mute">${t.t_open ? tm(t.t_open) : "-"}</td><td>${tm(t.t)}</td><td><b>${base(t.sym)}</b></td><td class="r">${px(t.entry)}</td><td class="r">${px(t.exit)}</td><td class="r">${sg(t.pnl, 2, "")}</td><td class="r">${sg(t.pct)}</td><td>${REASON[t.reason] || t.reason}${t.partial ? ' <span class="tag">kısmi kâr</span>' : ""}</td><td class="r hide-sm">${t.conviction == null ? "-" : "%" + Math.round(t.conviction * 100)}</td></tr>`).join("") || `<tr><td colspan="9" class="big-empty">Henüz kapanmış işlem yok.</td></tr>`) + "</tbody>";
 }
 
-/* ---------- Claude kararlari ---------- */
-function committeeHtml(c) {  // Ajan Komitesi karti: analist -> boga/ayi -> risk onayi -> Ders Defteri / hafiza
+function committeeHtml(c) {
   const an = c.analyst || {}, li = xs => (xs || []).map(x => `<li>${esc(x)}</li>`).join("") || '<li class="dim">-</li>';
   return `<div class="cmt">
     <div class="cm-a"><h5>🔎 Analist notu</h5><div>${esc(an.teknik || "")}</div><div>${esc(an.zincir || "")}</div><div>${esc(an.makro || "")}</div></div>
@@ -1233,7 +1189,6 @@ async function loadDecisions() {
   $("#declessons").innerHTML = `<h3>Ders Defteri: son dersler<span class="grow"></span><button class="btn sm" onclick="go('lessons')">Tümü</button></h3>` + top.map(lessonHtml).join("");
 }
 
-/* ---------- gunluk ---------- */
 $("#chips").innerHTML = Object.entries(KINDS).map(([k, v]) => `<button class="btn sm${k === "hepsi" ? " on" : ""}" data-k="${k}">${v}</button>`).join("") + `<span class="grow"></span><input id="nq" placeholder="Günlükte ara..." style="width:220px">`;
 $("#chips").onclick = e => { if (!e.target.dataset.k) return; noteFilter = e.target.dataset.k; $$("#chips .btn").forEach(b => b.classList.toggle("on", b === e.target)); loadNotes(); };
 $("#nq").oninput = () => loadNotes();
@@ -1242,7 +1197,6 @@ async function loadNotes() {
   $("#notelist").innerHTML = ns.slice(0, 400).map(noteHtml).join("") || `<div class="big-empty">Bu filtrede not yok.</div>`;
 }
 
-/* ---------- ML gecmis test (admin) ---------- */
 function renderBT() {
   const bt = S?.backtest; if (!bt) { $("#btk").innerHTML = `<div class="kpi"><small>Durum</small><b>Model hazırlanıyor</b></div>`; return; }
   const gated = (S.model || "").includes("esigi");
@@ -1253,8 +1207,7 @@ function renderBT() {
   $("#btmodel").textContent = S.model;
 }
 
-/* ---------- sohbet ---------- */
-function md(t) {  // kucuk markdown: baslik, kalin, liste, kod
+function md(t) {
   const lines = esc(t).split("\n"); let out = "", list = false;
   for (let l of lines) {
     l = l.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -1280,7 +1233,7 @@ async function send(q) {
   } catch { text += "\n[Bağlantı hatası]"; }
   w.innerHTML = md(text || "Cevap gelmedi."); w.classList.remove("cursor"); chatBusy = false; $("#send").disabled = false; $("#q").focus();
 }
-$("#send").onclick = () => send(); $("#q").addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); send(); } });  // false dondurup tuslari iptal etmesin
+$("#send").onclick = () => send(); $("#q").addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); send(); } });
 $$("[data-q]").forEach(b => b.onclick = () => send(b.dataset.q));
 async function loadChat() {
   const h = await api("/api/chat/history"); $("#msgs").innerHTML = "";
@@ -1292,7 +1245,6 @@ function renderChatBanner(s) {
   $("#chatban").innerHTML = s.chat_ok ? `<i class="dot still"></i>${esc(s.chat_info)}` : `<i class="dot err"></i>${esc(s.chat_info || "Claude bağlı değil")}`;
 }
 
-/* ---------- ayarlar ---------- */
 const MODELS = "claude-opus-5-5,claude-sonnet-5-5,claude-haiku-5-5";
 const GROUPS = {
   claude: ["Claude ayarları", [["QUOTA_SAVER", "Kota Koruma Modu", "toggle", "Açıkken 7/24 tarama, radar olayları ve saatlik kararlar ücretsiz yerel quant motoruyla verilir (eski saatlik otomatik al-sat açıksa). Claude sadece 'Şimdi karar ver'de, sohbet/Telegram'da ve aşağıdaki aralıkla strateji incelemesinde çağrılır."],
@@ -1351,7 +1303,6 @@ async function saveGroup(id) {
   const r = await api("/api/settings", body); $("#m-" + id).textContent = r.msg; $("#m-" + id).className = r.ok ? "up" : "down";
   toast(r.msg, r.ok ? "up" : "down"); if (r.ok) setTimeout(loadSettings, 400);
 }
-/* ---------- uygulama ici gelistirme (gelistir.py) ---------- */
 let GEL_CALIS = false;
 const GEL_DURUM = {calisiyor: ["Claude kodu düzenliyor", "warn"], test: ["Testler çalışıyor", "warn"], hazir: ["Onayınızı bekliyor", "ok"],
   hata: ["Hata", "bad"], degisiklik_yok: ["Değişiklik yapılmadı", "info"], iptal: ["Durduruldu", "info"]};
@@ -1443,7 +1394,6 @@ async function loadSettings() {
   paintAvatars(); loadTelegram(); loadUpdate().catch(() => {}); loadServer().catch(() => {});
   $("#quit").onclick = () => confirm("Bot tamamen kapatılsın mı? Al-sat durur.") && api("/api/quit", {}).then(() => document.body.innerHTML = "<p style='padding:40px'>Bot kapatıldı.</p>");
 }
-/* ---------- guncelleme + sunucu ---------- */
 async function loadUpdate(fresh) {
   const u = await api(fresh ? "/api/update/check" : "/api/update", fresh ? {} : undefined), L = u.latest;
   $("#updbox").className = "";
@@ -1463,7 +1413,7 @@ async function applyUpdate() {
   const r = await api("/api/update/apply", {}); toast(r.msg, r.ok ? "up" : "down");
   if (r.ok) waitRestart("Güncelleniyor...");
 }
-function waitRestart(msg) {  // bot kapanip acilana kadar bekle; hazir olmadan sayfayi yenileme (hata sayfasi kalmasin)
+function waitRestart(msg) {
   document.body.insertAdjacentHTML("beforeend", `<div class="wn" id="restarting"><div class="wc"><h2>${esc(msg)}</h2><div class="sub" style="margin:0">En fazla 1-2 dakika sürer. Hesaplar ve kasa korunuyor, sayfa kendiliğinden açılacak.</div></div></div>`);
   let down = false; const t0 = Date.now();
   const iv = setInterval(async () => {
@@ -1492,7 +1442,7 @@ async function loadServer() {
       <b>7/24 bilgisayar:</b> Uygulamayı <code>KriptoQuantBot.exe --sunucu</code> ile pencere olmadan çalıştırabilirsiniz; Windows'u otomatik oturum + başlangıçta çalıştırmaya ayarlayın.</div></details>`;
 }
 async function tunnel(on) { toast(on ? "Tünel açılıyor (≈10 sn)..." : "Tünel kapatılıyor..."); const r = await api("/api/server/tunnel", {on}); toast(r.msg, r.ok ? "up" : "down"); loadServer(); }
-function cliWizard(d, desktop) {  // Claude CLI baglanti sihirbazi: neden baglanamadigi + tek tikla cozum
+function cliWizard(d, desktop) {
   const S = ["kur", "giris", "hazir"], cur = d.step === "onar" ? 0 : S.indexOf(d.step);
   const st = (i, t) => `<div class="step"><i style="${i < cur || d.step === "hazir" ? "background:var(--up);color:#06281c" : i === cur ? "background:var(--warn);color:#2a1d05" : ""}">${i < cur || d.step === "hazir" ? "✓" : i + 1}</i><div>${t}</div></div>`;
   return `<div style="border:1px solid var(--line2);border-radius:12px;padding:12px;margin-top:8px"><b>Claude CLI Bağlantı Sihirbazı</b>
@@ -1537,7 +1487,6 @@ $("#me").onclick = e => {
   document.body.appendChild(m); setTimeout(() => addEventListener("click", () => m.remove(), {once: true}), 0);
 };
 
-/* ---------- komut paleti (Ctrl+K) ---------- */
 let palSel = 0, palList = [];
 function openPal() { $("#pal").classList.add("open"); $("#palq").value = ""; renderPal(); setTimeout(() => $("#palq").focus(), 20); }
 function closePal() { $("#pal").classList.remove("open"); }
@@ -1561,7 +1510,6 @@ document.addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); palGo(palSel, e.shiftKey); }
 });
 
-/* ---------- agresif karne (sadece window.KISILIK) ---------- */
 async function loadAgr() {
   const d = await api("/api/agresif"), R = Object.entries(d.kurallar || {});
   const tablo = (bas, sat, bos) => sat.length ? `<table><tr>${bas}</tr>${sat.join("")}</table>` : `<div class="big-empty" style="padding:14px">${bos}</div>`;
@@ -1583,7 +1531,6 @@ async function loadAgr() {
 }
 async function agrSifirla() { await paperReset(); loadAgr().catch(() => {}); }
 
-/* ---------- canli dongu ---------- */
 async function tick() {
   if (!ME) return;
   try { S = await api("/api/state"); if (visible("home")) renderHome(S); else renderHeader(S); if (S.ready) noteToasts(S); renderChatBanner(S); if (visible("bt")) renderBT(); if (visible("trades") && S.ready) renderPositions(S, "#pos2"); }
@@ -1597,13 +1544,13 @@ async function boot() {
   $("#mename").textContent = me.user; $("#merole").textContent = me.role === "admin" ? "Admin · tüm araçlar" : "Kullanıcı · gerçek hesap"; $("#av").textContent = me.user.slice(0, 2).toUpperCase(); paintAvatars();
   $$("[data-admin]").forEach(el => el.hidden = me.role !== "admin" || AGR);
   ACCT = AGR ? "PAPER" : me.role === "admin" ? load("kqb.acct", "PAPER") : "LIVE";
-  if (AGR) {  // gizleme kolaylik icindir; koruma agresif.py kapisinda
+  if (AGR) {
     $("#merole").textContent = "Sanal deney · gerçek para yok"; document.title = "KriptoQuantBot · Agresif";
     $("#acctpill").innerHTML = '<i class="dot still" style="background:var(--warn)"></i>SANAL · gerçek para yok';
     ["#pfbody", "#kasa", "#tpanel"].forEach(s => { $(s).closest(".card").style.display = "none"; });
     $("#regime").style.display = "none";
   }
-  if (me.gelistir && !PAGES.some(p => p[0] === "gelistir")) {  // sadece kendi kod kopyasi olan sunucu botunda (gelistir.py)
+  if (me.gelistir && !PAGES.some(p => p[0] === "gelistir")) {
     PAGES.splice(PAGES.length - 1, 0, ["gelistir", "Geliştirme", 1]);
     ICON.gelistir = '<path d="M8 6l-6 6 6 6M16 6l6 6-6 6M14 4l-4 16"/>';
     const sec = document.createElement("section"); sec.id = "gelistir"; sec.className = "page"; sec.innerHTML = '<div id="gelwrap"></div>'; $("#pages").appendChild(sec);
@@ -1626,12 +1573,12 @@ every(3000, () => visible("gelistir") && GEL_CALIS && loadGel());
 every(30000, () => !AGR && visible("home") && loadPF().catch(() => {}));
 every(5000, () => AGR && visible("agresif") && loadAgr());
 every(3000, () => visible("settings") && loadTelegram());
-function win(a) {  // masaustu pencere dugmeleri: pywebview koprusu (istemci/sunucu), yoksa yerel API
+function win(a) {
   if (window.pywebview?.api?.win) return window.pywebview.api.win(a);
   fetch("/api/window", {method: "POST", headers: {"X-KQB": "1", "Content-Type": "application/json"}, body: JSON.stringify({a})});
 }
 fetch("/api/app").then(r => r.json()).then(a => { if (a.desktop) $("#wctl").style.display = "flex"; });
-async function pencereKur() {  // yerel Windows cercevesi: surukleyince yaslanma (Snap) ve kenarlardan boyutlandirma. Eski exe'de eski surukleme kalir
+async function pencereKur() {
   const api = window.pywebview?.api;
   if (!api?.pencere || !await api.pencere("yerel")) return;
   const d = $("#wdrag");

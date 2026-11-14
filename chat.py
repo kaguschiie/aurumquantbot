@@ -1,5 +1,3 @@
-"""Uygulama ici sohbet: Claude, botun canli verisini okuyup kendi kararlarini aciklar.
-Rol bazli: normal kullanici sadece gercek (LIVE) hesabi gorur. Sohbetten emir verilmez."""
 import json
 import re
 import time
@@ -10,11 +8,10 @@ import dersler
 import model as M
 import quant as Q
 
-CHAT_SHARE = 0.3  # gunluk Claude butcesinin sohbete ayrilabilecek en fazla payi
+CHAT_SHARE = 0.3
 
 
 def context(b, role):
-    """Claude'a giden kompakt ozet: hesap(lar), pozisyonlar, son kararlar, piyasa tablosu, gunluk."""
     admin = role == "admin"
     with b.lock:
         accts = [a for m, a in b.accounts.items() if admin or m == "LIVE"]
@@ -34,7 +31,7 @@ def context(b, role):
                      f"acik K/Z (cikis komisyonu henuz dusulmez). Yeni islem: {a.blocked() or 'acik'}.")
             for s, p in st["positions"].items():
                 px = b.bid.get(s, p["entry"])
-                if p.get("kind") == "portfoy":  # portfoy.KIND
+                if p.get("kind") == "portfoy":
                     L.append(f"- {s}: PORTFOY pozisyonu, ortalama giris {p['entry']:g} (eklemelerle guncellenir), simdi {px:g} "
                              f"(%{(px / p['entry'] - 1) * 100:+.2f}). Hedef yok: her gun 00:05 UTC agirliga gore dengelenir, "
                              f"sadece %35 felaket stopu var. Ilk acilis {time.strftime('%d.%m %H:%M', time.localtime(p['t']))}.")
@@ -83,13 +80,11 @@ def context(b, role):
 
 
 def open_pnl(a, b):
-    """Acik pozisyonlarin anlik net K/Z'si (kismi kar dahil, alis + satis komisyonu dusulmus) - arayuzle ayni formul."""
     return sum(p.get("realized", 0) + p["qty"] * (b.bid.get(s, p["entry"]) - p["entry"]) - p["fee"]
                - p["qty"] * b.bid.get(s, p["entry"]) * C.FEE for s, p in a.st["positions"].items())
 
 
 def brain_counts(b):
-    """Bugunku kararlarin hangi beyinden geldigi (Claude mu, yerel motor mu)."""
     day = time.strftime("%Y-%m-%d")
     ds = [d for d in b.ag["decisions"] if time.strftime("%Y-%m-%d", time.localtime(d["t"])) == day]
     cl = sum(1 for d in ds if "Claude" in (d.get("model") or ""))
@@ -112,13 +107,11 @@ def history_save(path, h):
 
 
 def ask_stream(question, b, role, path):
-    """Cevabi parca parca uretir. Beyin sirasi: Claude API > Claude CLI (abonelik) > yerel analist (ucretsiz).
-    Gecmis diske, API maliyeti gunluk butceye yazilir."""
     history, answer, brain = history_load(path), "", A.brain()
     ag = b.ag
     if brain == "api" and ag["day"] == time.strftime("%Y-%m-%d", time.gmtime()) and (
             ag["spent"] >= C.CLAUDE_DAILY_BUDGET or ag.get("chat_spent", 0) >= C.CLAUDE_DAILY_BUDGET * CHAT_SHARE):
-        brain = "cli" if A.cli_ready() else "local"  # API sohbet butcesi doldu: ucretsiz beyne gec
+        brain = "cli" if A.cli_ready() else "local"
     gen = None
     if brain == "api":
         gen = A.chat_stream(question, context(b, role), history, on_cost=lambda usd: b.add_cost(usd, chat=True))
@@ -143,9 +136,7 @@ def ask_stream(question, b, role, path):
                                       {"role": "assistant", "content": answer.strip(), "t": time.time()}])
 
 
-# ---------------- yerel analist (ucretsiz, Claude yokken) ----------------
 def local_answer(question, b, role):
-    """Botun canli verisinden kurala dayali Turkce cevap. Soru anahtar kelimelerine gore bolum secer."""
     q = question.lower()
     admin = role == "admin"
     with b.lock:

@@ -1,9 +1,3 @@
-"""Uygulama ici gelistirme: bot sahibi istek yazar, Claude AYRI bir calisma kopyasinda kodu degistirir.
-Akis: istek -> calisma kopyasi (git worktree, HEAD) -> Claude duzenler (sadece dosya listeleme/okuma/arama/degistirme; komut
-calistiramaz) -> korunan bolge kontrolu -> testler (ONAYLI surumdeki testler/ ile, yeni koda karsi) -> ozet + fark -> sahibi
-onaylarsa bu botun dalina commit + yeniden baslatma. Geri al: git revert + yeniden baslatma.
-Sadece sunucuda, git klonunda ve KQB_GELISTIRME=1 iken (sunucu_fatih_gelistirme.sh). Para/emir/stop kodu, giris, guncelleme,
-ayarlar ve testler korunur: bunlara dokunan degisiklik ayrica onay kodu ister (kod sadece kurulumu yapanda)."""
 import ast
 import datetime
 import fnmatch
@@ -37,7 +31,7 @@ _ONAY_HATA = {"n": 0, "t": 0.0}
 
 KORUNAN_DOSYA = ("auth.py", "guncelle.py", "gelistir.py", "config.py", "agresif.py", "requirements.txt", "requirements-sunucu.txt",
                  "testler/*", "*.sh", "sunucu*.py", ".gitignore")
-KORUNAN_FONK = {  # para, emir, stop, risk ve giris yollari
+KORUNAN_FONK = {
     "bot.py": {"order_cid", "order_fail", "_flock", "Account.fence", "Account.gate", "Account.order", "Account._no_unknown",
                "Account._maybe_sold", "Account._resolve", "Account._settle", "Account._apply", "Account.place_stop", "Account._cancel_stop",
                "Account._replace_stop", "Account._stop_done", "Account.nostop", "Account.blocked", "Account.locked", "Account.take_lock",
@@ -93,7 +87,6 @@ def durum():
             "dal": _git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip() if etkin() else None}
 
 
-# ---------------- Claude araclari (sadece calisma kopyasinda) ----------------
 def _yol(p):
     p = str(p or ".").replace("\\", "/").lstrip("/")
     tam = os.path.realpath(os.path.join(W, p))
@@ -208,9 +201,7 @@ def _sistem():
             "PROJE NOTLARI (CLAUDE.md):\n" + proje)
 
 
-# ---------------- korunan bolge kontrolu ----------------
 def _fonklar(kaynak):
-    """{nitelikli ad: kaynak parcasi}; modul duzeyi BUYUK_HARF sabitler dahil. Derlenemezse None."""
     try:
         agac = ast.parse(kaynak)
     except SyntaxError:
@@ -231,7 +222,6 @@ def _fonklar(kaynak):
 
 
 def korunan(dosyalar, eski_oku, yeni_oku):
-    """Degisen dosyalardan korunan bolgeye dokunanlar: ['bot.py: Account.order', 'auth.py (tum dosya)', ...]."""
     out = []
     for f in dosyalar:
         if any(fnmatch.fnmatch(f, d) for d in KORUNAN_DOSYA):
@@ -263,13 +253,11 @@ def onay_kodu_dogru(kod):
     return ok
 
 
-# ---------------- is akisi ----------------
 def _adim(j, metin):
     j["adimlar"] = (j["adimlar"] + [{"t": time.time(), "m": metin}])[-200:]
 
 
 def baslat(istek, kullanici):
-    """Hata metni veya None. Is arka planda surer; durum() ile izlenir."""
     istek = str(istek or "").strip()
     if not etkin():
         return "Geliştirme bu botta açık değil."
@@ -321,7 +309,7 @@ def _calis(j):
         _adim(j, "Testler çalışıyor (birkaç dakika sürer)...")
         spec = importlib.util.spec_from_file_location("kqb_testler", os.path.join(C.BASE_DIR, "testler", "calistir.py"))
         T = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(T)  # onayli surumun testleri, yeni koda karsi
+        spec.loader.exec_module(T)
         j["testler"] = T.kos(W, yaz=lambda s: _adim(j, "Test: " + _test_ozet(s)))
         j["gecti"] = T.gecti(j["testler"])
         j["durum"] = "hazir"
@@ -379,7 +367,7 @@ def _claude(j):
                 elif b.name == "oku":
                     _adim(j, f"Okudu: {girdi.get('yol')}")
                 sonuc.append({"type": "tool_result", "tool_use_id": b.id, "content": out[:60000]})
-            except Exception as e:  # araci hatasi Claude'a doner, is durmaz
+            except Exception as e:
                 sonuc.append({"type": "tool_result", "tool_use_id": b.id, "content": f"Hata: {str(e)[:300]}", "is_error": True})
         msgs.append({"role": "user", "content": sonuc})
     raise RuntimeError(f"{MAX_TUR} adımda bitmedi: istek daha küçük parçalara bölünmeli.")
@@ -395,14 +383,13 @@ def vazgec():
     with _LOCK:
         j = STATE["is"]
         if j and j["durum"] in ("calisiyor", "test"):
-            j["durum"] = "iptal"  # Claude dongusu sonraki turda durur
+            j["durum"] = "iptal"
         _temizle()
         STATE["is"] = None
     return None
 
 
 def uygula(onay_kodu, quit_cb):
-    """Testleri gecmis degisikligi bu botun dalina isler ve botu yeniden baslatir. Hata metni veya None."""
     with _LOCK:
         j = STATE["is"]
         if not j or j["durum"] != "hazir":
@@ -430,12 +417,11 @@ def uygula(onay_kodu, quit_cb):
         _temizle()
         STATE["is"] = None
     log.info("Gelistirme uygulandi: %s", sha[:7])
-    threading.Thread(target=lambda: (time.sleep(1.0), quit_cb()), daemon=True).start()  # systemd yeni kodla baslatir
+    threading.Thread(target=lambda: (time.sleep(1.0), quit_cb()), daemon=True).start()
     return None
 
 
 def geri_al(sha, quit_cb):
-    """Uygulanmis bir gelistirmeyi geri alir (git revert) ve botu yeniden baslatir. Hata metni veya None."""
     with _LOCK:
         g = _oku_json(GECMIS, [])
         x = next((e for e in g if e.get("sha") == sha and e.get("tur") == "uygulandi" and not e.get("geri")), None)

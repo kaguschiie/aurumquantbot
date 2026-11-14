@@ -1,5 +1,3 @@
-"""Binance spot USDT paritelerinin (delist edilenler dahil: hayatta kalan yanliligi yok) 2017+ gunluk mumlari.
-Kaynak data.binance.vision aylik zip + bu ayin eksik gunleri icin REST. Cikti: d1/{SYM}.npz (t,o,h,l,c,qv,tbq,n)"""
 import io, os, re, sys, zipfile, time
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np, requests
@@ -50,9 +48,9 @@ def one(sym):
     if not rows:
         return sym, "bos"
     a = np.array(sorted({r[0]: r for r in rows}.values()), dtype=float)
-    a[:, 0] = np.where(a[:, 0] > 1e14, a[:, 0] // 1000, a[:, 0])  # 2025+ dosyalarda mikro saniye
+    a[:, 0] = np.where(a[:, 0] > 1e14, a[:, 0] // 1000, a[:, 0])
     last = int(a[-1, 0])
-    try:  # son ayin gunleri (henuz aylik zip yok)
+    try:
         k = S.get("https://api.binance.com/api/v3/klines", params={"symbol": sym, "interval": "1d", "startTime": last + 1,
                                                                    "limit": 1000}, timeout=20).json()
         if isinstance(k, list) and k:

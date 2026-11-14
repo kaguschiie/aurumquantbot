@@ -1,5 +1,3 @@
-"""Gercek emrin tekillik yolu: kimlik once diske, hata ayrimi (gitmedi / red / belirsiz), kimlikle sorgu, dolumda kayit, gercek komisyon.
-Tamamen sahte borsa: ag yok, gercek anahtar yok, gercek emir yok. Kullanim: KQB_APP_DIR=<test> python -I emir-kimligi_test.py <proje>"""
 import importlib.util
 import json
 import os
@@ -24,15 +22,15 @@ def _no_net(*a, **k):
     raise AssertionError("testte gercek baglanti yok")
 
 
-socket.socket.connect = _no_net  # hicbir yol internete cikamaz (gercek ccxt nesnesi de sahte oturumla)
+socket.socket.connect = _no_net
 ok_all = True
 EV = os.path.join(C.APP_DIR, "ev_emir")
 shutil.rmtree(EV, ignore_errors=True)
 os.makedirs(EV)
 os.environ["HOME"] = os.environ["USERPROFILE"] = EV
 C.STATE_FILE = os.path.join(C.APP_DIR, "emir_state.json")
-C.API_KEY, C.API_SECRET, C.TELEGRAM_TOKEN = "sahte-test-anahtari", "sahte", ""  # sadece bu surecin bellegi; dosyaya yazilmaz
-C.LIVE_ALLOWED = True  # sahte borsa icin; kaydedilmez
+C.API_KEY, C.API_SECRET, C.TELEGRAM_TOKEN = "sahte-test-anahtari", "sahte", ""
+C.LIVE_ALLOWED = True
 C.LIVE_MAX_USDT = 500.0
 L.init()
 B.ORDER_RETRY_SEC = 0.01
@@ -45,12 +43,11 @@ def check(name, cond, info=""):
 
 
 class FakeEx:
-    """Sahte borsa. plan: siradaki create_order'in davranisi. venue: borsadaki emirler {kimlik: emir}."""
 
     def __init__(self, last=100.0):
         self.last, self.sent, self.cancels, self.venue, self.hidden, self.trades, self.plan = last, [], [], {}, {}, {}, []
         self.n, self.on_send, self.query_raises, self.queries, self.trades_raises = 0, None, None, [], None
-        self.fee = {"currency": "BTC", "rate": 0.001}  # None: cevapta komisyon yok
+        self.fee = {"currency": "BTC", "rate": 0.001}
         self.fill_frac, self.free = 1.0, 1e6
         self.markets = {}
 
@@ -68,7 +65,7 @@ class FakeEx:
             self.trades[oid] = [{"fee": fee}]
         o = {"id": oid, "clientOrderId": cid, "symbol": s, "side": side, "type": typ, "status": "closed" if market else "open",
              "filled": filled, "average": avg, "fee": fee, "fees": [fee] if fee else []}
-        self.venue[cid] = dict(o, fee=None, fees=[])  # GET /order cevabinda komisyon yoktur (gercek Binance gibi)
+        self.venue[cid] = dict(o, fee=None, fees=[])
         return o
 
     def create_order(self, s, typ, side, qty, price=None, params=None):
@@ -79,15 +76,15 @@ class FakeEx:
         act = self.plan.pop(0) if self.plan else "ok"
         if isinstance(act, Exception):
             raise act
-        if act == "landed":  # borsa isledi, cevap gelmedi
+        if act == "landed":
             self._mk(cid, s, typ, side, qty, price)
             raise ccxt.RequestTimeout("zaman asimi")
-        if act == "late":  # borsa isleyecek ama sorguda henuz gorunmuyor
+        if act == "late":
             self.hidden[cid] = (s, typ, side, qty, price)
             raise ccxt.RequestTimeout("zaman asimi")
-        if act == "lost":  # hic ulasmadi ama biz bilmiyoruz
+        if act == "lost":
             raise ccxt.RequestTimeout("zaman asimi")
-        if act == "ack":  # sadece kabul cevabi (dolum bilgisi yok)
+        if act == "ack":
             o = self._mk(cid, s, typ, side, qty, price)
             return {"id": o["id"], "clientOrderId": cid, "filled": None, "average": None, "status": None}
         if act == "expired":
@@ -151,7 +148,6 @@ class FakeEx:
 
 
 class Stub:
-    """Motorun Account'a gosterdigi kismi; kayit gercek Bot.save."""
 
     def __init__(self, ex):
         self.ex, self.bid, self.ask = ex, {"BTC/USDT": 100.0, "ETH/USDT": 100.0, "BNB/USDT": 500.0}, {"BTC/USDT": 100.0, "ETH/USDT": 100.0}
@@ -190,21 +186,18 @@ def disk():
 
 
 def age(a, sec=None):
-    """Kayitlari yaslandir: sorgu kisitlamasi kalksin; sec verilirse emir o kadar eski."""
     for r in a.st["orders"].values():
         r["chk"] = 0
         if sec:
             r["t"] = time.time() - sec
 
 
-# ---- kimlik ----
 c1 = B.order_cid("LIVE", 7, "BTC/USDT", "market", "buy", 1.0, None, 123.5)
 check("kimlik belirlenimci: ayni girdi ayni kimlik", c1 == B.order_cid("LIVE", 7, "BTC/USDT", "market", "buy", 1.0, None, 123.5), c1)
 check("kimlik farkli emirde farkli", len({c1, B.order_cid("LIVE", 8, "BTC/USDT", "market", "buy", 1.0, None, 123.5), B.order_cid("LIVE", 7, "ETH/USDT", "market", "buy", 1.0, None, 123.5),
                                          B.order_cid("LIVE", 7, "BTC/USDT", "market", "sell", 1.0, None, 123.5), B.order_cid("LIVE", 7, "BTC/USDT", "market", "buy", 1.0, None, 124.5)}) == 5)
 check("kimlik Binance bicimine uyar (36 karakter, cok buyuk sira no da)", re.fullmatch(r"[a-zA-Z0-9_-]{1,36}", B.order_cid("LIVE", 10**10, "BTC/USDT", "STOP_LOSS_LIMIT", "sell", 1.0, 9.0, 1.0)))
 
-# ---- kimlik gonderimden once diskte ----
 a, ex = live()
 seen = {}
 def _on_send(cid):
@@ -223,7 +216,6 @@ d = disk()
 check("dolumdan hemen sonra diskte: pozisyon var, acik kayit yok", "BTC/USDT" in d["positions"] and d["positions"]["BTC/USDT"]["stop_id"] and not d["orders"] and not a.st["orders"], d["orders"])
 ex.on_send = None
 
-# ---- gercek komisyon: alis ----
 p = a.st["positions"]["BTC/USDT"]
 check("komisyon coinden: miktar = dolan - komisyon (sabit oran varsayimi degil)", abs(p["qty"] - 0.999) < 1e-9 and abs(p["fee"] - 0.1) < 1e-9, (p["qty"], p["fee"]))
 a, ex = live()
@@ -253,7 +245,7 @@ a.enter("BTC/USDT", plan())
 check("bakiye sinirlamasi korunur", a.st["positions"]["BTC/USDT"]["qty"] == 0.5)
 a, ex = live()
 _mk = ex._mk
-ex._mk = lambda *x, **k: {**_mk(*x, **k), "fee": None, "fees": []}  # cevapta komisyon yok, islem listesinde var
+ex._mk = lambda *x, **k: {**_mk(*x, **k), "fee": None, "fees": []}
 a.enter("BTC/USDT", plan())
 p = a.st["positions"]["BTC/USDT"]
 check("cevapta yoksa islem listesinden", abs(p["qty"] - 0.999) < 1e-9 and abs(p["fee"] - 0.1) < 1e-9, (p["qty"], p["fee"]))
@@ -263,7 +255,6 @@ a.enter("BTC/USDT", plan())
 p = a.st["positions"]["BTC/USDT"]
 check("hicbir yerden okunamazsa eski tahmin (miktar x FEE)", abs(p["qty"] - (1 - C.FEE)) < 1e-9 and abs(p["fee"] - 100 * C.FEE) < 1e-9, (p["qty"], p["fee"]))
 
-# ---- gercek komisyon: satis ----
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(1.0, stop_id=None)
 ex.fee = {"currency": "USDT", "rate": 0.0005}
@@ -294,7 +285,6 @@ a.partial("BTC/USDT", p, 100.0)
 sold = min(10.0 * C.PARTIAL_FRAC, 7.0)
 check("stop iptalde kismi dolum: gercek komisyon, miktar duser, kalandan satilir", abs(p["qty"] - (7.0 - sold)) < 1e-6 and abs(p["realized"] - (-0.05 - sold * 0.001 * 100)) < 1e-9, (p["qty"], p["realized"]))
 
-# ---- limit alis: dolunca gercek komisyon ----
 a, ex = live()
 check("limit alis: bekleyen emir kimlik + borsa numarasiyla", a.enter("BTC/USDT", plan(entry="maker")) is None and a.st["pending"]["BTC/USDT"]["id"] == ex.venue[ex.sent[0]["cid"]]["id"] and ex.sent[0]["params"]["postOnly"] and not a.st["orders"])
 v = ex.venue[ex.sent[0]["cid"]]
@@ -304,7 +294,6 @@ a.manage_pending()
 p = a.st["positions"].get("BTC/USDT")
 check("limit doldu: gercek komisyon, hemen diskte", p and abs(p["qty"] - 0.99925) < 1e-9 and "BTC/USDT" in disk()["positions"] and not disk()["pending"], p and p["qty"])
 
-# ---- belirsiz: emir borsada dolmus ----
 a, ex = live()
 ex.plan = ["landed"]
 r = a.enter("BTC/USDT", plan())
@@ -315,7 +304,6 @@ check("sorgudan gelen dolumda komisyon islem listesinden", abs(p["qty"] - 0.999)
 check("kayit silindi, diskte pozisyon", not a.st["orders"] and "BTC/USDT" in disk()["positions"] and not disk()["orders"])
 check("stop da kuruldu", p["stop_id"] and ex.sent[-1]["typ"] == "STOP_LOSS_LIMIT")
 
-# ---- belirsiz: emir sorguda henuz yok, sonra gorunuyor ----
 a, ex = live()
 ex.plan = ["late"]
 r = a.enter("BTC/USDT", plan())
@@ -345,7 +333,6 @@ a.manage_pending()
 check("tekrar islenmez", len([x for x in ex.sent if x["typ"] == "market" and x["s"] == "BTC/USDT"]) == 1 and abs(a.st["positions"]["BTC/USDT"]["qty"] - 0.999) < 1e-9)
 check("bulunan emir bildirilir", any("bulundu" in m for _, m in a.b.notes), a.b.notes[-3:])
 
-# ---- belirsiz: emir hic ulasmamis ----
 a, ex = live()
 ex.plan = ["lost"]
 a.enter("BTC/USDT", plan())
@@ -358,7 +345,6 @@ a.manage_pending()
 check("sure doldu + hala yok: kayit silinir, uyari, diskte yok", not a.st["orders"] and not disk()["orders"] and any("bulunamadı" in m for _, m in a.b.notes))
 check("sonraki deneme yeni kimlikle gider", a.enter("BTC/USDT", plan()) is None and ex.sent[1]["cid"] != cid0 and "BTC/USDT" in a.st["positions"], ex.sent[1]["cid"])
 
-# ---- sorgu da calismiyorsa ----
 a, ex = live()
 ex.plan = ["landed"]
 ex.query_raises = ccxt.NetworkError("ag yok")
@@ -371,7 +357,6 @@ age(a)
 a.manage_pending()
 check("sorgu duzelince dolum bulunur", "BTC/USDT" in a.st["positions"] and not a.st["orders"])
 
-# ---- red: tekrar yok ----
 for name, err in (("bakiye yetersiz", ccxt.InsufficientFunds("-2010 Account has insufficient balance")), ("gecersiz emir", ccxt.InvalidOrder("LOT_SIZE")),
                   ("hatali istek", ccxt.BadRequest("-1013")), ("anahtar", ccxt.AuthenticationError("-2015")), ("izin", ccxt.PermissionDenied("x")), ("post only", ccxt.OrderImmediatelyFillable("-2010 would match"))):
     a, ex = live()
@@ -379,7 +364,6 @@ for name, err in (("bakiye yetersiz", ccxt.InsufficientFunds("-2010 Account has 
     r = a.enter("BTC/USDT", plan())
     check(f"red ({name}): bir kez gonderilir, sorgu yok, kayit silinir, coin kilitlenmez", len(ex.sent) == 1 and not ex.queries and not a.st["orders"] and not disk()["orders"] and r and "reddetti" in r and a.enter("BTC/USDT", plan()) is None, r)
 
-# ---- gitmedi: ayni kimlikle yeniden ----
 for name, err in (("hiz siniri", ccxt.RateLimitExceeded("-1003")), ("429", ccxt.DDoSProtection("429")), ("zaman damgasi", ccxt.InvalidNonce("-1021"))):
     a, ex = live()
     ex.plan = [err]
@@ -405,7 +389,6 @@ ex.plan = [ValueError("bozuk cevap")]
 r = a.enter("BTC/USDT", plan())
 check("ccxt disi hata (cevap cozulemedi): belirsiz", a.st["orders"] and ex.queries and "bilinmiyor" in r, r)
 
-# ---- gercek ccxt siniflandirmasi: istek sahte oturumdan gecer ----
 MK = {"id": "BTCUSDT", "symbol": "BTC/USDT", "base": "BTC", "quote": "USDT", "baseId": "BTC", "quoteId": "USDT", "spot": True, "margin": False, "swap": False, "future": False, "option": False,
       "contract": False, "linear": None, "inverse": None, "type": "spot", "active": True, "precision": {"amount": 0.00001, "price": 0.01}, "taker": 0.001, "maker": 0.001,
       "limits": {"amount": {"min": 0.00001, "max": None}, "price": {"min": 0.01, "max": None}, "cost": {"min": 5, "max": None}, "market": {"min": None, "max": None}},
@@ -413,7 +396,6 @@ MK = {"id": "BTCUSDT", "symbol": "BTC/USDT", "base": "BTC", "quote": "USDT", "ba
 
 
 class Sess(requests.Session):
-    """ccxt'nin gordugu HTTP oturumu: script'teki cevabi dondurur, baska hicbir yere gitmez."""
 
     def __init__(self):
         super().__init__()
@@ -464,7 +446,6 @@ for name, want, x in (
 
 
 class Hybrid(FakeEx):
-    """Emir ve sorgu gercek ccxt kodundan (sahte oturum), gerisi sahte."""
 
     def __init__(self):
         super().__init__()
@@ -512,10 +493,9 @@ hx.rx.session.script = [requests.exceptions.ReadTimeout("Read timed out"), (400,
 r = a.enter("BTC/USDT", plan())
 check("gercek ccxt: -2013 'yok' -> kayit kalir, ayni anda yeniden gonderim yok", a.st["orders"] and "BTC/USDT" not in a.st["positions"] and [c[0] for c in hx.rx.session.calls] == ["POST", "GET"], r)
 
-# ---- kilitlenme: gonderim sirasinda surec oldu ----
 a, ex = live()
 ex.plan = ["landed"]
-def boom(cid):  # disk kaydindan sonra, cevaptan once surec olur
+def boom(cid):
     raise SystemExit
 ex.on_send = boom
 try:
@@ -527,7 +507,7 @@ check("kilitlenme: diskte 'yolda' kaydi, pozisyon yok", saved["orders"] and not 
 ex.on_send = None
 ex.plan = []
 cid = next(iter(saved["orders"]))
-ex._mk(cid, "BTC/USDT", "market", "buy", 1.0, None)  # emir aslinda borsaya ulasmis
+ex._mk(cid, "BTC/USDT", "market", "buy", 1.0, None)
 sent0 = len(ex.sent)
 a2, _ = live(ex, saved)
 check("yeniden baslama: kilit defterde sadece bekleyen emir varken de alinir", a2.own)
@@ -538,7 +518,7 @@ check("sonra diskte de temiz", not disk()["orders"] and "BTC/USDT" in disk()["po
 
 a, ex = live()
 C_ = C.LIVE_ALLOWED
-C.LIVE_ALLOWED = False  # izin kapali, bos defter, tek kayit bekleyen emir
+C.LIVE_ALLOWED = False
 a3, _ = live(ex, {"orders": {"kqbL1-z": {"s": "BTC/USDT", "typ": "market", "side": "buy", "qty": 1.0, "price": None, "t": time.time() - 3600, "act": {"do": "enter", "p": plan()}}}})
 check("izin sonradan kapatilsa da bekleyen emir sorgulanir (kilit alinir)", a3.own)
 a3.reconcile()
@@ -553,7 +533,6 @@ a4.exit("BTC/USDT", a4.st["positions"]["BTC/USDT"], "HEDEF")
 check("sira numarasi diskten devam eder", ex.sent[0]["cid"].startswith("kqbL6-"), ex.sent[0]["cid"])
 ex.plan = []
 
-# ---- belirsiz satis: cift satis yok ----
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(1.0, stop_id=None)
 ex.plan = ["late"]
@@ -587,7 +566,6 @@ a.manage_positions()
 sells = [x for x in ex.sent if x["side"] == "sell" and x["typ"] == "market"]
 check("satis borsaya ulasmamis: sure dolunca yeni kimlikle satilir", len(sells) == 2 and sells[0]["cid"] != sells[1]["cid"] and "BTC/USDT" not in a.st["positions"], [x["cid"] for x in sells])
 
-# ---- belirsiz durumda stop bosuna iptal edilmez ----
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(1.0, stop_id="st1")
 a.st["orders"]["kqbL1-z"] = {"s": "BTC/USDT", "typ": "market", "side": "buy", "qty": 1.0, "price": None, "t": time.time(), "act": {"do": "add", "why": "t"}}
@@ -608,7 +586,6 @@ except B.OrderUnknown:
 check("yolda olabilecek satis varken cikis denemesi borsa stopunu iptal etmez", not ex.cancels and p["stop_id"] == "st1" and not ex.sent, ex.cancels)
 
 
-# ---- bulgu: koruma cikisi kilide takilmaz ----
 def msells(ex):
     return [x for x in ex.sent if x["side"] == "sell" and x["typ"] == "market"]
 
@@ -675,7 +652,7 @@ a, ex = live()
 a.st["positions"][S] = p = pos(1.0)
 ex.plan = ["late"]
 a.place_stop(S, p)
-ex.free = 0.0  # stop borsada, coinler kilitli, sorgu henuz gormuyor
+ex.free = 0.0
 try:
     a.exit(S, p, "HABER_ACIL")
     check("coinler belirsiz stopta: hata beklenirdi", False)
@@ -689,7 +666,6 @@ p["exit_try"] = 0
 a.manage_positions()
 check("belirsiz stop bulununca: iptal, sonra karar verilen satis", S not in a.st["positions"] and len(ex.cancels) == 1 and len(msells(ex)) == 1 and a.st["trades"][-1]["reason"] == "HABER_ACIL", ex.cancels)
 
-# ---- bulgu: stop iptal + belirsiz satis: en cok ORDER_HOLD_SEC korumasiz ----
 a, ex = live()
 a.st["positions"][S] = p = pos(1.0)
 p["stop_id"] = a.place_stop(S, p)
@@ -713,7 +689,7 @@ a.manage_positions()
 check("sorgu bozuk, sure doldu: karar verilen satis yeniden gider, stop once iptal", len(msells(ex)) == 2 and S not in a.st["positions"] and a.st["trades"][-1]["reason"] == "HABER_ACIL", msells(ex))
 
 a, ex = live()
-ex.free = 15.0  # hesapta bot disi 5 coin de var
+ex.free = 15.0
 a.st["positions"][S] = p = pos(10.0)
 ex.plan = ["landed"]
 ex.query_raises = ccxt.ExchangeNotAvailable("503")
@@ -721,7 +697,7 @@ try:
     a.exit(S, p, "HABER_ACIL")
 except B.OrderUnknown:
     pass
-ex.free = 5.0  # ilk satis aslinda doldu, sorgu goremiyor
+ex.free = 5.0
 age(a, 3600)
 for _ in range(3):
     p["exit_try"], p["stop_chk"] = 0, 0
@@ -759,7 +735,6 @@ p["stop_id"] = "st2"
 a.reconcile()
 check("gec bulunan stop, yeni stopun yerini almaz: iptal edilir", p["stop_id"] == "st2" and ex.cancels == ["v8"], (p["stop_id"], ex.cancels))
 
-# ---- bulgu: kayit silinince stop hemen kurulur ----
 a, ex = live()
 a.st["positions"][S] = p = pos(1.0)
 p["stop_id"] = a.place_stop(S, p)
@@ -770,7 +745,7 @@ except B.OrderUnknown:
     pass
 p["exit_try"] = time.time()
 p["stop_chk"] = 0
-a.manage_positions()  # kilitliyken deneme: dakikalik hak yenmez
+a.manage_positions()
 n = len(mstops(ex))
 age(a, B.ORDER_LOST_SEC + 1)
 a.manage_pending()
@@ -789,14 +764,14 @@ try:
 except B.OrderUnknown:
     pass
 p["exit_try"], p["stop_chk"] = time.time(), 0
-a.manage_positions()  # kilitli deneme: 15 sn'lik kontrol hakki yenmez
+a.manage_positions()
 age(a, B.ORDER_HOLD_SEC + 1)
-a.manage_positions()  # stop_chk elle sifirlanmadi
+a.manage_positions()
 check("kilit biter bitmez stop kurulur (15 sn'lik kontrol bir tur daha beklemez)", len(mstops(ex)) == n + 1 and p["stop_id"], len(mstops(ex)) - n)
 
 a, ex = live()
 a.st["positions"][S] = p = pos(10.0)
-p["kind"] = None  # kademeli sadece strateji disi pozisyonda calisir
+p["kind"] = None
 a.b.bid[S] = ex.last = 110.0
 ex.plan = ["landed"]
 ex.query_raises = ccxt.ExchangeNotAvailable("503")
@@ -818,7 +793,6 @@ a.manage_positions()
 st = mstops(ex)[-1]
 check("borsadaki ara stop en az basabasa tasinir (kalkan izi dahil), eski seviyede kalmaz", st["params"]["stopPrice"] >= round(bep, 2) and abs(st["params"]["stopPrice"] - p["sl"]) < 0.01 and abs(st["qty"] - p["qty"]) < 1e-6 and len(ex.cancels) == 1, st["params"])
 
-# ---- bulgu: tek seferlik karar kaybolmaz, 'satildi' dogru ----
 import haberler as HB
 
 
@@ -893,7 +867,6 @@ TB._accts, TB.BOT = _ac, None
 check("Telegram panik eksik dolum: kapatildi sayilmaz", "0 pozisyon" in msg and "eksik" in msg, msg)
 
 class CBot(B.Bot):
-    """Sadece Claude 'close' dali icin: motor kurulmaz, gercek apply calisir."""
     def __init__(self, acct):
         self.accounts, self.lock, self.market, self.ag = {"LIVE": acct}, threading.RLock(), {}, {"rejects": []}
         self.chain = type("X", (), {"whale": {}, "liq": {}})()
@@ -917,7 +890,6 @@ check("Claude kapatma tam dolum: kapatildi", r and r.get("result") == "kapatıld
 r, a = claude_close(0.4)
 check("Claude kapatma eksik dolum: kapatildi denmez, kalan yeniden satilacak", r and "kapatıldı" not in r.get("result", "") and "eksik" in r.get("result", "") and a.st["positions"][S].get("exit_want") == "CLAUDE_KAPATTI", r and r.get("result"))
 
-# ---- bulgu: deftere islenemeyen dolum coini kilitlemez ----
 def step1(s, q):
     r = int(float(q))
     if r <= 0:
@@ -956,7 +928,6 @@ age(a)
 a.manage_positions()
 check("kalici defter hatasi: cikis kilitlenmez", len(msells(ex)) == 1 and S not in a.st["positions"], msells(ex))
 
-# ---- bulgu: sonradan bulunan kademeli satis ayni korumayi alir ----
 a, ex = live()
 a.st["positions"][S] = p = pos(10.0)
 a.b.bid[S] = ex.last = 110.0
@@ -986,9 +957,7 @@ age(a, B.ORDER_LOST_SEC + 1)
 a.manage_pending()
 check("kademeli satis gitmemis sayildi: yeniden denenebilir, miktar ve stop ayni", p["part"] is False and p["qty"] == 10.0 and p["sl"] == 65.0, p["part"])
 
-# ---- bulgu: stop iptal sirasinda doldu: gercek komisyon her yolda ----
 def fill_during_cancel(extra=None):
-    """Borsa stopu iptal aninda doldu: iptal hata verir, emir 'closed', komisyon islem listesinde (tahminden farkli)."""
     a, ex = live()
     a.st["positions"][S] = p = pos(1.0, stop_id="stx")
     p["sl"] = p["stop_px"] = 90.0
@@ -1014,7 +983,6 @@ for name, run in (("exit", lambda a, p: a.exit(S, p, "HEDEF")), ("kademeli", lam
     t = a.st["trades"][-1:]
     check(f"stop iptalde doldu ({name}): tek kapanis, dolum fiyati, gercek komisyon, ek emir yok", t and abs(t[0]["pnl"] - want_) < 1e-9 and t[0]["exit"] == 90.0 and S not in a.st["positions"] and not ex.sent, (t and t[0]["pnl"], ex.sent[:1]))
 
-# ---- portfoy artirma: belirsiz ----
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(1.0, stop_id=None)
 p["stop_id"] = a.place_stop("BTC/USDT", p)
@@ -1024,7 +992,7 @@ r = a.pf_buy("BTC/USDT", 100.0, "agirlik")
 stops = [x for x in ex.sent if x["typ"] == "STOP_LOSS_LIMIT"]
 check("artirma belirsiz: iptal edilen felaket stopu hemen geri kurulur (belirsiz alimda serbest)", r and "bilinmiyor" in r and p["stop_id"] and p["stop_id"] != old_stop and len(stops) == 2, r)
 check("defter hala eski miktar", p["qty"] == 1.0)
-try:  # dengeleme bu hatayi yakalar (rebalance), stop yerinde kalir
+try:
     a.pf_buy("BTC/USDT", 100.0, "agirlik")
     check("ikinci artirma: hata beklenirdi", False)
 except B.OrderUnknown:
@@ -1050,7 +1018,6 @@ a.reconcile()
 p = a.st["positions"].get("BTC/USDT")
 check("artirma bulundu ama pozisyon stopla kapanmis: yeni pozisyon + felaket stopu", p and p["kind"] == PF.KIND and abs(p["sl"] - 100.0 * PF.STOP_FRAC) < 1e-6 and p["stop_id"], p and p["sl"])
 
-# ---- kademeli satis / portfoy azaltma: belirsiz + eksik dolum ----
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(10.0, stop_id=None)
 p["partial_at"] = 100.0
@@ -1094,7 +1061,6 @@ check("tam cikis eksik doldu: pozisyon kapanmis sayilmaz, kalan korunur", "BTC/U
 a.manage_positions()
 check("kalan icin stop yeniden kurulur", p["stop_id"] and ex.sent[-1]["typ"] == "STOP_LOSS_LIMIT" and abs(ex.sent[-1]["qty"] - 6.0) < 1e-6, ex.sent[-1])
 
-# ---- piyasa emri dolmadi ----
 a, ex = live()
 ex.plan = ["expired"]
 r = a.enter("BTC/USDT", plan())
@@ -1108,7 +1074,7 @@ check("cevapta dolum bilgisi yok: varsayilmaz, kimlikle sorulur", r is None and 
 a, ex = live()
 ex.plan = ["ack"]
 _mk = ex._mk
-def _mk_open(cid, *x, **k):  # piyasa emri borsada hala islemde
+def _mk_open(cid, *x, **k):
     o = _mk(cid, *x, **k)
     ex.venue[cid].update(status="open", filled=0.4)
     return o
@@ -1120,7 +1086,6 @@ age(a)
 a.manage_pending()
 check("islem bitince tam miktar", abs(a.st["positions"]["BTC/USDT"]["qty"] - 0.999) < 1e-9 and not a.st["orders"], a.st["positions"]["BTC/USDT"]["qty"])
 
-# ---- borsa stopu: belirsiz ----
 a, ex = live()
 a.st["positions"]["BTC/USDT"] = p = pos(1.0, stop_id=None)
 ex.plan = ["late"]
@@ -1144,7 +1109,6 @@ age(a)
 a.manage_pending()
 check("limit bulununca bekleyen emre girer, borsa numarasiyla", a.st["pending"]["BTC/USDT"]["id"] == ex.venue[ex.sent[0]["cid"]]["id"] and not a.st["orders"])
 
-# ---- defter islenemezse dolum kaybolmaz ----
 a, ex = live()
 _open, n = a.open, []
 def bad_open(*x, **k):
@@ -1159,7 +1123,6 @@ age(a)
 a.manage_pending()
 check("sonraki dongu isler, emir tekrar gitmez", "BTC/USDT" in a.st["positions"] and not a.st["orders"] and len([x for x in ex.sent if x["typ"] == "market"]) == 1)
 
-# ---- disk yazilamiyor ----
 a, ex = live()
 def no_disk():
     raise OSError(28, "No space left on device")
@@ -1170,7 +1133,6 @@ a.st["positions"]["BTC/USDT"] = p = pos(1.0, stop_id=None)
 a.exit("BTC/USDT", p, "HEDEF")
 check("kayit yazilamadi: satis engellenmez, uyari", ex.sent and ex.sent[0]["side"] == "sell" and "BTC/USDT" not in a.st["positions"] and any("yazılamadı" in m for _, m in a.b.notes))
 
-# ---- is parcacigi: gonderim surerken mutabakat emre dokunmaz ----
 a, ex = live()
 ex.venue_seen = None
 def during(cid):
@@ -1178,14 +1140,13 @@ def during(cid):
         return
     ex._mk(cid, "BTC/USDT", "market", "buy", 1.0, None)
     ex.plan = ["ok"]
-    a.reconcile()  # baska is parcacigindan dongu
+    a.reconcile()
     ex.venue_seen = ("BTC/USDT" in a.st["positions"], len(ex.queries))
 ex.on_send = during
 r = a.enter("BTC/USDT", plan())
 ex.on_send = None
 check("gonderim surerken mutabakat sorgulamaz, cift isleme yok", ex.venue_seen == (False, 0) and r is None and abs(a.st["positions"]["BTC/USDT"]["qty"] - 0.999) < 1e-9, ex.venue_seen)
 
-# ---- Bot.save: kayit kilit icinde, durum dosyasi bozulmaz ----
 a, ex = live()
 errs = []
 def saver():
@@ -1199,7 +1160,6 @@ ths = [threading.Thread(target=saver) for _ in range(4)]
 [t.join() for t in ths]
 check("es zamanli kayit: hata yok, dosya gecerli", not errs and "LIVE" in json.load(open(C.STATE_FILE, encoding="utf-8")), errs[:1])
 
-# ---- tek kapi ----
 src = open(os.path.join(PROJ, "bot.py"), encoding="utf-8").read()
 check("create_order tek yerde", len(re.findall(r"\.create_order\(", src)) == 1)
 check("gercek hesap emir kodunda sabit oran alim miktarina uygulanmiyor", "(1 - C.FEE), free" not in src and 'o["filled"] or qty) * (1 - C.FEE)' not in src)
@@ -1207,13 +1167,10 @@ cfg = open(os.path.join(PROJ, "config.py"), encoding="utf-8").read()
 check("varsayilan LIVE kapali kaldi", re.search(r"^LIVE_ALLOWED = False", cfg, re.M) and re.search(r"^PORTFOY_LIVE = False", cfg, re.M))
 check("eski durum dosyasi (orders alani yok) acilir", (lambda x: x.st["orders"] == {} and x.st["oseq"] == 0)(live(saved={"cash": 5.0, "positions": {}})[0]))
 
-# ---- sanal hesap muhasebesi: birebir ayni ----
-
 
 def paper_run(mod):
-    """Ayni senaryo verilen bot modulunde: alis, limit, artirma, kademeli, azaltma, stop, tam cikis."""
     ex = FakeEx()
-    ex.create_order = _no_net  # sanal hesap borsaya emir veremez
+    ex.create_order = _no_net
     ex.fetch_ohlcv = lambda *x, **k: []
     stub = Stub(ex)
     stub.market = {}
@@ -1253,7 +1210,7 @@ def paper_run(mod):
     stub.bid["ETH/USDT"] = p["sl"] * 0.999
     pa.exit("ETH/USDT", p, "STOP", stop=True)
     snap()
-    out.append(sorted(k for k in pa.st if k not in ("orders", "oseq", "mut", "toz", "dis")))  # sadece canli alanlar; muhasebe noktalari ayni kalmali
+    out.append(sorted(k for k in pa.st if k not in ("orders", "oseq", "mut", "toz", "dis")))
     return out, pa
 
 
@@ -1268,8 +1225,6 @@ if os.path.exists(old_fn):
     spec.loader.exec_module(OLD)
     old, _ = paper_run(OLD)
     diff = [(i, x, y) for i, (x, y) in enumerate(zip(old, new)) if x != y]
-    # 2026-11-08 bilerek: sanal portfoy tam cikisi de kaymali (kismi satisla ayni). Fark sadece bu cikista (nakit + net), kayma kadar
-    # Fark: HEDEF cikisindan (nokta 20) sonra nakit ve net sabit d kadar dusuk, o islemin cikis fiyati x(1-kayma); geri kalan birebir
     d = old[20] - new[20]
     def ayni(i, x, y):
         if i % 5 in (0, 1):

@@ -1,7 +1,3 @@
-"""Kalici islem hafizasi (trading_memory.md): her karar ve kapanan islem okunabilir Markdown olarak islenir; bir sonraki
-kararda adaylarin BENZER gecmis durumlari (ayni sinyallerin cogu + ayni rejim) Ders Defteri veritabanindan bulunur ve
-komiteye/Claude'a 'gecen sefer ne oldu' notu olarak verilir. Benzer gercek islemler tutarli zarar ettirmisse alim
-risk yoneticisinde reddedilir (metin olarak kalmaz, davranisi degistirir)."""
 import json
 import os
 import threading
@@ -11,9 +7,9 @@ import config as C
 import dersler as L
 
 FILE = os.path.join(C.APP_DIR, "trading_memory.md")
-MAX_BYTES = 1_500_000      # dosya bunu gecince en eski kayitlar arsive tasinir
-SIM = 0.6                  # benzerlik: ortak sinyal / tum sinyaller (Jaccard)
-VETO_N, VETO_AVG = 5, -0.3  # en az 5 benzer gercek islem ve ort <= -0.3R ise alim engellenir
+MAX_BYTES = 1_500_000
+SIM = 0.6
+VETO_N, VETO_AVG = 5, -0.3
 _lock = threading.Lock()
 
 
@@ -25,7 +21,7 @@ def _write(text):
                 fh.write("# KriptoQuantBot · İşlem Hafızası (trading_memory.md)\n\nHer karar ve kapanan işlem buraya "
                          "işlenir. Bot bir sonraki kararda benzer durumları buradan ve Ders Defteri'nden okur.\n\n")
             fh.write(text)
-        if os.path.getsize(FILE) > MAX_BYTES:  # en eski yarisi arsive
+        if os.path.getsize(FILE) > MAX_BYTES:
             with open(FILE, encoding="utf-8") as fh:
                 data = fh.read()
             cut = data.find("\n## ", len(data) // 2)
@@ -41,7 +37,6 @@ def _ts(t=None):
 
 
 def record_decision(rec):
-    """Karar (komite kartlari dahil) hafizaya."""
     acts = [a for a in rec.get("actions") or [] if a.get("type") in ("buy", "close", "adjust")]
     if not acts:
         return
@@ -70,8 +65,6 @@ def record_trade(acct, sym, pos, price, reason, pnl, r, lesson):
 
 
 def recall(sym, sigs, regime=None, kind=None):
-    """Benzer gecmis durumlar: gercek islemler (Ders Defteri otopsileri) + ayni coinin son islemleri.
-    Donus: {n, wins, avg, note, veto}"""
     sigs = set(sigs or [])
     with L._LOCK, L._db() as con:
         rows = con.execute("SELECT t, sym, sigs, r, feats, why FROM ornek WHERE src='islem' AND r IS NOT NULL "
@@ -107,7 +100,7 @@ def recall(sym, sigs, regime=None, kind=None):
 
 def tail(n_bytes=20000):
     try:
-        with open(FILE, "rb") as fh:  # bayt ofseti cok baytli Turkce karakterin ortasina dusebilir
+        with open(FILE, "rb") as fh:
             fh.seek(max(0, os.path.getsize(FILE) - n_bytes))
             return fh.read().decode("utf-8", errors="ignore")
     except OSError:
@@ -115,7 +108,6 @@ def tail(n_bytes=20000):
 
 
 def brief_lines(cands):
-    """Claude'a: adaylarin hafiza notlari + son kapanan islemlerin dersleri (trading_memory.md)."""
     out = []
     for s, sigs, regime in cands[:12]:
         m = recall(s, sigs, regime)

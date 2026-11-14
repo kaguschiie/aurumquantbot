@@ -1,4 +1,3 @@
-"""3 gun cikis kurali + ML duzeltmeleri. Kullanim: python -X utf8 c3_test.py <repo>. Emir yok, ucretli cagri yok."""
 import os, sys, time, tempfile
 os.environ["KQB_APP_DIR"] = tempfile.mkdtemp(prefix="kqb_c3_")
 sys.path.insert(0, sys.argv[1])
@@ -12,10 +11,9 @@ def check(name, cond, info=""):
     print(("OK   " if cond else "HATA ") + name, info if not cond else "")
     bad += 0 if cond else 1
 
-PF.TRAIN_LOCK = os.path.join(os.environ["KQB_APP_DIR"], "kilit")  # gercek ev dizinine yazma
+PF.TRAIN_LOCK = os.path.join(os.environ["KQB_APP_DIR"], "kilit")
 
 def seri(son, n=260, taban=100.0):
-    """n gunluk seri; son: son gunlerin tabana orani. Ortalama yaklasik taban."""
     idx = pd.date_range(end=PF.yesterday(), periods=n, freq="D")
     v = taban * (1 + 0.01 * np.sin(np.arange(n)))
     v[-len(son):] = [taban * x for x in son] if len(son) else v[-len(son):]
@@ -25,7 +23,6 @@ check("3 kapanis altinda: cikis", PF.ml_exit(seri([0.9, 0.9, 0.9])))
 check("2 kapanis altinda: cikis yok", not PF.ml_exit(seri([1.1, 0.9, 0.9])))
 check("son kapanis ustunde: cikis yok", not PF.ml_exit(seri([0.9, 0.9, 1.1])))
 
-# targets: gercek akis, sahte veri
 cur = {}
 PF.fresh_close = lambda ex, s: cur[s]
 PF.klines = lambda ex, s, n=2: pd.DataFrame({"c": [100.0, 100.0]})
@@ -61,7 +58,6 @@ w, i = PF.targets(None, st, False)
 check("BTC verisi bozuk: sepet durumu degismez", st["ml"]["reg"] is True and w.get("AAA/USDT", 0) > 0, w)
 PF.fresh_close = lambda ex, s: cur[s]
 
-# basarisiz secim: hafta harcanmaz
 pick_ok["v"] = False
 st.clear(); st["ml"] = {"picks": [("AAA/USDT", 1.0)], "reg": True, "t": time.time()}
 w, i = tur([1.1, 1.1, 1.1], True)
@@ -75,7 +71,6 @@ w, i = tur([1.1, 1.1, 1.1], True)
 check("21 gunden eski secim nakde", "AAA/USDT" not in w and not st["ml"]["picks"], w)
 pick_ok["v"] = True
 
-# load_model: en yeni yapi, tahmin edemeyen model elenir
 import importlib
 PF2 = importlib.reload(PF)
 PF2.TRAIN_LOCK = os.path.join(os.environ["KQB_APP_DIR"], "kilit")
@@ -98,7 +93,6 @@ joblib.dump({"model": M(False), "feats": ["x"], "v": 2, "t": 2}, PF2.BUNDLED)
 PF2._M.clear()
 check("ikisi de bozuk: yok", PF2.load_model() is None)
 
-# egitim kilidi
 check("kilit alinir", PF2.train_lock())
 check("ikinci bot alamaz", not PF2.train_lock())
 os.utime(PF2.TRAIN_LOCK, (time.time() - 3 * 3600,) * 2)
@@ -116,7 +110,6 @@ os.remove(PF2.TRAIN_LOCK)
 PF2.maybe_train(lambda t: None); time.sleep(0.5)
 check("kilit bosalinca egitir, kilit birakilir", ran == ["s", "t"] and not os.path.exists(PF2.TRAIN_LOCK), ran)
 
-# son denetim duzeltmeleri
 src = open(os.path.join(sys.argv[1], "bot.py"), encoding="utf-8").read()
 check("kept cekirdegi engellemez", 'info["ml"]["picks"]} - set(PF.CORE_SYMS) if info["ml"].get("kept")' in src)
 now = time.time()
@@ -126,7 +119,6 @@ for gun, beklenen in ((pd.Timestamp("2026-11-04 12:00"), False), (pd.Timestamp("
     mg = time.strftime("%G-%V", time.gmtime(x - 4 * 86400))
     check(f"gocu {gun.date()}: secim {beklenen}", (mg != wk) is beklenen, (mg, wk))
 
-# canli kod ile replika ayni gunlerde ayni karari veriyor mu (gercek BTC, 2020 -> son)
 if os.path.isdir(os.path.join(TV, "d1")):
     sys.path.insert(0, TV); cwd = os.getcwd(); os.chdir(TV)
     import canli_kopya_c3 as K

@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
-# Sunucu guvenligi ve surekliligi (Ubuntu, root). Tekrar calistirmak guvenlidir. Kullanim:
-#   bash sunucu_guvenlik.sh              -> sistem guncellemesi, otomatik guvenlik yamalari, fail2ban, bekci, gunluk yedek
-#   bash sunucu_guvenlik.sh sifre-kapat  -> SSH sifreli girisi kapatir (once SSH anahtariyla giris denenmis olmali)
 set -e
 DIR=/opt/crypto_bot
 REPO=$DIR/aurumquantbot
 PY=$DIR/venv/bin/python
 AK=/root/.ssh/authorized_keys
-# Yedek indirme anahtari: sadece yedek dosyasini okuyabilir, sunucuda baska hicbir sey yapamaz
 YEDEK_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK8nBE1/6oi7VamGjJJqvLj2SGKGI9GO8c1+es26jNDU kqb-yedek"
 
 if [ "$1" = "sifre-kapat" ]; then
-  # Kisitli yedek anahtari sayilmaz: satir basinda duz anahtar olmali, yoksa sunucuya girisiniz kapanir
   if ! grep -qE '^(ssh-ed25519|ssh-rsa|ecdsa-sha2)' "$AK" 2>/dev/null; then
     echo "DURDURULDU: giris icin SSH anahtari bulunamadi. Sifre KAPATILMADI. Once bilgisayarinizdan anahtari ekleyin."
     exit 1

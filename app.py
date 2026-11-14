@@ -1,6 +1,3 @@
-"""KriptoQuantBot masaustu uygulamasi: kendi penceresi (pywebview) + sistem tepsisi (pystray) + yerel veri API'si.
-Al-sat motoru arka planda calisir; pencere kapatilinca tepsiye iner, motor durmaz.
-Giris zorunludur: admin her seyi, normal kullanici sadece gercek (LIVE) hesap ekranlarini ve kendi Binance API'sini gorur."""
 import copy
 import json
 import logging
@@ -28,14 +25,13 @@ ICON = os.path.join(C.APP_DIR, "icon.ico")
 
 
 class Engine:
-    """Bot'u ayri thread'de calistirir; hata olursa 30 sn sonra yeniden baslatir."""
 
     def __init__(self):
         self.bot, self.thread, self.error, self.started = None, None, "", time.time()
         self.halt, self._rl = threading.Event(), threading.Lock()
 
     def start(self):
-        self.halt = threading.Event()  # her dongunun kendi durdurma isareti: eski dongu geri canlanmasin
+        self.halt = threading.Event()
         self.thread = threading.Thread(target=self._loop, args=(self.halt,), daemon=True)
         self.thread.start()
 
@@ -65,7 +61,7 @@ class Engine:
             self.thread.join(180)
 
     def restart(self):
-        with self._rl:  # ust uste kayit/yeniden baslatma iki motorun ayni hesapta islem yapmasina yol acmasin
+        with self._rl:
             self.stop()
             self.bot = None
             self.start()
@@ -75,8 +71,6 @@ ENGINE = Engine()
 
 
 def cached(key, ttl, fn):
-    """Anahtar basina kilit: ayni anahtar icin tek dis istek; farkli anahtarlar birbirini beklemez.
-    fn hata atarsa onceki deger korunur ve ttl kadar sonra yeniden denenir (onceki deger yoksa hata yukari gider)."""
     t, v = CACHE.get(key, (0, None))
     if time.time() - t <= ttl:
         return v
@@ -94,7 +88,6 @@ def cached(key, ttl, fn):
 
 
 def arkada(key, fn):
-    """fn'i HTTP isteginden ayri calistirir; ayni anahtarla ust uste baslamaz."""
     with ARKA_KILIT:
         if key in ARKA:
             return
@@ -112,7 +105,6 @@ def arkada(key, fn):
 
 
 def beyin_durumu():
-    """(ok, bilgi, beyin). CLI denetimi HTTP isteginde bekletmez: eldeki deger doner, 60 sn'de bir arka planda yenilenir."""
     import agent as A
 
     def yenile():
@@ -125,7 +117,6 @@ def beyin_durumu():
 
 
 def clean(o):
-    """JSON'a NaN/Inf yazilmasin (tarayici JSON'u reddeder ve ekran donar)."""
     if isinstance(o, float):
         return o if math.isfinite(o) else None
     if isinstance(o, dict):
@@ -136,7 +127,6 @@ def clean(o):
 
 
 def hide_paper(text):
-    """Normal kullanici sanal hesap sonuclarini gormez: 'sanal: ...;' parcalarini ayiklar."""
     return re.sub(r"sanal: [^;\n]*;? ?", "", text)
 
 
@@ -157,7 +147,6 @@ def acct_summary(a):
 
 
 def payoff(trades):
-    """Kazanma orani tek basina yaniltir: ortalama kazanc/kayip, beklenti (islem basi) ve kar faktoru."""
     w = [t["pnl"] for t in trades if t["pnl"] > 0]
     lo = [t["pnl"] for t in trades if t["pnl"] <= 0]
     rs = [t["R"] for t in trades if t.get("R") is not None]
@@ -170,7 +159,7 @@ def state(sess, q):
     b = ENGINE.bot
     admin = sess["role"] == "admin"
     import guncelle
-    lt = guncelle.STATE["latest"] or {}  # git calistirmaz; guncelle.status() ile ayni anlam
+    lt = guncelle.STATE["latest"] or {}
     base = {"user": sess["user"], "role": sess["role"], "live_allowed": C.LIVE_ALLOWED, "error": ENGINE.error,
             "uptime": time.time() - ENGINE.started, "version": C.VERSION,
             "update": lt.get("version") if lt.get("newer") and sess["role"] == "admin" else None}
@@ -189,7 +178,7 @@ def state(sess, q):
                  "memo": ag.get("memo", "") if admin else "", "quota": C.QUOTA_SAVER, "review_h": C.REVIEW_HOURS,
                  "last_strategy": ag.get("last_strategy", 0),
                  "next": 3600 - time.time() % 3600}
-        if not admin:  # maliyet ve butce sadece admin'e
+        if not admin:
             agent = {k: agent[k] for k in ("calls", "last", "error", "model", "next")}
         dec = copy.deepcopy(ag["decisions"][-1]) if ag["decisions"] else None
         scan = dict(b.last_scan)
@@ -206,7 +195,7 @@ def state(sess, q):
             dec.pop("usd", None)
             for r in dec["actions"]:
                 r["result"] = hide_paper(r.get("result", ""))
-        if not a:  # gercek hesap henuz bagli degil
+        if not a:
             out.update(no_account=True, notes=notes, positions=[], pending=[], locks=[])
             return out
         st, bid = a.st, b.bid
@@ -214,7 +203,7 @@ def state(sess, q):
         for s, p in st["positions"].items():
             px = bid.get(s)
             unreal = p.get("realized", 0) + p["qty"] * ((px or p["entry"]) - p["entry"]) - p["fee"] \
-                - p["qty"] * (px or p["entry"]) * C.FEE  # alis + satis komisyonu dahil net
+                - p["qty"] * (px or p["entry"]) * C.FEE
             positions.append({**{k: v for k, v in p.items() if k not in ("stop_chk", "stop_try")}, "sym": s, "price": px,
                               "sure_kalan": max(p["sure_t"] - time.time(), 0) if p.get("sure_t") else None,
                               "pnl": unreal if px else None,
@@ -252,7 +241,6 @@ def screener():
 
 
 def opportunities():
-    """Tum piyasa radari + her adayin sinyalleri, Ders Defteri avantaji ve durumu."""
     import dersler as L
     b = ENGINE.bot
     if not b:
@@ -284,7 +272,7 @@ def macro():
 def lessons(sess):
     import dersler as L
     admin = sess["role"] == "admin"
-    L.init()  # motor henuz baslamadiysa da (ilk saniyeler) tablo hazir olsun
+    L.init()
     out = L.summary(admin)
     out["mc"] = __import__("montecarlo").summary()
     b = ENGINE.bot
@@ -293,8 +281,6 @@ def lessons(sess):
 
 
 def montecarlo(q, mode):
-    """Monte Carlo ihtimal cubugu (grafik paneli, radar): acik pozisyon varsa simdiki fiyattan kendi stop/hedef ve cikis
-    kurallariyla; yoksa verilen veya varsayilan plan (2,5 ATR stop, 4,5 ATR hedef, 24 sa)."""
     import data as D
     import gecmis as G
     import montecarlo as MC
@@ -308,7 +294,7 @@ def montecarlo(q, mode):
     acct = b and b.accounts.get(mode)
     pos = acct and acct.st["positions"].get(s)
     regime = b.regime if b else None
-    vsp = (b.tech.radar_map.get(s) or {}).get("vspike") if b else None  # kilitsiz (motor taramasini beklemesin)
+    vsp = (b.tech.radar_map.get(s) or {}).get("vspike") if b else None
     if pos:
         exit_p, stop, tp = pos.get("exit") or {}, pos["sl"], pos["tp"]
         hours = max(1, pos.get("max_hours", 24) - (time.time() - pos["t"]) / 3600)
@@ -326,10 +312,9 @@ def montecarlo(q, mode):
 
 
 def history():
-    """Gecmis Okulu (2 yil, tum coinler) sonuclari + calisma durumu."""
     import dersler as L
     import gecmis as G
-    if not G.RES:  # motor henuz baslamadiysa da sonuc gorunsun
+    if not G.RES:
         G.load()
     r = G.RES
     rules = r.get("rules") or []
@@ -347,7 +332,7 @@ def decisions(sess):
     if not b:
         return []
     with b.lock:
-        ds = list(b.ag["decisions"][-60:])  # kilit altinda sadece dilim; kopya disarida
+        ds = list(b.ag["decisions"][-60:])
     ds = copy.deepcopy(ds)
     if sess["role"] != "admin":
         for d in ds:
@@ -360,7 +345,6 @@ def decisions(sess):
 
 
 def _klines(sym, tf):
-    """Dogrudan REST: ccxt load_markets beklenmez."""
     r = requests.get("https://api.binance.com/api/v3/klines", params={"symbol": sym.replace("/", ""), "interval": tf, "limit": 500},
                      timeout=10)
     r.raise_for_status()
@@ -368,8 +352,6 @@ def _klines(sym, tf):
 
 
 def candles(sym, tf, mode, son=False):
-    """Gecmis mumlar (REST, 15 sn onbellek) + canli son mum (WebSocket, saniyelik; 10 sn'den eskiyse kullanilmaz).
-    son=True: saniyelik yoklama, sadece son 2 mum (seviyeler ve markerlar yine tam)."""
     from stream import Stream
     rows = cached(f"c:{sym}:{tf}", 15, lambda: _klines(sym, tf))
     cs = [{"time": r[0] // 1000, "open": r[1], "high": r[2], "low": r[3], "close": r[4], "volume": r[5]} for r in rows]
@@ -385,8 +367,8 @@ def candles(sym, tf, mode, son=False):
     out = {"candles": cs[-2:] if son else cs, "levels": [], "markers": []}
     from zincir import Zincir
     z = Zincir.shared()
-    lm = z.liq.get(sym)  # likidasyon kumeleri (tahmini, vadeli verisinden); mumu bekletmez, sonraki yoklamada gelir
-    if not lm or time.time() - lm["t"] > 600:  # liq_map'in kendi suresi; basarisizsa 60 sn sonra yeniden dener
+    lm = z.liq.get(sym)
+    if not lm or time.time() - lm["t"] > 600:
         cached(f"liq:{sym}", 60, lambda: arkada(f"liq:{sym}", lambda: z.liq_map(sym)))
     if lm and not lm.get("none"):
         out["liq"] = {"long": lm["long"], "short": lm["short"]}
@@ -430,7 +412,7 @@ def get_settings(sess):
     out = {k: ("" if k in C.SECRETS else getattr(C, k)) for k in keys}
     out["_set"] = {k: bool(getattr(C, k)) for k in C.SECRETS if k in keys}
     b = ENGINE.bot
-    if sess["role"] == "admin" and b:  # canliya gecis karari icin sanal hesabin karnesi
+    if sess["role"] == "admin" and b:
         p = b.accounts["PAPER"].st
         tr, cv = p["trades"], p["curve"]
         btc = (cv[-1][2] / cv[0][2] - 1) * 100 if len(cv) > 1 and cv[0][2] and cv[-1][2] else None
@@ -464,7 +446,7 @@ def save_settings(sess, body):
     def changed(k):
         cur = getattr(C, k)
         try:
-            return new[k] != "" and type(cur)(new[k]) != cur  # "1000" ile 1000.0 ayni sayilir
+            return new[k] != "" and type(cur)(new[k]) != cur
         except (TypeError, ValueError):
             return True
     restart = any(k in engine_keys and changed(k) for k in new)
@@ -478,12 +460,12 @@ def save_settings(sess, body):
     return {"ok": True, "msg": "Kaydedildi" + (", motor yeniden başlatılıyor." if restart else ".")}
 
 
-AVATAR_DIR = os.path.join(C.APP_DIR, "profil")  # USB'de veri klasorunde: fotograflar bilgisayarla birlikte tasinir
+AVATAR_DIR = os.path.join(C.APP_DIR, "profil")
 IMG = {b"\x89PNG": ("png", "image/png"), b"\xff\xd8": ("jpg", "image/jpeg"), b"RIFF": ("webp", "image/webp"),
        b"GIF8": ("gif", "image/gif")}
 
 
-MAX_BODY = 2_000_000  # POST govdesi ust siniri (bayt)
+MAX_BODY = 2_000_000
 
 
 def avatar_file(user):
@@ -496,7 +478,6 @@ def avatar_file(user):
 
 
 def save_avatar(user, data_url):
-    """Tarayicida 256 px'e kucultulmus resim (data URL). Bos = fotografi kaldir."""
     import base64
     old = avatar_file(user)
     if old:
@@ -518,7 +499,6 @@ def save_avatar(user, data_url):
 
 
 def portfoy():
-    """Portfoy stratejisi: arastirma sonucu, son hedefler, sanal hesaptaki agirliklar ve karne."""
     import portfoy as PF
     b = ENGINE.bot
     out = {"backtest": PF.BACKTEST, "on": C.PORTFOY, "live": C.PORTFOY_LIVE, "core": C.PORTFOY_CORE,
@@ -537,10 +517,10 @@ def portfoy():
 
 
 def history_file(user):
-    return os.path.join(C.APP_DIR, f"sohbet_u_{re.sub(r'[^a-z0-9_.-]', '_', user.lower())}.json")  # telegram'dan ayri
+    return os.path.join(C.APP_DIR, f"sohbet_u_{re.sub(r'[^a-z0-9_.-]', '_', user.lower())}.json")
 
 
-CHAT_GATE = {}  # kullanici basina tek sohbet akisi
+CHAT_GATE = {}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -552,7 +532,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype + "; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
-        if cookie is not None:  # oturum 30 gun kalici (uygulama/tarayici kapansa da); https arkasinda Secure
+        if cookie is not None:
             self.send_header("Set-Cookie", f"kqb={cookie}; HttpOnly; SameSite=Strict; Path=/"
                              + (f"; Max-Age={30 * 86400}" if cookie else "; Max-Age=0")
                              + ("; Secure" if self.headers.get("X-Forwarded-Proto") == "https" else ""))
@@ -560,17 +540,14 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _guard(self, post):
-        # Varsayilan: sadece bu bilgisayardan. Sunucu modunda ag/Tailscale, tunel acikken tunel adresi de kabul edilir
-        # (hepsinde giris zorunlu). POST'larda ozel baslik zorunlu: baska siteler istek atamaz.
         import sunucu
         host = self.headers.get("Host") or ""
-        loop = re.fullmatch(r"(127\.0\.0\.1|localhost)(:\d+)?", host)  # SSH tuneli farkli yerel porttan gelebilir
+        loop = re.fullmatch(r"(127\.0\.0\.1|localhost)(:\d+)?", host)
         ok = host in HOSTS or bool(loop) or C.SERVER_MODE or host == sunucu.tunnel_host() or \
-            host in C.PUBLIC_HOST  # sunucu: HTTPS ters vekil (Caddy) arkasindaki alan adlari
+            host in C.PUBLIC_HOST
         return ok and (not post or self.headers.get("X-KQB") == "1")
 
     def _local(self):
-        """Istek gercekten bu bilgisayardaki pencereden mi (pencere/tepsi komutlari icin)?"""
         return self.client_address[0] in ("127.0.0.1", "::1") and self.headers.get("Host") in HOSTS
 
     def _token(self):
@@ -583,20 +560,20 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
-            if u.path in ("/", "/lw.js"):  # arayuz + yerel grafik kutuphanesi (CDN'e bagimli degil)
+            if u.path in ("/", "/lw.js"):
                 name, ctype = ("ui.html", "text/html") if u.path == "/" else ("lw.js", "application/javascript")
                 with open(os.path.join(C.BASE_DIR, name), "rb") as fh:
                     return self._send(200, fh.read(), ctype)
             if u.path == "/api/app":
                 return self._send(200, {"desktop": WINDOW is not None, "max": MAXED})
-            if u.path == "/api/health":  # sunucu bekcisi: sadece makinenin icinden; motor dongusu donuyor mu?
+            if u.path == "/api/health":
                 if not self._local():
                     return self._send(403, {"ok": False})
                 b = ENGINE.bot
                 age = round(time.time() - b.updated) if b else None
                 return self._send(200, {"ok": bool(b) and age < 180, "age": age, "status": b.status if b else "baslatiliyor",
-                                        **(b.health() if b else {})})  # dengeleme ve USDT durumu ok'u etkilemez: bekci motorun durdugunu sormaya devam eder
-            if u.path == "/api/avatar":  # giris ekraninda da gosterilir (sadece bu bilgisayar)
+                                        **(b.health() if b else {})})
+            if u.path == "/api/avatar":
                 f = avatar_file(q.get("u"))
                 if not f:
                     return self._send(404, {"error": "yok"})
@@ -632,7 +609,7 @@ class Handler(BaseHTTPRequestHandler):
                 routes["/api/server"] = lambda: __import__("sunucu").status()
                 routes["/api/history"] = history
                 routes["/api/hazirlik"] = hazirlik_rapor
-                if os.environ.get("KQB_GELISTIRME") == "1":  # exe'de modul yuklenmez
+                if os.environ.get("KQB_GELISTIRME") == "1":
                     routes["/api/gelistir"] = lambda: __import__("gelistir").durum()
                 routes["/api/memory"] = lambda: {"text": __import__("hafiza").tail(60000)}
             if u.path in routes:
@@ -647,22 +624,22 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(403, {"error": "forbidden"})
         try:
             n = int(self.headers.get("Content-Length") or 0)
-            if not 0 <= n <= MAX_BODY:  # bellek tasirma / sonsuz okuma yok (en buyuk istek: 600 KB avatar)
+            if not 0 <= n <= MAX_BODY:
                 return self._send(413, {"error": "istek cok buyuk"})
             body = json.loads(self.rfile.read(n) or b"{}")
         except ValueError:
             return self._send(400, {"error": "gecersiz istek"})
         p = self.path
-        if p in ("/api/window", "/api/show") and not self._local():  # uzaktan pencere kontrolu yok
+        if p in ("/api/window", "/api/show") and not self._local():
             return self._send(403, {"ok": False})
-        if p == "/api/window":  # ozel baslik cubugu dugmeleri (giris ekraninda da calisir)
+        if p == "/api/window":
             win_action(body.get("a"))
             return self._send(200, {"ok": True, "max": MAXED})
         if p == "/api/show":
             if WINDOW:
                 goster()
             return self._send(200, {"ok": True})
-        if p == "/api/auth/setup":  # ilk calistirma: admin hesabi olustur
+        if p == "/api/auth/setup":
             err = auth.create(str(body.get("user", "")).strip(), str(body.get("password", "")), "admin", first=True)
             if err:
                 return self._send(200, {"ok": False, "msg": err})
@@ -681,7 +658,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(401, {"ok": False, "msg": "Oturum kapandı, tekrar giriş yapın."})
         admin, b = sess["role"] == "admin", ENGINE.bot
         mode = mode_for(sess, body)
-        if p.startswith("/api/gelistir/"):  # uygulama ici gelistirme: sadece admin, sadece KQB_GELISTIRME=1 sunucu botu
+        if p.startswith("/api/gelistir/"):
             if not admin or os.environ.get("KQB_GELISTIRME") != "1" or not __import__("gelistir").etkin():
                 return self._send(403, {"ok": False, "msg": "Geliştirme bu botta kapalı ya da yetkiniz yok."})
             import gelistir as G
@@ -695,7 +672,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(404, {"ok": False, "msg": "yok"})
             err = islem()
             return self._send(200, {"ok": not err, "msg": err or "Tamam."})
-        if p == "/api/hazirlik/binance":  # gercek emir gitmez (order/test)
+        if p == "/api/hazirlik/binance":
             if not admin:
                 return self._send(403, {"ok": False, "msg": "Sadece admin."})
             lv = b and b.accounts.get("LIVE")
@@ -704,7 +681,7 @@ class Handler(BaseHTTPRequestHandler):
             import hazirlik
             b.ag["hazirlik"] = hazirlik.binance_kontrol(lv, dict(lv.bid))
             return self._send(200, {"ok": True})
-        if p == "/api/chat":  # cevap parca parca akar
+        if p == "/api/chat":
             import chat
             gate = CHAT_GATE.setdefault(sess["user"].lower(), threading.Semaphore(1))
             if not gate.acquire(blocking=False):
@@ -721,7 +698,7 @@ class Handler(BaseHTTPRequestHandler):
                         self.wfile.write(part.encode())
                         self.wfile.flush()
                 finally:
-                    if hasattr(gen, "close"):  # pencere kapansa da maliyet butceye yazilsin
+                    if hasattr(gen, "close"):
                         gen.close()
             finally:
                 gate.release()
@@ -735,10 +712,10 @@ class Handler(BaseHTTPRequestHandler):
             if not ok:
                 return self._send(200, {"ok": False, "msg": "Mevcut şifre hatalı."})
             auth.logout(ok)
-            err = auth.set_password(sess["user"], str(body.get("new", "")))  # tum eski oturumlar kapanir
+            err = auth.set_password(sess["user"], str(body.get("new", "")))
             if err:
                 return self._send(200, {"ok": False, "msg": err})
-            tok = auth.login(sess["user"], str(body.get("new", "")))[0]  # bu pencere acik kalsin
+            tok = auth.login(sess["user"], str(body.get("new", "")))[0]
             return self._send(200, {"ok": True, "msg": "Şifre değişti; diğer oturumlar kapatıldı."}, cookie=tok)
         if p == "/api/settings":
             return self._send(200, save_settings(sess, body))
@@ -746,7 +723,7 @@ class Handler(BaseHTTPRequestHandler):
             err = save_avatar(sess["user"], body.get("data"))
             return self._send(200, {"ok": not err, "msg": err or ("Profil fotoğrafı kaydedildi." if body.get("data")
                                                                    else "Profil fotoğrafı kaldırıldı.")})
-        if p.startswith("/api/telegram/"):  # her kullanici kendi Telegram'ini baglar
+        if p.startswith("/api/telegram/"):
             import telegram_bot as T
             act = p.rsplit("/", 1)[1]
             if act == "link":
@@ -764,7 +741,7 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/pause":
             set_pause(mode, bool(body.get("on")))
             return self._send(200, {"ok": True})
-        if p in ("/api/position/levels", "/api/position/auto", "/api/position/timer", "/api/manual/buy"):  # grafikten elle yonetim
+        if p in ("/api/position/levels", "/api/position/auto", "/api/position/timer", "/api/manual/buy"):
             a = b and b.accounts.get(mode)
             if not a:
                 return self._send(200, {"ok": False, "msg": "Hesap bağlı değil."})
@@ -786,10 +763,10 @@ class Handler(BaseHTTPRequestHandler):
                     msg = "Stop/hedef kaydedildi; Manuel Kilit açık." if p.endswith("levels") else "Kontrol yapay zekaya devredildi."
             except (ValueError, TypeError):
                 err = "Geçersiz fiyat."
-            except Exception as e:  # borsa hatasi vb.
+            except Exception as e:
                 err = f"Hata: {str(e)[:160]}"
             return self._send(200, {"ok": not err, "msg": err or msg})
-        if p == "/api/close":  # elle kapat: tek coin veya hepsi (panik)
+        if p == "/api/close":
             a = b and b.accounts.get(mode)
             if not a:
                 return self._send(200, {"ok": False, "msg": "Hesap yok."})
@@ -808,12 +785,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": not errs, "msg": f"{done} kapatıldı." + (" Hata: " + "; ".join(errs) if errs else "")})
         if not admin:
             return self._send(403, {"ok": False, "msg": "Bu işlem için admin yetkisi gerekli."})
-        # ---- sadece admin ----
         if p == "/api/retrain":
             if b:
                 b.force_retrain = True
             return self._send(200, {"ok": True})
-        if p in ("/api/cli/install", "/api/cli/pick", "/api/cli/clear"):  # Claude CLI baglanti sihirbazi
+        if p in ("/api/cli/install", "/api/cli/pick", "/api/cli/clear"):
             import agent as A
             CACHE.pop("claude", None)
             CACHE.pop("brain", None)
@@ -838,7 +814,7 @@ class Handler(BaseHTTPRequestHandler):
             d = A.cli_diagnose()
             return self._send(200, {"ok": d["path"] == path, "msg": d["why"] if d["path"] == path else
                                     "Seçilen dosya çalışmadı (--version cevap vermedi)."})
-        if p in ("/api/cli/login", "/api/cli/check"):  # Claude aboneligi: CLI girisi (bir kez, tarayicidan)
+        if p in ("/api/cli/login", "/api/cli/check"):
             import agent as A
             err = A.cli_login() if p == "/api/cli/login" else None
             if p == "/api/cli/check":
@@ -849,7 +825,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": not err, "msg": err or (
                 "Açılan pencerede tarayıcıdan Claude hesabınızla giriş yapın, sonra 'Kontrol et'e basın."
                 if ready is None else ("Claude CLI köprüsü hazır." if ready else A.CLI["why"]))})
-        if p == "/api/history/run":  # Gecmis Okulu: 2 yillik tum coin testi (arka planda, uzun surer)
+        if p == "/api/history/run":
             import gecmis as G
             if G.STATE["running"]:
                 return self._send(200, {"ok": False, "msg": "Geçmiş Okulu zaten çalışıyor."})
@@ -857,14 +833,14 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=G.run, args=(say,), name="gecmis", daemon=True).start()
             return self._send(200, {"ok": True, "msg": "Geçmiş Okulu başladı: veri güncelleniyor, tüm coinler test "
                                                        "ediliyor (15-40 dk). Sonuç Ders Defteri sayfasında."})
-        if p == "/api/news/unblock":  # acil durum engelini elle kaldir (yanlis alarm)
+        if p == "/api/news/unblock":
             __import__("haberler").unblock()
             return self._send(200, {"ok": True, "msg": "Engel kaldırıldı; hedefler sonraki dengelemede geri alınır."})
-        if p == "/api/portfoy/run":  # portfoy stratejisi: hedef agirliklari simdi hesapla + yeniden dengele
+        if p == "/api/portfoy/run":
             started = b and b.run_portfolio()
             return self._send(200, {"ok": bool(started), "msg": "Portföy yeniden dengeleniyor (1 dk sürebilir)..."
                                     if started else "Dengeleme zaten sürüyor, birazdan tekrar bakın."})
-        if p == "/api/decide":  # simdi karar verdir (aktif beyinle)
+        if p == "/api/decide":
             started = b and b._background("Elle karar", lambda: b.decide("elle"))
             return self._send(200, {"ok": bool(started), "msg": "Karar veriliyor..." if started else
                                     "Motor meşgul, birazdan tekrar deneyin."})
@@ -889,7 +865,7 @@ class Handler(BaseHTTPRequestHandler):
                 res = {}
                 t = threading.Thread(target=lambda: res.update(err=guncelle.apply(quit_app)), daemon=True)
                 t.start()
-                t.join(3)  # hizli hatalar (yayin yok, zaten guncel) hemen donsun; indirme arka planda surer
+                t.join(3)
                 if res.get("err"):
                     return self._send(200, {"ok": False, "msg": res["err"]})
                 return self._send(200, {"ok": True, "msg": "Güncelleme indiriliyor; bitince uygulama kendini yeniden başlatacak "
@@ -903,7 +879,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": not err, "msg": err or f"Tünel açık: {sunucu.TUN['url']}"})
             sunucu.tunnel_stop()
             return self._send(200, {"ok": True, "msg": "Tünel kapatıldı."})
-        if p == "/api/principal":  # kartopu: anaparayi simdiki kasaya esitle (para yatirma/cekme sonrasi)
+        if p == "/api/principal":
             a = b and b.accounts.get(mode)
             if not a:
                 return self._send(200, {"ok": False, "msg": "Hesap yok."})
@@ -947,12 +923,11 @@ WINDOW, TRAY, MAXED, CLIENT = None, None, True, False
 
 
 def work_area():
-    """Gorev cubugu haric ekran alani (x, y, w, h): cercevesiz pencere 'buyut'ta gorev cubugunu ortmesin."""
     try:
         import ctypes
         from ctypes import wintypes
         r = wintypes.RECT()
-        if ctypes.windll.user32.SystemParametersInfoW(0x30, 0, ctypes.byref(r), 0):  # SPI_GETWORKAREA
+        if ctypes.windll.user32.SystemParametersInfoW(0x30, 0, ctypes.byref(r), 0):
             return r.left, r.top, r.right - r.left, r.bottom - r.top
     except (AttributeError, OSError):
         pass
@@ -960,14 +935,12 @@ def work_area():
     return 0, 0, s.width, s.height
 
 
-YEREL = None  # Windows pencere kolu (hwnd): yerel cerceve kuruluysa dolu
-YEREL_HAZIR = threading.Event()  # pencere acilinca (arayuz bundan once sorabilir)
-KENAR = {"tasi": 2, "l": 10, "r": 11, "t": 12, "tl": 13, "tr": 14, "b": 15, "bl": 16, "br": 17}  # WM_NCLBUTTONDOWN isabet kodlari
+YEREL = None
+YEREL_HAZIR = threading.Event()
+KENAR = {"tasi": 2, "l": 10, "r": 11, "t": 12, "tl": 13, "tr": 14, "b": 15, "bl": 16, "br": 17}
 
 
 def yerel_cerceve():
-    """Cercevesiz pencereye Windows cercevesini geri verir ama gostermez (WM_NCCALCSIZE): tepeye surukleyince tam ekran, yanlara
-    yarim ekran, gorev cubugu ortulmez, tasirken eski boyuta doner. Olmazsa eski davranis (YEREL None) surer."""
     global YEREL, _wndproc
     import ctypes
     from ctypes import wintypes
@@ -985,7 +958,7 @@ def yerel_cerceve():
     eski = u.GetWindowLongPtrW(hwnd, -4)
 
     def proc(h, msg, wp, lp):
-        if msg == 0x83 and wp:  # WM_NCCALCSIZE: istemci alani tum pencere; tam ekranda ekran disina tasan cerceve kadar iceri
+        if msg == 0x83 and wp:
             if u.IsZoomed(h):
                 r = wintypes.RECT.from_address(lp)
                 pad = u.GetSystemMetrics(92)
@@ -993,11 +966,11 @@ def yerel_cerceve():
                 r.left, r.top, r.right, r.bottom = r.left + x, r.top + y, r.right - x, r.bottom - y
             return 0
         return u.CallWindowProcW(eski, h, msg, wp, lp)
-    _wndproc = WNDPROC(proc)  # cop toplayiciya karsi modul duzeyinde tutulur
+    _wndproc = WNDPROC(proc)
     u.SetWindowLongPtrW(hwnd, -4, ctypes.cast(_wndproc, ctypes.c_void_p).value)
-    u.SetWindowLongPtrW(hwnd, -16, u.GetWindowLongPtrW(hwnd, -16) | 0xC00000 | 0x40000 | 0x20000 | 0x10000 | 0x80000)  # baslik, kalin kenar, kucult/buyut, menu
-    u.SetWindowPos(hwnd, None, 0, 0, 0, 0, 0x27)  # SWP_FRAMECHANGED | NOMOVE | NOSIZE | NOZORDER
-    u.ShowWindow(hwnd, 3)  # tam ekran acilir; suruklenince %80 boyuta iner
+    u.SetWindowLongPtrW(hwnd, -16, u.GetWindowLongPtrW(hwnd, -16) | 0xC00000 | 0x40000 | 0x20000 | 0x10000 | 0x80000)
+    u.SetWindowPos(hwnd, None, 0, 0, 0, 0, 0x27)
+    u.ShowWindow(hwnd, 3)
     YEREL = hwnd
 
 
@@ -1010,7 +983,6 @@ def yerel_kur():
 
 
 def goster():
-    """Tepsiden/ikinci acilistan pencereyi one getir; tam ekransa tam ekran kalir."""
     WINDOW.show()
     if YEREL:
         import ctypes
@@ -1023,7 +995,6 @@ def goster():
 
 
 def win_action(act):
-    """Ozel baslik cubugu dugmeleri. Buyut = gorev cubugu haric tam alan; kucult/kapat."""
     global MAXED
     if not WINDOW or act not in ("minimize", "max", "close"):
         return
@@ -1035,7 +1006,7 @@ def win_action(act):
         u.ShowWindow(YEREL, 9 if u.IsZoomed(YEREL) else 3)
     elif act == "max":
         x, y, w, h = work_area()
-        if MAXED:  # normal boyut: calisma alaninin %80'i, ortada
+        if MAXED:
             w2, h2 = int(w * 0.8), int(h * 0.8)
             WINDOW.resize(w2, h2)
             WINDOW.move(x + (w - w2) // 2, y + (h - h2) // 2)
@@ -1043,20 +1014,18 @@ def win_action(act):
             WINDOW.resize(w, h)
             WINDOW.move(x, y)
         MAXED = not MAXED
-    elif CLIENT:  # istemci: kapat = cik (motor sunucuda calisiyor)
+    elif CLIENT:
         os._exit(0)
     else:
-        WINDOW.hide()  # kapat = tepsiye in
+        WINDOW.hide()
 
 
 class JsApi:
-    """Istemci modunda arayuz (sunucudan gelir) pencere dugmelerini bu kopruyle kullanir."""
     def win(self, act):
         win_action(act)
         return {"max": MAXED}
 
     def pencere(self, act):
-        """Arayuzden: yerel (destek var mi), tasi (basliktan surukleme), kenar kodu (boyutlandirma). Fare birakildiysa bir sey yapmaz."""
         if act == "yerel":
             YEREL_HAZIR.wait(10)
         if act == "yerel" or not YEREL:
@@ -1067,15 +1036,14 @@ class JsApi:
             from System import Func, Type
             from webview.platforms.winforms import BrowserView
 
-            def basla():  # fare WebView2'de: pencerenin kendi is parcaciginda yakalamayi birakip Windows'a devret (surukleme bitene kadar burada kalir)
+            def basla():
                 u.ReleaseCapture()
-                u.SendMessageW(YEREL, 0xA1, KENAR[act], 0)  # WM_NCLBUTTONDOWN
+                u.SendMessageW(YEREL, 0xA1, KENAR[act], 0)
             BrowserView.instances[WINDOW.uid].BeginInvoke(Func[Type](basla))
         return True
 
 
 def client_url():
-    """Masaustu istemci: sunucu adresi dosyasi varsa (veri klasorunde ya da exe icinde) yerel motor calismaz."""
     for f in (C.SUNUCU_URL_FILE, os.path.join(C.BASE_DIR, "sunucu_adresi.txt")):
         try:
             with open(f, encoding="utf-8") as fh:
@@ -1088,7 +1056,6 @@ def client_url():
 
 
 def run_client(url):
-    """Sadece pencere: arayuz ve motor sunucuda. Oturum cerezi kalici (bir kez giris)."""
     global WINDOW, CLIENT
     import webview
     CLIENT = True
@@ -1110,7 +1077,6 @@ def quit_app():
 
 
 def make_icon(path=ICON):
-    """Uygulama ikonu (yukselen mum + cizgi)."""
     from PIL import Image, ImageDraw
     img = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -1143,7 +1109,6 @@ def tray():
 
 
 def update_watch():
-    """6 saatte bir yeni surum kontrolu; yeni surum varsa bir kez bildirim (kurulum her zaman admin onayiyla)."""
     import guncelle
     time.sleep(60)
     while True:
@@ -1158,13 +1123,12 @@ def update_watch():
 
 
 def migrate_old_files():
-    """Eski surumlerden kalanlari tasir/donusturur (bir kez)."""
     if not getattr(sys, "frozen", False):
         for name in ("data", "model.pkl", "state.json", "settings.json", "tahmin_defteri.csv"):
             src, dst = os.path.join(C.BASE_DIR, name), os.path.join(C.APP_DIR, name)
             if os.path.exists(src) and not os.path.exists(dst):
                 shutil.move(src, dst)
-    old = os.path.join(C.APP_DIR, "durdur.flag")  # eski tek duraklatma dosyasi -> sanal hesap
+    old = os.path.join(C.APP_DIR, "durdur.flag")
     if os.path.exists(old):
         os.replace(old, C.pause_flag("PAPER"))
     for f in ("sohbet.json", "bot.log.1"):
@@ -1176,7 +1140,7 @@ def migrate_old_files():
 def main():
     global WINDOW
     url = None if "--sunucu" in sys.argv else client_url()
-    if url:  # istemci: bot sunucuda; bu bilgisayar sadece pencere
+    if url:
         return run_client(url)
     migrate_old_files()
     logging.basicConfig(filename=C.LOG_FILE, level=logging.INFO, encoding="utf-8",
@@ -1185,11 +1149,11 @@ def main():
         h.addFilter(C.Maske())
     if not os.path.exists(ICON):
         make_icon()
-    ThreadingHTTPServer.allow_reuse_address = False  # Windows'ta ikinci kopya ayni portu alamasin
+    ThreadingHTTPServer.allow_reuse_address = False
     try:
-        server = ThreadingHTTPServer(("0.0.0.0" if C.SERVER_MODE else "127.0.0.1", C.PORT), Handler)  # sunucu: tum ag
+        server = ThreadingHTTPServer(("0.0.0.0" if C.SERVER_MODE else "127.0.0.1", C.PORT), Handler)
         C.SERVER_ACTIVE = C.SERVER_MODE
-    except OSError:  # zaten calisiyor: tepsideki kopyaya "pencereni goster" de
+    except OSError:
         import urllib.request
         try:
             urllib.request.urlopen(urllib.request.Request(URL + "/api/show", b"{}", {"X-KQB": "1"}), timeout=5)
@@ -1200,10 +1164,10 @@ def main():
     import telegram_bot
     threading.Thread(target=telegram_bot.poll_forever, name="telegram", daemon=True).start()
     threading.Thread(target=update_watch, name="guncelleme", daemon=True).start()
-    if "--sunucu" in sys.argv:  # pencere/tepsi olmadan (test, VPS): arayuz tarayicidan acilir
+    if "--sunucu" in sys.argv:
         try:
             server.serve_forever()
-        except KeyboardInterrupt:  # Ctrl+C: durumu kaydet ve tum is parcaciklariyla birlikte cik
+        except KeyboardInterrupt:
             try:
                 ENGINE.bot and ENGINE.bot.save()
             finally:
@@ -1211,13 +1175,12 @@ def main():
         return
     threading.Thread(target=server.serve_forever, daemon=True).start()
     import webview
-    # Cercevesiz koyu cubuk; ekrani gorev cubugu HARIC kaplar (Windows'un 'maximize'i cercevesizde gorev cubugunu ortuyor)
     x, y, w, h = work_area()
     WINDOW = webview.create_window("KriptoQuantBot", URL, x=x + w // 10, y=y + h // 10, width=w * 4 // 5, height=h * 4 // 5, min_size=(800, 560),
                                    background_color="#0b0e14", frameless=True, easy_drag=False, js_api=JsApi())
     WINDOW.events.shown += yerel_kur
 
-    def on_closing():  # kapat -> tepsiye in, motor calismaya devam etsin
+    def on_closing():
         threading.Thread(target=WINDOW.hide, daemon=True).start()
         return False
     WINDOW.events.closing += on_closing

@@ -1,14 +1,9 @@
 #!/usr/bin/env bash
-# KriptoQuantBot sunucu kurulumu (Ubuntu 22.04/24.04, root). Her kisiye AYRI bot (kendi Binance API'si, kasasi,
-# ayarlari, Telegram'i); kod ortak, tek guncelleme hepsini gunceller. HTTPS: Caddy + ucretsiz sslip.io adresleri.
-# Tekrar calistirmak guvenlidir (veriler korunur). Kullanim:
-#   bash /opt/crypto_bot/aurumquantbot/sunucu_kur.sh
 set -e
 DIR=/opt/crypto_bot
 REPO=$DIR/aurumquantbot
 IP=$(curl -fsS4 https://api.ipify.org || hostname -I | awk '{print $1}')
 HOST="${IP//./-}.sslip.io"
-# ad:port:veri klasoru (melik = ilk kurulan bot, mevcut verisiyle)
 BOTS="melik:8765:$DIR/veri fatih:8766:$DIR/veri-fatih"
 
 apt-get update -y

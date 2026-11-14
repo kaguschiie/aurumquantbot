@@ -1,10 +1,6 @@
-"""Daha hizli tepki testi.
-A) ML sepeti: haftalik (mevcut) vs gunluk tahmin + histerezis (sepette kalmak icin ilk 10, girmek icin ilk 5) vs gunluk saf.
-B) Cekirdek: gunluk kapanis (mevcut) vs saatlik kontrol (gun ici fiyat SMA'larin altina inince hemen azalt), 1s veri 2 yil."""
 import os, sys, glob, pickle
 __file__ = os.path.abspath(__file__)
 exec(open(os.path.join(os.path.dirname(__file__), "ml.py"), encoding="utf-8").read().split("days = c.index[")[0])
-# tum gunler icin ornek (tahmin icin); egitim yine haftalik orneklerle
 days_all = c.index[c.index >= "2018-03-01"]
 src = open(os.path.join(os.path.dirname(__file__), "ml.py"), encoding="utf-8").read()
 exec("def frame(ds):" + src.split("def frame(ds):")[1].split("D = frame(days)")[0])
@@ -64,4 +60,3 @@ for name, Wm in V.items():
         te, s6 = PN.stats(eq, PN.TRAIN_END, None), PN.stats(eq, c.index[-1] - pd.Timedelta(days=182), None)
         print(f"{name:<28} {lab:<14} TEST yillik {te['cagr']:6.1f}% dusus {te['mdd']:6.1f}% Sharpe {te['sharpe']:.2f} "
               f"| son 6 ay {s6['tot']:6.1f}% | devir/yil {tu[PN.TRAIN_END:].mean() * 365:.1f}", flush=True)
-

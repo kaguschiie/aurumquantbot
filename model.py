@@ -1,4 +1,3 @@
-"""Yerel ML karar katmani: egitim, walk-forward testi, cikis politikasi secimi, rejim bazli risk, backtest egrisi."""
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -16,28 +15,25 @@ FEATS = ["r1", "r3", "r6", "r12", "r24", "r72", "atr_pct", "vol24", "vol_ratio",
          "flow1", "flow6", "flow24", "trades_z", "vol_accel", "squeeze", "atr_ratio",
          "funding", "funding24", "premium", "premium_z", "oi1", "oi6", "oi24", "oi_z", "lsr", "lsr24",
          "btc_r1", "btc_r6", "btc_r24", "btc_ema50", "btc_ema200", "btc_flow24", "btc_funding", "breadth", "mkt_r24"]
-CORE = ["r72", "atr_pct", "ema200", "vol_ratio"]  # bunlar bos ise satir kullanilmaz (isinma donemi)
+CORE = ["r72", "atr_pct", "ema200", "vol_ratio"]
 BAR = pd.Timedelta(milliseconds=D.TF_MS)
 POLICIES = {"akilli": ("ret_s", "held_s", "clean_s"), "sabit": ("ret", "held", "clean")}
 REGIME_TR = {"trend": "Yükseliş trendi", "yatay": "Yatay", "dusus": "Sert düşüş"}
 
 
 def ev(p, atr_pct):
-    """Komisyon + kayma dahil yaklasik beklenen net getiri (siralama ve esik icin)."""
     win = C.TP_ATR * atr_pct - 2 * C.FEE
     loss = C.SL_ATR * atr_pct + 2 * C.FEE + C.SLIPPAGE
     return p * win - (1 - p) * loss
 
 
 def regime(btc_ema50, btc_r24, breadth):
-    """Piyasa rejimi: BTC trendi + genislik (coinlerin kacta kaci 50 EMA ustunde)."""
     crash = (np.asarray(btc_r24) < -0.04) | (np.asarray(breadth) < 0.2)
     trend = (np.asarray(btc_ema50) > 0) & (np.asarray(breadth) > 0.55)
     return np.where(crash, "dusus", np.where(trend, "trend", "yatay"))
 
 
 def add_breadth(f):
-    """Ayni saatteki tum coinlerden piyasa genisligi ve ortalama 24s getiri (kesitsel ozellik)."""
     g = f.groupby(level=0)
     f["breadth"] = g["ema50"].transform(lambda x: (x > 0).mean())
     f["mkt_r24"] = g["r24"].transform("mean")
@@ -50,7 +46,6 @@ def make_model():
 
 
 def load_all(ex, symbols, say=lambda m: None):
-    """Paralel, onbellekli veri yukleme. Hata veren veya kisa gecmisli sembol atlanir."""
     out, done = {}, 0
 
     def one(s):
@@ -83,7 +78,6 @@ def build_dataset(ex, say, symbols):
 
 
 def simulate(d, p, thr, policy="akilli"):
-    """Sembol basina cakismayan islemler. Donus: islem tablosu (zaman, sembol, net getiri, rejim...)."""
     rc, hc, cc = POLICIES[policy]
     d = d.assign(ev=ev(p, d.atr_pct.values))
     rows = []
@@ -107,7 +101,6 @@ def summary(r):
 
 
 def regime_mult(tr):
-    """Rejim basina risk carpani: o rejimde gecmis testte kazandiran ise >0, kaybettiren ise 0 (islem yok)."""
     base = tr.net.mean()
     out = {}
     for reg in REGIME_TR:
@@ -120,7 +113,6 @@ def regime_mult(tr):
 
 
 def equity_curve(tr, mult):
-    """Gecmis test kasa egrisi: MAX_POSITIONS ve risk boyutlandirmasi ile portfoy simulasyonu."""
     eq, active, pts, peak, mdd = 1.0, [], [], 1.0, 0.0
     for t, net, held, a, reg in zip(tr.t, tr.net, tr.held, tr.atr_pct, tr.regime):
         active = [x for x in active if x > t]
@@ -139,8 +131,6 @@ def equity_curve(tr, mult):
 
 
 def review(d):
-    """Oz-degerlendirme: canlida yazilan tahminler vs gerceklesen sonuclar.
-    Donus: (tahmin sayisi, ort. tahmin edilen TP olasiligi, gerceklesen TP orani) veya None."""
     if not os.path.exists(C.JOURNAL_FILE):
         return None
     j = pd.read_csv(C.JOURNAL_FILE, parse_dates=["bar"])
@@ -152,9 +142,6 @@ def review(d):
 
 
 def train(ex, say, d=None, symbols=None):
-    """Walk-forward: son %60 veri 6 doneme bolunur, her donem sadece gecmisle egitilen modelle tahmin edilir.
-    Her cikis politikasi icin EV esigi aranir; ancak donemlerin cogunda tutarli net kar varsa kabul edilir.
-    En iyi politika, rejim carpanlari ve backtest egrisi modele kaydedilir; avantaj yoksa bot sadece izler."""
     symbols = symbols or D.universe(ex)
     say(f"Parite evreni: {len(symbols)} coin (24s hacme gore)")
     d = build_dataset(ex, say, symbols) if d is None else d
@@ -167,18 +154,17 @@ def train(ex, say, d=None, symbols=None):
     edges = [ts[min(int(len(ts) * q), len(ts) - 1)] for q in np.linspace(0.4, 1.0, 7)]
     edges[-1] += BAR
     folds = list(zip(edges[:-1], edges[1:]))
-    # maliyet sonrasi hedef: botun akilli cikisiyla komisyon (iki yon) + kayma dusulunce net kar mi?
     yn = (d.ret_s - 2 * C.FEE - C.SLIPPAGE > 0).astype(int)
     p, pn = np.full(len(d), np.nan), np.full(len(d), np.nan)
     for i, (a, b) in enumerate(folds):
         say(f"Gecmis test donemi {i + 1}/6 egitiliyor")
-        tr, te = d.index < a - BAR * C.MAX_BARS, (d.index >= a) & (d.index < b)  # bosluk: etiket sizintisi yok
+        tr, te = d.index < a - BAR * C.MAX_BARS, (d.index >= a) & (d.index < b)
         p[te] = make_model().fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
         pn[te] = make_model().fit(X[tr], yn[tr]).predict_proba(X[te])[:, 1]
     ok = ~np.isnan(p)
     o, po = d[ok], p[ok]
 
-    best = None  # (toplam, esik, politika, islemler, rapor)
+    best = None
     for pol in POLICIES:
         for thr in np.arange(0, 0.0101, 0.0005):
             tr = simulate(o, po, thr, pol)
@@ -186,9 +172,9 @@ def train(ex, say, d=None, symbols=None):
                 continue
             r = tr.net.values
             fs = [tr[(tr.t >= a) & (tr.t < b)].net.sum() for a, b in folds]
-            pos_folds = sum(x > 0.01 for x in fs)  # en az %1 net kar eden donem
+            pos_folds = sum(x > 0.01 for x in fs)
             pf = r[r > 0].sum() / max(-r[r < 0].sum(), 1e-9)
-            robust = r.sum() - max(fs) > 0  # tek bir sansli doneme dayanmiyor
+            robust = r.sum() - max(fs) > 0
             if pf >= 1.1 and pos_folds >= 4 and robust and (best is None or r.sum() > best[0]):
                 best = (r.sum(), float(thr), pol, tr,
                         f"{pol} cikis, EV esigi %{thr * 100:.2f} | {summary(r)} | karli donem {pos_folds}/6")

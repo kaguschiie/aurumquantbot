@@ -1,6 +1,3 @@
-"""Sahte borsa testleri: gercek emir, gercek anahtar, ucretli Claude cagrisi yok. Her takim gecici klasorde, bos veri dizinleriyle calisir.
-Kullanim: python testler/calistir.py [proje_klasoru] [takim ...]   (proje verilmezse bu klasorun ustu; takim verilmezse hepsi)
-Her takim icin bir JSON satiri yazar; hepsi gecerse cikis kodu 0."""
 import glob
 import json
 import os
@@ -16,12 +13,11 @@ TAKIMLAR = sorted(os.path.basename(f)[:-3] for f in glob.glob(os.path.join(BURAS
 
 
 def kos(proje, takimlar=None, sure=900, yaz=print):
-    """Takimlari calistirir. Donus: [{takim, rc, ok, hata, sonuc, sn}]."""
     tmp = tempfile.mkdtemp(prefix="kqb_test_")
     out = []
     try:
         for f in glob.glob(os.path.join(BURASI, "*.py")):
-            shutil.copy(f, tmp)  # testler kendi klasorune yazar: depo kirlenmesin
+            shutil.copy(f, tmp)
         env = {k: v for k, v in os.environ.items() if not re.match(r"(ANTHROPIC|CLAUDE|BINANCE|KQB_|TELEGRAM)", k.upper())}
         for t in takimlar or TAKIMLAR:
             veri = tempfile.mkdtemp(prefix="veri_", dir=tmp)

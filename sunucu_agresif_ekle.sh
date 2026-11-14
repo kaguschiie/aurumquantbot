@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Ucuncu bot: agresif (SADECE sanal kasa, ayri linux kullanicisi, ayri veri klasoru). Root ile, SSH'tan calistirilir:
-#   cd /opt/crypto_bot/aurumquantbot && git pull --ff-only origin main && bash sunucu_agresif_ekle.sh
-# Melik ve fatih yeniden baslatilmaz. Tekrar calistirmak guvenlidir (veri ve sifre korunur). Sifre depoya girmez, yazdirilmaz.
 set -euo pipefail
 DIR=/opt/crypto_bot
 REPO=$DIR/aurumquantbot
@@ -27,13 +24,11 @@ id -u "$AD" >/dev/null 2>&1 || useradd --system --home-dir "$DATA" --shell /usr/
 install -d -o "$AD" -g "$AD" -m 700 "$DATA"
 if [ -e "$DATA/settings.json" ]; then echo "$DATA/settings.json var: agresif bunu kabul etmez, kaldirin."; exit 1; fi
 
-# kullanici kodu ve venv'i okuyabiliyor mu
 ad_py() { ( cd "$REPO" && runuser -u "$AD" -- env KQB_APP_DIR="$DATA" PYTHONDONTWRITEBYTECODE=1 "$PY" -c "$1" ); }
 if ! ad_py 'import ccxt, numpy, pandas' ; then
   echo "$AD kullanicisi $REPO veya venv'i okuyamiyor (klasor izinleri)."; exit 1
 fi
 
-# hesap: servis baslamadan once; varsa atlanir
 if ad_py 'import os, sys, config as C, auth
 if os.path.basename(C.APP_DIR) != "veri-agresif": sys.exit("yanlis klasor: " + C.APP_DIR)
 sys.exit(0 if auth.has_users() else 3)'; then
@@ -129,7 +124,6 @@ if [ "$HAZIR" != 1 ]; then
   exit 1
 fi
 
-# Caddy: tek paylasilan bilesen. Gecerli degilse eski hali geri konur, melik/fatih etkilenmez.
 mkdir -p /etc/caddy/kqb.d
 CF=/etc/caddy/Caddyfile
 BLOK=/etc/caddy/kqb.d/agresif.caddy

@@ -1,4 +1,3 @@
-"""Gece yedegi: kendi kod dali olan botun (gelistir.py) kod kopyasi git bundle olarak yedege girer. Ag yok."""
 import os
 import subprocess
 import sys
@@ -26,7 +25,7 @@ g("init", "-q", "-b", "fatih")
 open(os.path.join(kod, "a.py"), "w").write("x = 1\n")
 g("add", "-A")
 g("commit", "-qm", "fatihin degisikligi")
-os.makedirs(os.path.join(tmp, "aurumquantbot-bos"))  # git olmayan klasor atlanir
+os.makedirs(os.path.join(tmp, "aurumquantbot-bos"))
 veri = os.path.join(tmp, "veri-fatih")
 os.makedirs(veri)
 open(os.path.join(veri, "state.json"), "w").write("{}")

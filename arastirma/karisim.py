@@ -1,4 +1,3 @@
-"""Cekirdek (BTC/ETH trend, SMA20/50/100/200 ortalamasi, hedef oynaklik %40) + ML alt sepeti (K5, BTC>SMA100) karisimi."""
 import os, sys
 __file__ = os.path.abspath(__file__)
 exec(open(os.path.join(os.path.dirname(__file__), "ml.py"), encoding="utf-8").read().split("pred = pd.Series")[0])

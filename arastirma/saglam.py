@@ -1,5 +1,3 @@
-"""Kazanan aile (BTC trend + oynaklik hedefleme) saglamlik testi: parametre komsulugu, 1 gun gecikme, 2x maliyet,
-yeniden dengeleme esigi, yillik getiriler, ETH ekleme. Sadece BTC/ETH verisi."""
 import os, sys, itertools, json
 import numpy as np, pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,7 +11,6 @@ r = c.pct_change(fill_method=None).fillna(0)
 
 
 def sim(w, cost=0.0015, lag=0, band=0.0):
-    """w: hedef agirlik serisi/df (gun t kapanisinda bilinir). lag: islem kac gun gecikir. band: |hedef-mevcut|<band ise islem yok."""
     w = w.shift(lag).fillna(0.0)
     W = w.values if w.ndim == 2 else w.values[:, None]
     R = r[w.columns].values if w.ndim == 2 else r[[w.name]].values
@@ -23,7 +20,7 @@ def sim(w, cost=0.0015, lag=0, band=0.0):
         cur = g / val
         tgt = W[i].copy()
         keep = np.abs(tgt - cur) < band
-        tgt[keep & (tgt > 0)] = cur[keep & (tgt > 0)]   # kucuk ayar yapma (pozisyondan cikis her zaman yapilir)
+        tgt[keep & (tgt > 0)] = cur[keep & (tgt > 0)]
         tr = np.abs(tgt - cur).sum(); turn += tr
         eq[i] *= 1 - tr * cost; cur = tgt
     return pd.Series(eq, c.index), turn / (len(W) / 365)
@@ -75,7 +72,6 @@ for n in (50, 100):
     w = pd.concat([strat("BTCUSDT", n, 0.4) * 0.5, strat("ETHUSDT", n, 0.4) * 0.5], axis=1)
     eq, to = sim(w, band=0.10)
     print(line(f"BTC50/ETH50 SMA{n} vt.4", eq, to))
-# SMA'larin ortalamasi (tek parametreye bagimlilik yok)
 ens = sum(strat("BTCUSDT", n, None) for n in (20, 50, 100, 200)) / 4
 v = r["BTCUSDT"].rolling(30).std() * np.sqrt(365)
 ens = (ens * (0.4 / v).clip(upper=1.0)).rename("BTCUSDT")

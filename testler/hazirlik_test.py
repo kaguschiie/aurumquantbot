@@ -1,11 +1,8 @@
-"""Gercek paraya hazirlik raporu. Sahte borsa: ag yok, anahtar yok, gercek emir yok."""
 import csv
 import json
 import os
 import shutil
 import sys
-import threading
-import time
 
 PROJ = sys.argv[1]
 sys.path.insert(0, PROJ)
@@ -78,9 +75,8 @@ def csv_yaz(rows, ad="gozlem.csv"):
     return f
 
 
-# ---- gozlem ----
 check("kayit yoksa None", H.gozlem(os.path.join(D, "yok.csv")) is None)
-f = csv_yaz([["2026-11-02 23:00", "PAPER", 500, 50, "", ""],  # baslangictan once: sayilmaz
+f = csv_yaz([["2026-11-02 23:00", "PAPER", 500, 50, "", ""],
              ["2026-11-03 00:00", "PAPER", 1000, 100, "", ""], ["2026-11-03 00:00", "LIVE", 9, 100, "", ""],
              ["2026-11-03 01:00", "PAPER", "bozuk", 100, "", ""],
              ["2026-11-03 02:00", "PAPER", 1100, 101, "", "a uyari | b uyari"], ["2026-11-03 03:00", "PAPER", 990, 99, "kilit", "a uyari"],
@@ -93,7 +89,6 @@ check("gun, engel saati", g["gun"] == 1.0 and g["engel_saat"] == 1, g)
 check("uyarilar sayilir, siklikla", g["uyarilar"][0] == {"m": "a uyari", "n": 2}, g["uyarilar"])
 check("tek satir yetmez", H.gozlem(csv_yaz([["2026-11-03 00:00", "PAPER", 1000, 100, "", ""]], "t.csv")) is None)
 
-# ---- dengeleme ----
 K = os.path.join(D, "defter")
 os.makedirs(K)
 for gun, sat in (("2026-11-03", [{"hesap": "PAPER", "asama": "karar"}, {"hesap": "PAPER", "asama": "sonuc", "sonuc": ["BTC al"]}]),
@@ -111,7 +106,6 @@ check("hatali gun yakalanir", dg["2026-11-06"]["hata"], dg["2026-11-06"])
 uzun = H.dengelemeler(K, "2026-01-01", "2026-12-31")
 check("uzun donemde gun atlanmaz", len({x["g"] for x in uzun}) == len(uzun) >= 364, len(uzun))
 
-# ---- binance kontrolu ----
 ex = Ex()
 r = H.binance_kontrol(A(ex), {"BTC/USDT": 100.0, "ETH/USDT": 100.0})
 p = ex.calls[0]
@@ -131,7 +125,6 @@ ex.fetch_ticker = lambda s: (_ for _ in ()).throw(ccxt.NetworkError("yok"))
 r = H.binance_kontrol(A(ex), {})
 check("ag hatasi: gecti sayilmaz", not r["ok"] and r["koin"][0].get("belirsiz"), r)
 
-# ---- rapor ----
 _g, _d = H.gozlem, H.dengelemeler
 iyi_g = {"gun": 7.5, "kapsam": 99, "dusus": 5.0, "uyarilar": []}
 H.gozlem, H.dengelemeler = lambda: dict(iyi_g), lambda: [{"g": "2026-11-03", "ok": True, "hata": []}]
@@ -161,7 +154,6 @@ rb = H.rapor(B())
 check("kayit yokken patlamaz", not rb["hazir"] and rb["gozlem"] is None)
 H.gozlem, H.dengelemeler = _g, _d
 
-# ---- erisim ----
 src = open(os.path.join(PROJ, "app.py"), encoding="utf-8").read()
 check("sadece admin rotasi", 'routes["/api/hazirlik"]' in src and src.index("if admin:\n                routes[\"/api/users\"]") < src.index('routes["/api/hazirlik"]') or 'if admin:\r\n' in src)
 hz = open(os.path.join(PROJ, "hazirlik.py"), encoding="utf-8").read()

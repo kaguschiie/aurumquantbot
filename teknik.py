@@ -1,7 +1,3 @@
-"""Yerel teknik ozet + piyasa firsat tarayicisi (Binance ham verisinden, ucretsiz).
-TradingView'un yayimladigi "Technical Ratings" yontemi yerelde uygulanir: hareketli ortalamalar ve osilatorlerin
-al(+1)/notr(0)/sat(-1) oylarinin ortalamasi. (TradingView verisi kurallari geregi otomatik islemde kullanilmaz;
-TradingView arayuzde resmi widget'lariyla gosterilir.)"""
 import logging
 import threading
 import time
@@ -30,16 +26,15 @@ def _wma(s, n):
 
 
 def rating(df):
-    """df: open/high/low/close/volume (son satir olusan mum). Donus: {rec, ma, osc, rsi, adx, label}."""
     c, h, l, v = df.close, df.high, df.low, df.volume
     px, up = c.iloc[-1], lambda s: s.iloc[-1] > s.iloc[-2]
     ma = []
     for n in (10, 20, 30, 50, 100, 200):
         if len(c) > n:
             ma += [np.sign(px - c.rolling(n).mean().iloc[-1]), np.sign(px - c.ewm(span=n, adjust=False).mean().iloc[-1])]
-    ma.append(np.sign(px - ((c * v).rolling(20).sum() / v.rolling(20).sum()).iloc[-1]))  # VWMA
-    ma.append(np.sign(px - _wma(2 * _wma(c, 4) - _wma(c, 9), 3).iloc[-1]))               # Hull MA 9
-    base = (h.rolling(26).max() + l.rolling(26).min()) / 2                               # Ichimoku temel cizgi
+    ma.append(np.sign(px - ((c * v).rolling(20).sum() / v.rolling(20).sum()).iloc[-1]))
+    ma.append(np.sign(px - _wma(2 * _wma(c, 4) - _wma(c, 9), 3).iloc[-1]))
+    base = (h.rolling(26).max() + l.rolling(26).min()) / 2
     ma.append(np.sign(px - base.iloc[-1]))
 
     osc = []
@@ -95,12 +90,10 @@ def rating(df):
 
 
 def rating_series(df):
-    """rating()'in tum barlar icin vektorlu hali (gecmis testi): her satir o mum kapanisindaki teknik ozet.
-    Donus: DataFrame(rec, rsi, atr_pct), df ile ayni indeks."""
     c, h, l, v = df.close, df.high, df.low, df.volume
     up, sg = lambda s: s > s.shift(), lambda s: np.sign(c - s)
 
-    def wma(s, n):  # _wma ile ayni, konvolusyonla hizli
+    def wma(s, n):
         w = np.arange(1, n + 1, dtype=float)
         out = np.full(len(s), np.nan)
         if len(s) >= n:
@@ -112,7 +105,7 @@ def rating_series(df):
     ma += [sg((c * v).rolling(20).sum() / v.rolling(20).sum()), sg(wma(2 * wma(c, 4) - wma(c, 9), 3)),
            sg((h.rolling(26).max() + l.rolling(26).min()) / 2)]
     ma = pd.concat(ma, axis=1)
-    m = ma.mean(axis=1).fillna(0.0)  # rating(): yeterli gecmisi olmayan (NaN) ortalamalar oya girmez
+    m = ma.mean(axis=1).fillna(0.0)
     vote = lambda buy, sell: np.where(buy, 1, np.where(sell, -1, 0))
     d = c.diff()
     rsi = 100 - 100 / (1 + d.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean()
@@ -159,13 +152,12 @@ def rating_series(df):
     return pd.DataFrame({"rec": (m.values + o) / 2, "rsi": rsi.values, "atr_pct": (atr / c).values}, index=df.index)
 
 
-RADAR_TOP = 45     # derin taramaya (1s mumlar) giren on-eleme sayisi
-RADAR_FULL = 20    # 4 zaman diliminde teknik ozet hesaplanan en iyi aday
+RADAR_TOP = 45
+RADAR_FULL = 20
 LEVERAGED = ("UP", "DOWN", "BULL", "BEAR")
 
 
 def radar_score(r):
-    """Radar on puani (yerel kural): teknik uyum + hacim patlamasi + BTC'den ayrisma + kirilim; asiri alim cezasi."""
     te = r.get("tech") or {}
     sc = (te.get("1h") or 0) + 0.6 * (te.get("4h") or 0) + 0.3 * (te.get("15m") or 0) + 0.2 * (te.get("1d") or 0)
     sc += min(r.get("vspike") or 0, 6) / 4 + max(min(r.get("rs24") or 0, 30), -10) / 15 + (0.3 if r.get("breakout") else 0)
@@ -175,15 +167,12 @@ def radar_score(r):
 
 
 class Teknik:
-    """Arka plan: izlenen coinler icin 4 zaman diliminde yerel teknik ozet (2 dk) + tum piyasa radari (2 dk):
-    Binance'teki tum USDT pariteleri -> likidite ve guc on elemesi -> 1s mumlarla hacim patlamasi, kirilim, BTC'den
-    ayrisma -> en iyi 20 adaya 4 zaman diliminde teknik ozet."""
 
     def __init__(self):
         self.data, self.opps, self.t, self.t_opps, self.error = {}, [], 0.0, 0.0, ""
         self.radar_map, self.n_all, self.n_liquid, self.liquid = {}, 0, 0, []
         self._started = False
-        self.ex = ccxt.binance({"enableRateLimit": True})  # kendi baglantisi (thread guvenli olsun)
+        self.ex = ccxt.binance({"enableRateLimit": True})
 
     _shared = None
 
@@ -206,14 +195,14 @@ class Teknik:
     def _klines(self, sym, tf, limit=250):
         rows = self.ex.public_get_klines({"symbol": sym.replace("/", ""), "interval": tf, "limit": limit})
         a = np.array([[float(r[i]) for i in (1, 2, 3, 4, 5, 9)] for r in rows])
-        return pd.DataFrame(a, columns=["open", "high", "low", "close", "volume", "tb"])  # tb: agresif alici hacmi
+        return pd.DataFrame(a, columns=["open", "high", "low", "close", "volume", "tb"])
 
     def ratings(self, sym, tfs=TFS):
         out = {}
         for tf in tfs:
             try:
                 df = self._klines(sym, tf)
-                if len(df) >= 61:  # kapanmis mumlardan (olusan mum her saniye degisir; Gecmis Okulu da kapanmisla olctu)
+                if len(df) >= 61:
                     out[tf] = rating(df.iloc[:-1])
             except (ccxt.BaseError, ValueError, KeyError, IndexError) as e:
                 log.debug("teknik %s %s: %s", sym, tf, e)
@@ -227,26 +216,24 @@ class Teknik:
         self.t = time.time()
 
     def _deep(self, r, btc_r4):
-        """1s mumlardan radar ozellikleri + 1s teknik ozet. Veri yoksa None."""
         try:
             df = self._klines(r["sym"], "1h")
         except (ccxt.BaseError, ValueError, KeyError, IndexError):
             return None
         if len(df) < 61:
             return None
-        rt = rating(df.iloc[:-1])  # teknik ozet kapanmis mumdan; kirilim/getiri anlik fiyattan
+        rt = rating(df.iloc[:-1])
         c, v, h = df.close.values, df.volume.values, df.high.values
         base = float(np.median(v[-52:-4]))
         r4 = c[-1] / c[-5] - 1
         r.update(tech={"1h": rt["rec"]}, rt={"1h": rt}, rsi=rt["rsi"], atr_pct=rt["atr_pct"],
-                 vspike=round(float(np.mean(v[-4:-1])) / base, 2) if base > 0 else None,  # son 3 kapanan saat / medyan
+                 vspike=round(float(np.mean(v[-4:-1])) / base, 2) if base > 0 else None,
                  r1h=round((c[-1] / c[-2] - 1) * 100, 2), r4h=round(r4 * 100, 2), rs4=round((r4 - btc_r4) * 100, 2),
-                 flow3=round(float(df.tb.values[-4:-1].sum() / max(v[-4:-1].sum(), 1e-12)) - 0.5, 3),  # alici akisi
+                 flow3=round(float(df.tb.values[-4:-1].sum() / max(v[-4:-1].sum(), 1e-12)) - 0.5, 3),
                  breakout=bool(c[-1] > h[-25:-1].max()))
         return r
 
     def _radar_pass(self):
-        """Tum piyasa radari: Binance'teki tum USDT pariteleri tek istekte; likit olanlar derin taranir."""
         tk = self.ex.fetch_tickers()
         bchg = (tk.get(C.BTC) or {}).get("percentage") or 0.0
         rows, n_all = [], 0
@@ -260,11 +247,10 @@ class Teknik:
             if not last or chg is None or (vol < C.RADAR_MIN_VOL and s not in C.EXTRA_SYMBOLS):
                 continue
             hi, lo = t.get("high") or last, t.get("low") or last
-            if 0.97 < last < 1.03 and hi < lo * 1.01:  # listede olmayan dolar sabitli coin (gunluk bant %1'den dar)
+            if 0.97 < last < 1.03 and hi < lo * 1.01:
                 continue
             rows.append({"sym": s, "price": last, "chg24": round(chg, 2), "qvol": vol, "rs24": round(chg - bchg, 2),
                          "rng": (last - lo) / (hi - lo) if hi > lo else 0.5})
-        # on eleme: BTC'ye gore guclu + gun ici zirveye yakin; en likit 10 coin ve ek pariteler (altin) her zaman
         pre = sorted(rows, key=lambda r: -(min(r["rs24"], 40) / 4 + 3 * r["rng"]))[:RADAR_TOP - 10]
         pre += sorted(rows, key=lambda r: -r["qvol"])[:10] + [r for r in rows if r["sym"] in C.EXTRA_SYMBOLS]
         pick = list({r["sym"]: r for r in pre}.values())
@@ -284,7 +270,7 @@ class Teknik:
         deep.sort(key=lambda r: -r["score"])
         for r in deep:
             r["t"] = time.time()
-        self.opps, self.radar_map, self.liquid = deep, {r["sym"]: r for r in deep}, rows  # liquid: on eleme oncesi tum likit pariteler
+        self.opps, self.radar_map, self.liquid = deep, {r["sym"]: r for r in deep}, rows
         self.n_all, self.n_liquid, self.t_opps = n_all, len(rows), time.time()
 
     def _loop(self):
@@ -295,7 +281,7 @@ class Teknik:
                 self._universe_pass()
                 self._radar_pass()
                 self.error = ""
-            except Exception as e:  # ag hatasi vb.: bir sonraki turda tekrar
+            except Exception as e:
                 self.error = str(e)[:200]
                 log.warning("teknik tarama: %s", e)
             time.sleep(max(20, 120 - (time.time() - t0)))

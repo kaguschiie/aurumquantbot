@@ -1,5 +1,3 @@
-"""Dususte zarari azaltma fikirleri (70/30 portfoy uzerine): hizli trend, dusus freni, sert ML rejimi, ML coinine trend filtresi.
-Test 2022-26 + son 6 ay + 2022 yili. karisim.py ile ayni ML tahminleri."""
 import os, sys
 __file__ = os.path.abspath(__file__)
 exec(open(os.path.join(os.path.dirname(__file__), "ml.py"), encoding="utf-8").read().split("pred = pd.Series")[0])

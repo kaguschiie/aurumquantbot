@@ -1,8 +1,3 @@
-"""Claude ajani: al-sat kararlari (yapilandirilmis JSON) ve sohbet.
-Saniyelik isler (fiyat, stop, hedef, iz suren stop) yerelde kalir; Claude sadece karar anlarinda cagrilir:
-saatlik mum kapanisi + olay tetikleri (TradingView guclu sinyal, pozisyonda sert hareket, BTC soku).
-Her cagrinin maliyeti olculur, gunluk butce asilirsa yeni karar istenmez (acik pozisyonlar korunmaya devam eder)."""
-import glob
 import json
 import os
 import shutil
@@ -13,8 +8,7 @@ import anthropic
 
 import config as C
 
-BETAS = ["server-side-fallback-2026-07-01"]  # reddedilen istek sunucuda onerilen modele devredilir
-# model -> ($/1M girdi, $/1M cikti, $/1M onbellek okuma); onbellege yazma girdinin 1.25 kati
+BETAS = ["server-side-fallback-2026-07-01"]
 PRICE = {"claude-opus-5-5": (4.0, 20.0, 0.20), "claude-sonnet-5-5": (2.0, 10.0, 0.20),
          "claude-haiku-5-5": (0.10, 0.50, 0.01)}
 MODELS = {"claude-opus-5-5": "Claude Opus 5.5", "claude-sonnet-5-5": "Claude Sonnet 5.5",
@@ -38,7 +32,6 @@ def client():
 
 
 def cost(model, u):
-    """Cagrinin dolar maliyeti. Yedek modele devredildiyse reddeden denemenin tokenlari da sayilir."""
     its = getattr(u, "iterations", None)
     if its:
         return sum(_cost1(getattr(it, "model", None) or model, it) for it in its)
@@ -46,14 +39,13 @@ def cost(model, u):
 
 
 def _cost1(model, u):
-    i, o, cr = PRICE.get(model, (5.0, 25.0, 0.5))  # bilinmeyen (yedek) model: temkinli fiyat
+    i, o, cr = PRICE.get(model, (5.0, 25.0, 0.5))
     g = lambda k: getattr(u, k, 0) or 0
     return (g("input_tokens") * i + g("cache_creation_input_tokens") * i * 1.25
             + g("cache_read_input_tokens") * cr + g("output_tokens") * o) / 1e6
 
 
 def _call(stream, model=None, **kw):
-    """Opus/Sonnet: sunucu tarafi yedek model acik. Desteklenmezse bir kez kapatip tekrar dener."""
     c, model = client(), model or C.CLAUDE_MODEL
     use_fb = _C["fb"] and not model.startswith("claude-haiku")
     api = c.beta.messages if use_fb else c.messages
@@ -86,7 +78,6 @@ def friendly(e):
 
 
 def brain():
-    """Aktif beyin: 'api' (ucretli anahtar) > 'cli' (Claude aboneligi, yerel claude komutu) > 'local' (yerel quant)."""
     if C.CLAUDE_API_KEY and api_status()[0]:
         return "api"
     return "cli" if cli_ready() else "local"
@@ -96,7 +87,6 @@ BRAIN_TR = {"api": "Claude API aktif", "cli": "Claude CLI köprüsü aktif (abon
 
 
 def status():
-    """Arayuz icin (her zaman calisir, aciklama). Hangi beyin aktif, neden."""
     b = brain()
     if b == "api":
         return True, f"{BRAIN_TR[b]} · {MODELS.get(C.CLAUDE_MODEL, C.CLAUDE_MODEL)}"
@@ -106,10 +96,9 @@ def status():
     return True, f"{BRAIN_TR[b]} ({why})"
 
 
-# ---------------- Claude CLI koprusu (abonelik, ekstra API ucreti yok) ----------------
 CLI = {"path": None, "t": 0, "ok": None, "down_until": 0, "why": ""}
 CLI_MODEL = {"claude-opus-5-5": "opus", "claude-sonnet-5-5": "sonnet", "claude-haiku-5-5": "haiku"}
-NO_WINDOW = 0x08000000  # Windows: siyah konsol penceresi acilmasin
+NO_WINDOW = 0x08000000
 
 
 SKIP = {"cache", "code cache", "gpucache", "indexeddb", "local storage", "session storage", "blob_storage", "logs",
@@ -117,7 +106,6 @@ SKIP = {"cache", "code cache", "gpucache", "indexeddb", "local storage", "sessio
 
 
 def _scan(root, name, depth=6):
-    """Derinligi sinirli, onbellek klasorlerini atlayan dosya arama (buyuk uygulama klasorlerinde de hizli)."""
     out = []
     if not os.path.isdir(root):
         return out
@@ -132,9 +120,6 @@ def _scan(root, name, depth=6):
 
 
 def cli_candidates():
-    """Bu bilgisayardaki tum olasi claude komutlari (kullanici adindan bagimsiz, ortam degiskenleriyle):
-    elle secilen yol, PATH, resmi kurulum (~/.local/bin), npm, eski yerel kurulum, WinGet, Program Files ve Claude
-    masaustu uygulamasinin icindeki kopyalar (en yenisi once)."""
     env = lambda k: os.environ.get(k, "")
     home, local, roam = os.path.expanduser("~"), env("LOCALAPPDATA"), env("APPDATA")
     out = [C.CLAUDE_CLI_PATH] if C.CLAUDE_CLI_PATH else []
@@ -158,7 +143,6 @@ def cli_candidates():
 
 
 def find_cli():
-    """Calisan ilk claude komutu (--version cevap veriyor mu?)."""
     for c in cli_candidates():
         try:
             r = subprocess.run([c, "--version"], capture_output=True, text=True, timeout=20, env=_cli_env(),
@@ -171,7 +155,6 @@ def find_cli():
 
 
 def cli_diagnose():
-    """Baglanti sihirbazi icin: adim adim durum ve ne yapilacagi."""
     cands = cli_candidates()
     CLI.update(ok=None, t=0, down_until=0)
     ready = cli_ready()
@@ -195,7 +178,6 @@ def cli_diagnose():
 
 
 def cli_install():
-    """Resmi Claude Code kurulumu (Anthropic'in Windows kurulum betigi) gorunur pencerede; bitince 'Kontrol et'."""
     subprocess.Popen(["cmd", "/c", "start", "Claude Code kurulumu", "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
                       "-NoExit", "-Command", "irm https://claude.ai/install.ps1 | iex; "
                       "Write-Host ''; Write-Host 'Kurulum bitti. Bu pencereyi kapatip uygulamada Kontrol et e basin.'"],
@@ -204,13 +186,12 @@ def cli_install():
 
 
 def _cli_env():
-    # baska bir Claude oturumundan miras kalan gecici ortam degiskenleri kendi girisini bozmasin
     keep = ("CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR")
     return {k: v for k, v in os.environ.items() if not k.startswith(("CLAUDE", "ANTHROPIC")) or k in keep}
 
 
 def _cli(args, inp=None, timeout=60, stream=False):
-    work = os.path.join(C.APP_DIR, "cli")  # bos calisma klasoru: proje dosyalari/ayarlari karisMAsin
+    work = os.path.join(C.APP_DIR, "cli")
     os.makedirs(work, exist_ok=True)
     kw = dict(cwd=work, env=_cli_env(), creationflags=NO_WINDOW if os.name == "nt" else 0)
     if stream:
@@ -221,7 +202,6 @@ def _cli(args, inp=None, timeout=60, stream=False):
 
 
 def cli_ready():
-    """CLI bulundu mu ve abonelikle giris yapilmis mi? 10 dk'da bir ucretsiz 'auth status' ile kontrol."""
     if time.time() < CLI["down_until"]:
         return False
     if CLI["ok"] is None or time.time() - CLI["t"] > 600:
@@ -239,23 +219,20 @@ def cli_ready():
 
 
 def cli_login():
-    """Kullanicinin kendisi bir kez tarayicidan abonelik girisi yapsin diye gorunur pencere acar."""
     path = CLI["path"] or find_cli()
     if not path:
         return "Claude CLI bulunamadı. Claude masaüstü uygulaması veya Claude Code kurulu olmalı."
     subprocess.Popen(["cmd", "/c", "start", "Claude girisi", "cmd", "/k", path, "auth", "login"], env=_cli_env())
-    CLI.update(ok=None, down_until=0)  # giristen sonra yeniden kontrol edilsin
+    CLI.update(ok=None, down_until=0)
     return None
 
 
 def _cli_fail(msg):
-    """Kota/oturum sorunu: 15 dk yerel motora gec, sonra tekrar dene."""
     CLI.update(down_until=time.time() + 900, why=msg[:90], ok=None)
     raise AgentError(msg)
 
 
 def cli_decide(brief, model=None):
-    """Ayni karar semasi, Claude CLI uzerinden (abonelik). Donus: (karar, 0.0, model). model: kota icin farkli model."""
     cm = CLI_MODEL.get(model or C.CLAUDE_MODEL, "sonnet")
     args = ["-p", "--output-format", "json", "--json-schema", json.dumps(SCHEMA), "--tools", "",
             "--model", cm, "--setting-sources", "", "--no-session-persistence",
@@ -280,7 +257,6 @@ def cli_decide(brief, model=None):
 
 
 def cli_chat_stream(question, context, history):
-    """Sohbet, CLI uzerinden akisla. Hata olursa AgentError (cagiran yerel analiste gecer)."""
     past = "".join(f"\n[{'KULLANICI' if m['role'] == 'user' else 'SEN'}]: {m['content'][:1500]}" for m in history[-6:])
     prompt = (f"ONCEKI KONUSMA:{past}\n\n" if past else "") + f"CANLI BOT VERISI:\n{context}\n\nSORU: {question}"
     p = _cli(["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--tools", "",
@@ -317,7 +293,6 @@ def cli_chat_stream(question, context, history):
 
 
 def api_status():
-    """Ucretli API anahtari gecerli mi? 10 dk'da bir ucretsiz Models API ile dogrulanir."""
     if not C.CLAUDE_API_KEY:
         return False, "Claude API anahtarı girilmedi."
     t, res = _C["check"]
@@ -333,7 +308,6 @@ def api_status():
     return res
 
 
-# ---------------- al-sat karari ----------------
 DECIDE_SYSTEM = """Sen KriptoQuantBot'un portfoy yoneticisi ve trader'isin. Binance SPOT piyasasinda (sadece USDT
 pariteleri, sadece alis yonu; aciga satis ve kaldirac yok) otomatik al-sat kararlarini sen veriyorsun.
 
@@ -410,7 +384,6 @@ SCHEMA = {
 
 
 def decide(brief, model=None):
-    """Karar al. Donus: (karar, maliyet $, cevaplayan model). Hata: AgentError."""
     if not client():
         raise AgentError("Claude API anahtarı girilmedi.")
     try:
@@ -433,7 +406,6 @@ def decide(brief, model=None):
 
 
 def ask_json(system, prompt, schema, model=None):
-    """Kucuk yapisal soru (or. portfoy kontrolu): API > CLI (abonelik). Donus: (dict, $, model). Yoksa AgentError."""
     b = brain()
     model = model or C.REVIEW_MODEL
     if b == "api":
@@ -467,7 +439,6 @@ def ask_json(system, prompt, schema, model=None):
     return dec, 0.0, f"Claude CLI ({cm})"
 
 
-# ---------------- sohbet ----------------
 CHAT_SYSTEM ="""Sen Claude'sun ve KriptoQuantBot'u yonetiyorsun: Binance spot al-sat kararlarini sen veriyorsun
 (her saat basi ve onemli piyasa olaylarinda). Saniyelik fiyat takibi, stop, kademeli kar ve iz suren stop yerel
 motorda calisir; yerel risk yoneticisi senin emirlerini kasa sinirlarina gore denetler.
@@ -481,7 +452,6 @@ Kar garantisi verme. Bu kisisel bir yazilimdir, yatirim tavsiyesi degildir; kull
 
 
 def chat_stream(question, context, history, on_cost=lambda usd: None):
-    """Cevabi parca parca uretir. Hata olursa okunur bir mesaj uretir."""
     if not client():
         yield "Claude bağlı değil. Admin, Ayarlar → Claude bölümüne API anahtarını girip Kaydet'e basmalı."
         return
@@ -491,7 +461,7 @@ def chat_stream(question, context, history, on_cost=lambda usd: None):
               system=[{"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}}])
     s = None
     try:
-        try:  # akista istek __enter__ ile gider: yedek model destegi yoksa burada yakalanir
+        try:
             s = _call(True, **kw).__enter__()
         except anthropic.BadRequestError as e:
             if not (_C["fb"] and "fallback" in str(e).lower()):
@@ -504,7 +474,7 @@ def chat_stream(question, context, history, on_cost=lambda usd: None):
             yield "\n[Claude bu soruya cevap vermedi.]"
     except anthropic.APIError as e:
         yield f"\n[{friendly(e)}]"
-    finally:  # yarida kesilse bile o ana kadarki maliyet butceye yazilir
+    finally:
         if s is not None:
             try:
                 snap = s.current_message_snapshot

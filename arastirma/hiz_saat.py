@@ -1,9 +1,6 @@
-"""Cekirdek (BTC/ETH) saatlik tepki testi, 1s veri ~3 yil. Agirlik = 0.5 x (SMA20/50/100/200 ustunde kalma orani) x
-min(1, %40 / 30g oynaklik). Varyantlar: gunluk kapanis (mevcut) / saatlik canli (gun icinde fiyat SMA'yi kesince) /
-sadece satis saatlik (tehlikede hizli cik, alis gun kapanisinda). Maliyet %0.15 tek yon, bant 0.03."""
 import os
 import numpy as np, pandas as pd
-G = os.environ.get("KQB_SAATLIK_VERI", "data")  # uygulamanin 1s mum onbellegi: {APP_DIR}/data/BTCUSDT_1h.pkl
+G = os.environ.get("KQB_SAATLIK_VERI", "data")
 COST, BAND, SMAS = 0.0015, 0.03, (20, 50, 100, 200)
 px = {}
 for s in ("BTC", "ETH"):
@@ -18,25 +15,23 @@ def weights(mode):
     W = pd.DataFrame(index=P.index, columns=P.columns, dtype=float)
     for s in P.columns:
         dc = day[s]
-        vol = (dret[s].rolling(30).std() * np.sqrt(365)).shift(1)       # dunku kapanisa kadar
+        vol = (dret[s].rolling(30).std() * np.sqrt(365)).shift(1)
         vt = (0.4 / vol).clip(upper=1.0)
-        # gunluk: dunku kapanisla hesaplanan agirlik bugun boyunca
         e_day = (sum((dc > dc.rolling(n).mean()).astype(float) for n in SMAS) / 4)
         w_day = (0.5 * e_day * (0.4 / (dret[s].rolling(30).std() * np.sqrt(365))).clip(upper=1.0)).shift(1)
         w_day_h = w_day.reindex(P.index, method="ffill")
         if mode == "gunluk":
             W[s] = w_day_h
             continue
-        # canli: SMA_n = (son n-1 gun kapanisi + simdiki fiyat) / n
         h = P[s]
         dd = h.index.floor("D")
         e = 0
         for n in SMAS:
-            prev_sum = dc.rolling(n - 1).sum().shift(1).reindex(dd).values  # dunden geriye n-1 kapanis
+            prev_sum = dc.rolling(n - 1).sum().shift(1).reindex(dd).values
             sma_live = (prev_sum + h.values) / n
             e = e + (h.values > sma_live).astype(float)
         w_live = pd.Series(0.5 * e / 4 * vt.reindex(dd).values, index=h.index)
-        W[s] = w_live if mode == "saatlik" else np.minimum(w_live, w_day_h)  # sadece azaltma saatlik
+        W[s] = w_live if mode == "saatlik" else np.minimum(w_live, w_day_h)
     return W.fillna(0.0)
 
 

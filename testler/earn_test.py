@@ -1,4 +1,3 @@
-"""Bos USDT Esnek Earn: tamamen sahte borsa, ag yok, anahtar yok, gercek emir yok."""
 import copy
 import os
 import re
@@ -164,7 +163,6 @@ def sayi(ex, k):
     return sum(c[0] == k for c in ex.calls)
 
 
-# ---- kapaliyken hic etki yok ----
 a, ex = live(on=False)
 check("kapali: toplam kasa", abs(a.equity() - 1000) < 1e-6, a.equity())
 check("kapali: yatirma yok", a.earn_park() is None and ex.botm == 0)
@@ -182,7 +180,6 @@ a, ex = live()
 ex.urun["status"] = "END"
 check("urun kapaliysa yatirma yok", a.earn_park() is None and ex.botm == 0)
 
-# ---- yatirma ----
 a, ex = live()
 t = a.earn_park()
 sub = [c[1] for c in ex.calls if c[0] == "sub"]
@@ -194,7 +191,6 @@ check("yatirma: onay gelince dondurma biter", a.earn_hold == 0)
 n = sayi(ex, "sub")
 check("kucuk artik icin tekrar yatirma yok", a.earn_park() is None and sayi(ex, "sub") == n)
 
-# ---- alim oncesi cekme ----
 a, ex = live()
 a.earn_park()
 o = a.order("BTC/USDT", "market", "buy", 0.8, act={"do": "x"}) if False else None
@@ -215,7 +211,6 @@ ex.calls.clear()
 a.order("BTC/USDT", "market", "buy", 0.1)
 check("alim: spot yetiyorsa cekme yok", sayi(ex, "red") == 0 and ex.orders)
 
-# ---- cekme gecikir: emir gitmez, kasa dusmus gorunmez ----
 a, ex = live()
 a.earn_park()
 ex.gecik = True
@@ -236,7 +231,6 @@ a.sync()
 a.sync()
 check("gecikme bitince kasa dogru", abs(a.equity() - 1000) < 1e-6 and a.earn_hold == 0, (a.equity(), a.earn_hold))
 
-# ---- kullanicinin kendi Earn parasi ----
 a, ex = live(Ex(user=200.0))
 a.earn_park()
 a.sync()
@@ -253,12 +247,11 @@ a.sync()
 check("kullanici kendi parasini cekerse bot payi bozulmaz", a.st["earn_dis"] == 50 and abs(a.st["earn_son"] - 950) < 1e-6 and abs(a.equity() - 1000) < 1e-6, (a.st["earn_dis"], a.st["earn_son"]))
 a, ex = live()
 a.earn_park()
-ex.botm += 1.5  # faiz
+ex.botm += 1.5
 a.earn_t = 0
 a.sync()
 check("faiz kasaya eklenir", abs(a.equity() - 1001.5) < 1e-6, a.equity())
 
-# ---- okuma hatalari ----
 a, ex = live()
 a.earn_park()
 ex.err_read = ccxt.NetworkError("yok")
@@ -270,7 +263,6 @@ b2, ex2 = live(ex, ol)
 check("yeniden baslama + okuma hatasi: kasa korunur", abs(b2.equity() - 1000) < 1e-6, b2.equity())
 ex.err_read = None
 
-# ---- yatirma reddi / belirsiz ----
 a, ex = live()
 ex.err_sub = ccxt.PermissionDenied("izin yok")
 check("red: istisna atmaz, uyarir", a.earn_park() is None and any("Earn'e konamadı" in m for _, m in a.b.notes))
@@ -286,7 +278,6 @@ check("belirsiz yatirma: para gitti, kasa dusmus gorunmez", ex.botm == 950 and a
 a.earn_hold = time.time() - 1; a.earn_t = 0; a.sync(); a.sync()
 check("belirsiz yatirma: sonra dogru okunur", a.st["earn_son"] == 950 and abs(a.equity() - 1000) < 1e-6 and not a.earn_hold, a.st["earn_son"])
 
-# ---- kapatinca doner ----
 a, ex = live()
 a.earn_park()
 C.EARN_USDT = False
@@ -297,7 +288,6 @@ a.earn_tick()
 check("sonra bir daha cekilmez", sayi(ex, "red") == n)
 C.EARN_USDT = True
 
-# ---- Earn bozukken satis ve zarar kilidi ----
 a, ex = live()
 a.earn_park()
 ex.err_read = ex.err_red = ccxt.ExchangeError("bakim")
@@ -308,7 +298,6 @@ a.order("BTC/USDT", "market", "sell", 1.0)
 check("Earn bakimdayken satis gider", ex.n == n + 1 and ex.orders[-1][2] == "sell")
 del a.st["positions"]["BTC/USDT"]
 
-# ---- dengeleme ----
 a, ex = live()
 a.earn_park()
 ex.calls.clear()
@@ -325,7 +314,6 @@ r = a.rebalance({"BTC/USDT": 0.3}, False)
 check("dengeleme: para gelmezse alim yok, tamamlanmadi sayilir", a.pf_err >= 1 and "BTC/USDT" not in a.st["positions"], (r, a.pf_err))
 C.LIVE_MAX_USDT = 100.0
 
-# ---- arayuz ----
 ui = open(os.path.join(PROJ, "ui.html"), encoding="utf-8").read()
 check("arayuzde ayar ve kasa bilgisi var", '"EARN_USDT"' in ui and "s.earn" in ui)
 print("SONUC:", "TUM TESTLER GECTI" if ok_all else "HATA VAR")

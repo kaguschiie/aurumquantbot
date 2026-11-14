@@ -1,7 +1,3 @@
-"""Telegram mobil kumanda: sik bildirim kartlari + butonlu menu (inline keyboard) + Claude sohbeti.
-Admin Ayarlar'dan @BotFather token'ini girer. Her kullanici (admin/normal) telefonundan bota /start yazar, uygulamada
-Ayarlar > Telegram'da adinin yanindaki "Eslestir"e basar. Admin her seyi; normal kullanici sadece gercek hesabi
-gorur ve yonetir. Eslesmemis sohbetlere hicbir veri gonderilmez."""
 import html
 import json
 import logging
@@ -15,15 +11,14 @@ import requests
 import config as C
 
 log = logging.getLogger("bot")
-BOT = None                     # app.py motoru baglar
+BOT = None
 LINKS = os.path.join(C.APP_DIR, "telegram.json")
-PENDING = {}                   # chat_id -> {"name", "username", "t"}: /start yazmis, henuz eslesmemis
+PENDING = {}
 ME = {"token": None, "username": None, "error": "", "t": 0, "polling": False}
 _lock = threading.Lock()
 esc = html.escape
 
 
-# ---------------- Telegram API ----------------
 def tg(method, **data):
     if not C.TELEGRAM_TOKEN:
         return None
@@ -33,12 +28,11 @@ def tg(method, **data):
             log.warning("Telegram %s: %s", method, r.get("description"))
         return r
     except (requests.RequestException, ValueError) as e:
-        log.warning("Telegram %s: %s", method, type(e).__name__)  # hata metni token iceren adresi yazar
+        log.warning("Telegram %s: %s", method, type(e).__name__)
         return None
 
 
 def bot_info():
-    """@kullanici_adi (token gecerli mi?). 10 dk onbellek."""
     if not C.TELEGRAM_TOKEN:
         return {"username": None, "error": ""}
     if ME["token"] != C.TELEGRAM_TOKEN or time.time() - ME["t"] > 600:
@@ -53,7 +47,6 @@ def bot_info():
 
 
 def send(chat_id, text, kb=None):
-    """HTML mesaj; Telegram 4096 sinirina gore bolunur. Bicim hatasinda duz metinle tekrar dener."""
     parts = [text[i:i + 3900] for i in range(0, len(text), 3900)] or [""]
     for i, p in enumerate(parts):
         extra = {"reply_markup": {"inline_keyboard": kb}} if kb and i == len(parts) - 1 else {}
@@ -62,7 +55,6 @@ def send(chat_id, text, kb=None):
             tg("sendMessage", chat_id=chat_id, text=re.sub(r"<[^>]+>", "", p), **extra)
 
 
-# ---------------- eslesme ----------------
 def links():
     with _lock:
         try:
@@ -70,7 +62,7 @@ def links():
                 d = json.load(fh)
         except (OSError, ValueError):
             d = {}
-    if not d and C.TELEGRAM_CHAT_ID:  # eski surum: tek admin sohbeti -> ilk admin hesabina bagla
+    if not d and C.TELEGRAM_CHAT_ID:
         import auth
         adm = next((u["name"] for u in auth.users() if u["role"] == "admin"), None)
         if adm:
@@ -88,11 +80,10 @@ def _save(d):
 
 
 def link(user, chat_id):
-    """Uygulamadaki oturum sahibi, /start yazmis sohbeti kendi hesabina baglar."""
     p = PENDING.get(int(chat_id))
     if not p:
         return "Bu sohbet bulunamadı. Telefondan bota tekrar /start yazın."
-    d = {k: v for k, v in links().items() if v["chat_id"] != int(chat_id)}  # bir sohbet tek hesaba
+    d = {k: v for k, v in links().items() if v["chat_id"] != int(chat_id)}
     d[user.lower()] = {"user": user, "chat_id": int(chat_id), "name": p["name"], "t": time.time()}
     _save(d)
     PENDING.pop(int(chat_id), None)
@@ -116,7 +107,6 @@ def _role(user):
 
 
 def who(chat_id):
-    """(kullanici, rol) veya (None, None)."""
     for v in links().values():
         if v["chat_id"] == chat_id:
             role = _role(v["user"])
@@ -133,7 +123,6 @@ def status(user):
                         if now - p["t"] < 1800][:8]}
 
 
-# ---------------- bildirim kartlari ----------------
 KIND = {"islem": ("💹", "İşlem"), "kalkan": ("🛡", "Sıfır Zarar Kalkanı"), "radar": ("📡", "Radar · Güçlü kırılım"),
         "karar": ("🧠", "Yeni strateji kararı"), "oz": ("📚", "Ders Defteri"), "uyari": ("⚠️", "Uyarı"),
         "sistem": ("⚙️", "Sistem"), "bekleme": ("⏳", "Karar")}
@@ -152,7 +141,7 @@ def card(msg, kind, acct=None, foot=None):
             emoji, title = "🟢", f"ALIŞ · {sym}"
             body = f"Miktar <b>{m[1]}</b> @ <b>{m[2]}</b>\n" + "\n".join(
                 f"• {esc(x.strip())}" for x in m[3].replace("|", ",").split(",") if x.strip())
-            rest = msg.split("\n")[1:]  # Monte Carlo ihtimalleri (ikinci satir)
+            rest = msg.split("\n")[1:]
             if rest:
                 body += "\n🎲 " + esc(" ".join(rest))
         elif n:
@@ -188,7 +177,6 @@ def card(msg, kind, acct=None, foot=None):
 
 
 def notify(msg, kind, acct=None):
-    """Bot.say'den: eslesmis her sohbete rolune gore kart gonderir."""
     if not C.TELEGRAM_TOKEN:
         return
     for v in links().values():
@@ -200,14 +188,13 @@ def notify(msg, kind, acct=None):
 
 
 def decision_card(rec, role="admin"):
-    """Ajan Komitesi karari: her oneri icin Analist Notu, Boga/Ayi, Risk Onayi, Ders Defteri/Hafiza notu."""
     head = {"saatlik": "Saatlik karar", "olay": "Olay kararı", "baslangic": "İlk karar", "elle": "Elle istenen karar",
             "tarama": "Tarama kararı", "strateji": "Strateji incelemesi", "portfoy": "Portföy stratejisi",
             "gunluk": "Günlük trend kolu"}.get(rec.get("kind"), "Karar")
     out = [f"🏛 <b>Ajan Komitesi · {esc(head)}</b>\n<i>{esc(rec.get('model', ''))} · "
            f"{time.strftime('%d.%m %H:%M', time.localtime(rec.get('t', time.time())))}</i>\n{esc(rec.get('view', '')[:500])}"]
     acts = rec.get("actions") or []
-    if role != "admin":  # normal kullanici: sadece gercek hesabi ilgilendiren oneriler
+    if role != "admin":
         acts = [a for a in acts if "gerçek" in (a.get("result") or "") or a.get("type") != "buy"]
     if not acts:
         return None
@@ -239,7 +226,7 @@ def decision_card(rec, role="admin"):
             lines.append("📚 <b>Hafıza</b>: " + esc(c["memory"][:300]))
         lines.append(f"→ {esc(res[:200])}")
         blk = "\n".join(lines)
-        if size + len(blk) > 3700:  # Telegram 4096 sinir: HTML etiketini ortadan kesme, blok sinirinda dur
+        if size + len(blk) > 3700:
             more += 1
             continue
         out.append(blk)
@@ -260,7 +247,7 @@ def notify_decision(rec):
                 send(v["chat_id"], txt)
 
 
-DEMO = [  # sunum icin: tum bildirim tipleri (gercek bicimle, DEMO etiketli)
+DEMO = [
     ("{s} ALINDI 0.42 @ {p} | stop {sl}, kısmi kâr {t1}, hedef {t2}, en fazla 24 sa\nMonte Carlo (10.000 yol / 24 sa): "
      "Hedef önce %38.2 | Stop önce %41.5 | Nötr %20.3 | beklenen +0.06R", "islem", "LIVE"),
     ("{s} kâra geçti: stop başabaşın üstüne ({be}) çekildi. Bu işlem artık zararla kapanmaz (ani fiyat boşluğu hariç); "
@@ -295,7 +282,6 @@ def send_demo(chat_id):
     send(chat_id, "Kumanda menüsü:", menu_kb(who(chat_id)[1] or "user"))
 
 
-# ---------------- butonlu kumanda ----------------
 b = lambda t, d: {"text": t, "callback_data": d}
 
 
@@ -396,7 +382,7 @@ def view_karar(role):
         d = BOT.ag["decisions"][-1]
         withc = [x for x in BOT.ag["decisions"][-20:] if x.get("actions")]
         card = decision_card(withc[-1], role) if withc else None
-        if card:  # son komite karari (kartli)
+        if card:
             out.append(card)
         if d is not (withc[-1] if withc else None):
             out.append(f"🧠 <b>Son değerlendirme</b> · {time.strftime('%d.%m %H:%M', time.localtime(d['t']))} · "
@@ -411,7 +397,7 @@ def view_karar(role):
         extra.append("\n📊 <b>Portföy hedefi</b> · " + ", ".join(
             f"{k.split('/')[0]} %{v * 100:.1f}" for k, v in sorted(pf["targets"].items(), key=lambda x: -x[1]) if v > 0))
     size = sum(len(x) + 1 for x in out)
-    for x in extra:  # Telegram 4096 karakter siniri
+    for x in extra:
         if size + len(x) < 4000:
             out.append(x)
             size += len(x) + 1
@@ -525,7 +511,6 @@ def on_message(msg):
 
 
 def md(t):
-    """Sohbet cevabindaki kucuk markdown -> Telegram HTML."""
     t = esc(t)
     t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
     t = re.sub(r"`([^`\n]+)`", r"<code>\1</code>", t)
@@ -535,7 +520,6 @@ def md(t):
 
 
 def poll_forever():
-    """Uzun sorgu (getUpdates): token degisirse kendiliginden yeni bota gecer. Her mesaj ayri thread'de islenir."""
     offset, tok = None, None
     while True:
         if not C.TELEGRAM_TOKEN:
