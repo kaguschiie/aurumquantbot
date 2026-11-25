@@ -1,0 +1,128 @@
+CESARET TESTİ: önceden kayıtlı geçmiş test (çalıştırma 2026-11-25, son kapanış 2026-11-24)
+Soru: bot daha cesur olsaydı (al-tut, hızlı trend, kartopu pay) uygulamanın trend çekirdeğinden (S1) iyi olur muydu?
+
+Veri    : Yahoo günlük kapanış: BTC-USD 2017-01-01..2026-11-24, ETH-USD 2017-11-09..2026-11-24, GC=F 2017-01-03..2026-11-24; eksik kripto günü BTC 0, ETH 0.
+          range=max günlük değil aylık/haftalık mum döndürüyor; aynı uç period1/period2 ile çekildi. Bugünün bitmemiş mumu atıldı.
+Kurallar: sinyal kapanışta, o kapanışa kadarki veriyle; işlem BİR SONRAKİ kapanışta (gecikme 1). Maliyet tek yön kripto %0.15,
+          altın %0.10. Boş para USDT (getirisiz). Her dönem 1000 $ nakitle başlar; dönem sonunda açık pozisyon maliyetle kapatılır.
+          Stoplar kapanışla ölçülür (gün içi fitil yok). Altın GC=F sürekli vadeli (spot altına yakın), hafta sonu son fiyat.
+          ETH Yahoo'da 2017-11-09'dan: SMA200 2018-05 sonuna kadar yok, yoksa 'altında' sayılır (S1/S2 ETH payı o dönem düşük).
+Çoklu test: 7 önceden kayıtlı strateji (S4 iki pay kuralı) → Bonferroni eşiği |t| ≥ 2.69 (çift yönlü %5/7).
+Karar kuralı (önceden): varyant S1'i 'geçer' = maliyet sonrası yıllık getiri hem eğitimde hem testte S1'den yüksek;
+          'kanıtlı geçer' = ayrıca S1'e göre günlük fark t ≥ 2.69 iki dönemde de. Sinyalin pozitif beklentisi =
+          işlem başı net ortalama iki dönemde de > 0 (kanıtlı: t ≥ 2.69).
+İşlem   : S4/S5 gerçek işlem; % = paya göre. S0-S3'te işlem = varlığın sıfırdan pozisyona girip sıfıra döndüğü dönem; % = dönem
+          başındaki kasaya göre. Yatırım% = kasanın ortalama ne kadarının coinde/altında olduğu. t(S1fark) = S1'e göre günlük getiri farkı.
+          İşlem t'si sadece 10+ işlemde gösterilir. Her dönem ayrı koşudur (Kasım bölümü test koşusunun içinden).
+
+S0   BTC al-tut
+S1   Trend çekirdek (uygulama gibi): coin başına 0.5 × SMA20/50/100/200 üstünde kalma oranı × min(1, 0.40/30g oynaklık)
+S2   S1 + boştaki para altına (altın > 200 günlük ortalaması ise, değilse USDT)
+S3   Hızlı trend: S1 ama sadece SMA20/50 (daha erken geri girer)
+S4a  Kartopu: SMA20 yukarı kırılımında uzun, 50 $ + her kazançta 25 $ (en çok 200 $), kayıpta 50 $
+S4b  S4a sinyali, pay = max(50 $, kasanın %5'i)
+S5   Kartopu dip alımı: SMA100 altında gün ≤ -%5 ise uzun, +%5 / -%8 / 7 gün çıkış, pay S4a gibi
+
+=== Eğitim 2018-01-01 → 2021-12-31 (1461 gün), gecikme 1 ===
+       Toplam%  Yıllık%   Düşüş%  Yatırım%  İşlem  Kazanma%    Ort.$   Ort.%   t($)   t(%) t(S1fark)
+S0       238.0     35.6    -81.5      99.9      1       100  2380.47  238.05      -      -      0.56
+S1       377.9     47.8    -25.9      30.3     71        25    53.23    4.07   1.60   1.63         -
+S2       385.4     48.4    -25.4      73.8     88        24    43.79    3.51   1.42   1.63      0.22
+S3       429.2     51.6    -28.3      29.8    109        34    39.37    2.16   2.14   2.22      0.71
+S4a       42.4      9.2     -8.2       7.3    149        40     2.85    3.99   2.59   2.75     -3.21
+S4b       33.6      7.5     -7.9       6.0    149        40     2.25    3.99   2.75   2.75     -3.15
+S5        -9.9     -2.6    -14.7       2.4     94        55    -1.06    0.09  -0.96   0.09     -3.24
+
+=== Test 2022-01-01 → 2026-11-24 (1789 gün), gecikme 1 ===
+       Toplam%  Yıllık%   Düşüş%  Yatırım%  İşlem  Kazanma%    Ort.$   Ort.%   t($)   t(%) t(S1fark)
+S0        24.9      4.6    -66.9      99.9      1       100   249.17   24.92      -      -      0.23
+S1        66.3     10.9    -28.2      38.1     97        23     6.84    0.81   1.10   1.19         -
+S2       138.2     19.4    -35.6      84.2    114        25    12.12    1.14   1.30   1.42      1.40
+S3        71.6     11.6    -36.6      37.3    142        30     5.04    0.55   1.13   1.38      0.30
+S4a        6.6      1.3     -7.6       6.5    190        35     0.35    0.75   0.69   0.94     -1.31
+S4b        7.0      1.4     -6.0       5.2    190        35     0.37    0.75   0.91   0.94     -1.25
+S5        -5.6     -1.2    -10.7       1.8     85        44    -0.66   -0.92  -0.74  -0.98     -1.31
+
+=== Son 12 ay 2025-11-25 → 2026-11-24 (365 gün), gecikme 1 ===
+       Toplam%  Yıllık%   Düşüş%  Yatırım%  İşlem  Kazanma%    Ort.$   Ort.%   t($)   t(%) t(S1fark)
+S0       -31.8    -31.8    -39.6      99.7      1         0  -317.98  -31.80      -      -     -0.81
+S1        -0.9     -0.9    -13.9      31.2     24        25    -0.38   -0.02  -0.14  -0.08         -
+S2         3.2      3.2    -18.9      73.3     27        26     1.18    0.15   0.37   0.47      0.31
+S3         7.3      7.3    -17.4      38.4     27        22     2.69    0.33   0.47   0.53      0.88
+S4a       -0.8     -0.8     -3.2       5.2     39        33    -0.22    0.04  -0.39   0.04     -0.10
+S4b        0.1      0.1     -2.3       4.7     39        33     0.02    0.04   0.04   0.04     -0.04
+S5        -6.3     -6.3     -6.9       1.4     16        25    -3.94   -5.56  -2.62  -2.65     -0.39
+
+=== Ekim-Kasım 2026 2026-10-01 → 2026-11-24 (55 gün), gecikme 1 ===
+       Toplam%  Yıllık%   Düşüş%  Yatırım%  İşlem  Kazanma%    Ort.$   Ort.%   t($)   t(%) t(S1fark)
+S0       -29.8        -    -32.0      98.2      1         0  -297.98  -29.80      -      -     -1.80
+S1       -12.2        -    -13.2      43.0      2         0   -60.87   -6.09      -      -         -
+S2       -12.2        -    -13.2      43.0      2         0   -60.87   -6.09      -      -         -
+S3        -6.9        -     -7.9      20.9      4         0   -17.26   -1.73      -      -      1.24
+S4a       -0.1        -     -0.1       0.3      3         0    -0.24   -0.47      -      -      1.72
+S4b       -0.1        -     -0.1       0.3      3         0    -0.24   -0.47      -      -      1.72
+S5        -1.8        -     -2.0       2.1      4         0    -4.42   -8.84      -      -      1.48
+  (yıllık getiri 1 yıldan kısa dönemde gösterilmez)
+
+=== S1'i geçiyor mu? (maliyet sonrası yıllık getiri, gecikme 1) ===
+S0   eğitim    35.6% vs S1   47.8% (t +0.56) | test    4.6% vs S1  10.9% (t +0.23) | düşüş eğitim  -81.5% / test  -66.9% (S1 -25.9% / -28.2%) → geçemez
+S2   eğitim    48.4% vs S1   47.8% (t +0.22) | test   19.4% vs S1  10.9% (t +1.40) | düşüş eğitim  -25.4% / test  -35.6% (S1 -25.9% / -28.2%) → geçer (kanıtsız)
+S3   eğitim    51.6% vs S1   47.8% (t +0.71) | test   11.6% vs S1  10.9% (t +0.30) | düşüş eğitim  -28.3% / test  -36.6% (S1 -25.9% / -28.2%) → geçer (kanıtsız)
+S4a  eğitim     9.2% vs S1   47.8% (t -3.21) | test    1.3% vs S1  10.9% (t -1.31) | düşüş eğitim   -8.2% / test   -7.6% (S1 -25.9% / -28.2%) → geçemez
+S4b  eğitim     7.5% vs S1   47.8% (t -3.15) | test    1.4% vs S1  10.9% (t -1.25) | düşüş eğitim   -7.9% / test   -6.0% (S1 -25.9% / -28.2%) → geçemez
+S5   eğitim    -2.6% vs S1   47.8% (t -3.24) | test   -1.2% vs S1  10.9% (t -1.31) | düşüş eğitim  -14.7% / test  -10.7% (S1 -25.9% / -28.2%) → geçemez
+
+=== Sinyalin beklentisi (paydan bağımsız, işlem başı net %, gecikme 1) ===
+S4 SMA20 kırılımı (S4a ve S4b aynı işlemler)
+  Eğitim            işlem 149  ortalama  +3.99%  kazanma  40%  t +2.75
+  Test              işlem 190  ortalama  +0.75%  kazanma  35%  t +0.94
+  Son 12 ay         işlem  39  ortalama  +0.04%  kazanma  33%  t +0.04
+  Ekim-Kasım 2026   işlem   3  ortalama  -0.47%  kazanma   0%  t -
+S5 düşüşte dip alımı
+  Eğitim            işlem  94  ortalama  +0.09%  kazanma  55%  t +0.09
+  Test              işlem  85  ortalama  -0.92%  kazanma  44%  t -0.98
+  Son 12 ay         işlem  16  ortalama  -5.56%  kazanma  25%  t -2.65
+  Ekim-Kasım 2026   işlem   4  ortalama  -8.84%  kazanma   0%  t -
+
+=== Kartopu payın etkisi (aynı işlemler, sabit 50 $ ile karşılaştırma, gecikme 1) ===
+S4a  Eğitim  işlem 149 | kartopu  +424.42 $ vs sabit 50 $  +297.08 $ | kazançtan sonra kazanma  53%, kayıptan sonra  32%
+S4a  Test    işlem 190 | kartopu   +65.79 $ vs sabit 50 $   +71.12 $ | kazançtan sonra kazanma  43%, kayıptan sonra  31%
+S5   Eğitim  işlem  94 | kartopu   -99.25 $ vs sabit 50 $    +4.46 $ | kazançtan sonra kazanma  61%, kayıptan sonra  48%
+S5   Test    işlem  85 | kartopu   -55.90 $ vs sabit 50 $   -39.12 $ | kazançtan sonra kazanma  57%, kayıptan sonra  34%
+
+=== Kasım 2026 (2026-11-01 → 2026-11-24, test koşusunun içinden, gecikme 1) ===
+BTC -22.8%, ETH -25.5%.
+S1 tamamen nakitte: gecikme 1 ile 2026-11-13 kapanışından beri (BTC o günden -12.5%), aynı kapanışta işlemle (uygulama) 2026-11-12 kapanışından beri (BTC -16.3%).
+Kasım getirisi: S0 -23.0% (-372.2 $), S1 -2.5% (-42.3 $), S2 -2.5% (-60.6 $), S3 -0.2% (-3.5 $), S4a -0.0% (-0.4 $), S4b -0.0% (-0.4 $), S5 -1.8% (-17.7 $)
+S4a kasımda kapanan/açık işlem: 2
+   BTC giriş 2026-11-05 75942 → çıkış 2026-11-06 75747 pay 50 $ kâr -0.28 $ (-0.6%) SMA20 altı
+   ETH giriş 2026-11-05 2234 → çıkış 2026-11-06 2235 pay 50 $ kâr -0.14 $ (-0.3%) SMA20 altı
+S4b kasımda kapanan/açık işlem: 2
+   BTC giriş 2026-11-05 75942 → çıkış 2026-11-06 75747 pay 54 $ kâr -0.30 $ (-0.6%) SMA20 altı
+   ETH giriş 2026-11-05 2234 → çıkış 2026-11-06 2235 pay 54 $ kâr -0.15 $ (-0.3%) SMA20 altı
+S5 kasımda kapanan/açık işlem: 4
+   ETH giriş 2026-11-06 2235 → çıkış 2026-11-11 2056 pay 50 $ kâr -4.15 $ (-8.3%) stop -%8
+   BTC giriş 2026-11-06 75747 → çıkış 2026-11-13 68249 pay 50 $ kâr -5.08 $ (-10.2%) 7 gün
+   BTC giriş 2026-11-15 65305 → çıkış 2026-11-21 60094 pay 50 $ kâr -4.13 $ (-8.3%) stop -%8
+   ETH giriş 2026-11-15 1835 → çıkış 2026-11-21 1682 pay 50 $ kâr -4.31 $ (-8.6%) stop -%8
+
+=== Duyarlılık: sinyalle AYNI kapanışta işlem (uygulamanın 00:05 UTC işlemi gibi, gecikme 0) ===
+S0   eğitim yıllık    35.6% düşüş  -81.5% | test yıllık    4.6% düşüş  -66.9% | işlem başı +238.05% / +24.92% (t - / -) | S1'e göre t +0.52 / +0.04 → geçemez
+S1   eğitim yıllık    49.6% düşüş  -23.3% | test yıllık   14.7% düşüş  -22.5% | işlem başı +4.01% / +0.93% (t +1.70 / +1.50)
+S2   eğitim yıllık    48.8% düşüş  -28.1% | test yıllık   24.6% düşüş  -31.1% | işlem başı +3.29% / +1.32% (t +1.67 / +1.62) | S1'e göre t +0.02 / +1.59 → geçemez
+S3   eğitim yıllık    55.3% düşüş  -24.1% | test yıllık   14.5% düşüş  -28.0% | işlem başı +2.33% / +0.60% (t +2.22 / +1.64) | S1'e göre t +1.01 / +0.07 → geçemez
+S4a  eğitim yıllık     8.8% düşüş   -6.6% | test yıllık    1.0% düşüş   -5.6% | işlem başı +4.71% / +0.61% (t +3.03 / +0.78) | S1'e göre t -3.19 / -1.69 → geçemez
+S4b  eğitim yıllık     8.9% düşüş   -6.0% | test yıllık    1.1% düşüş   -4.7% | işlem başı +4.71% / +0.61% (t +3.03 / +0.78) | S1'e göre t -3.18 / -1.65 → geçemez
+S5   eğitim yıllık    -1.6% düşüş  -19.7% | test yıllık   -0.7% düşüş   -7.5% | işlem başı -0.52% / -0.92% (t -0.54 / -1.13) | S1'e göre t -3.28 / -1.59 → geçemez
+
+=== Sonuç ===
+Önce sonuç: S1'i kanıtlı geçen cesur varyant yok. Kâğıt üzerinde iki dönemde de geçen: S3 (eğitim +3.8, test +0.7 puan/yıl; t +0.71 / +0.30, eşik 2.69; test düşüşü -36.6% vs S1 -28.2%; aynı kapanışta işlemde geçemez). Fark şans düzeyinde.
+Al-tut (S0): yıllık eğitim 35.6% / test 4.6%, en derin düşüş -81.5% / -66.9%; S1: 47.8% / 10.9%, düşüş -25.9% / -28.2%.
+Kartopu varyantları kasanın ortalama %7 (S4a), %5 (S4b), %2 (S5) kadarını kullanır, S1 %38 (test): 1000 $ kasada 50-200 $'lık işlem S1'den cesur değil, daha ürkektir. Yıllık getiri eğitim 9.2 / 7.5 / -2.6%, test 1.3 / 1.4 / -1.2%.
+S2 (boş para altında; cesaret değil, boştaki parayı değerlendirme): eğitim 48.4%, test 19.4% (test düşüşü -35.6%), S1'e göre t +0.22 / +1.40 → geçer ama kanıtsız; aynı kapanışta işlemde geçemez.
+S4 sinyali (SMA20 kırılımı): pozitif beklenti var ama kanıtlı değil. İşlem başı net ortalama eğitim +3.99% (n 149, t +2.75, eşiği geçer), test +0.75% (n 190, t +0.94, eşik altı), son 12 ay +0.04% (n 39).
+S5 sinyali (düşüşte dip alımı): pozitif beklenti YOK. İşlem başı net ortalama eğitim +0.09% (n 94, t +0.09, eşik altı), test -0.92% (n 85, t -0.98, eşik altı), son 12 ay -5.56% (n 16).
+Kartopu pay (kazandıkça büyüyen) ancak sinyalin beklentisi pozitifse ve kazançlar art arda geliyorsa işe yarar. Aynı işlemlerde sabit 50 $'a göre: S4a eğitim +127 $ (kazançtan sonra kazanma %53, kayıptan sonra %32), test -5 $; S5 eğitim -104 $, test -17 $. S5'te kazanç +%5 ile sınırlı, kayıp -%8 ve üstü: seri büyüdükçe pay büyür, seriyi bitiren büyük kayıp en büyük payla gelir.
+Kasım 2026: BTC -22.8%. S1 2026-11-12 kapanışından beri (gecikme 1 ile 2026-11-13) nakitte, kasım -2.5%; o günden beri BTC -16.3% / -12.5%. Al-tut -23.0%. S4a 2 işlem (-0.4 $). S5 4 işlem, 4 tanesi zararda (-17.7 $, işlem başı -8.8%).
+Aynı kapanışta işlem (uygulama gibi) varsayımında: S1 yıllık eğitim 49.6% / test 14.7%; S1'i iki dönemde geçen cesur varyant: yok; S4 sinyali pozitif (t +3.03 / +0.78), S5 pozitif değil (t -0.54 / -1.13).
+Bu sayılar geçmiş testtir; tek varlık çifti (BTC/ETH) ve tek geçmiş yol, gerçek para sonucu değildir.

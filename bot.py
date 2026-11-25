@@ -1643,10 +1643,13 @@ class Bot:
     def ensure_brain(self):
         fresh = lambda b: (b and "net_model" in b and not self.force_retrain
                            and time.time() - b["trained"] < C.RETRAIN_DAYS * 86400)
+        bekle = lambda: self.brain and not C.OTO_SAATLIK and not self.force_retrain
+        if bekle():
+            return
         if not fresh(self.brain) and os.path.exists(C.MODEL_FILE):
             self.brain = joblib.load(C.MODEL_FILE)
             self.symbols = self.brain.get("symbols", self.symbols)
-        if fresh(self.brain):
+        if fresh(self.brain) or bekle():
             return
         self.force_retrain = False
         self.say("ML modeli eğitiliyor: veri güncelleniyor, geçmiş test yapılıyor.", kind="egitim")
