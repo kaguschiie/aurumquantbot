@@ -12,6 +12,7 @@ import data as D
 
 log = logging.getLogger("bot")
 TFS = ("15m", "1h", "4h", "1d")
+TF_SN = {"15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
 
 
 def label(v):
@@ -21,8 +22,19 @@ def label(v):
 
 
 def _wma(s, n):
-    w = np.arange(1, n + 1)
-    return s.rolling(n).apply(lambda x: (x * w).sum() / w.sum(), raw=True)
+    w = np.arange(1, n + 1, dtype=float)
+    out = np.full(len(s), np.nan)
+    if len(s) >= n:
+        out[n - 1:] = np.convolve(np.asarray(s, float), w[::-1], "valid") / w.sum()
+    return pd.Series(out, index=s.index)
+
+
+def _mad(s, n):
+    out = np.full(len(s), np.nan)
+    if len(s) >= n:
+        win = np.lib.stride_tricks.sliding_window_view(np.asarray(s, float), n)
+        out[n - 1:] = np.abs(win - win.mean(axis=1, keepdims=True)).mean(axis=1)
+    return pd.Series(out, index=s.index)
 
 
 def rating(df):
@@ -48,7 +60,7 @@ def rating(df):
     osc.append(1 if k.iloc[-1] < 20 and dd.iloc[-1] < 20 and k.iloc[-1] > dd.iloc[-1]
                else -1 if k.iloc[-1] > 80 and dd.iloc[-1] > 80 and k.iloc[-1] < dd.iloc[-1] else 0)
     tp = (h + l + c) / 3
-    cci = (tp - tp.rolling(20).mean()) / (0.015 * tp.rolling(20).apply(lambda x: np.abs(x - x.mean()).mean(), raw=True))
+    cci = (tp - tp.rolling(20).mean()) / (0.015 * _mad(tp, 20))
     osc.append(1 if cci.iloc[-1] < -100 and up(cci) else -1 if cci.iloc[-1] > 100 and not up(cci) else 0)
     tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
     atr = tr.ewm(alpha=1 / 14, adjust=False).mean()
@@ -171,7 +183,7 @@ class Teknik:
     def __init__(self):
         self.data, self.opps, self.t, self.t_opps, self.error = {}, [], 0.0, 0.0, ""
         self.radar_map, self.n_all, self.n_liquid, self.liquid = {}, 0, 0, []
-        self._started = False
+        self._started, self._saklanan = False, {}
         self.ex = ccxt.binance({"enableRateLimit": True})
 
     _shared = None
@@ -192,18 +204,24 @@ class Teknik:
     def live(self, max_age=300):
         return time.time() - self.t < max_age
 
-    def _klines(self, sym, tf, limit=250):
+    def _klines(self, sym, tf, limit=250, zaman=False):
         rows = self.ex.public_get_klines({"symbol": sym.replace("/", ""), "interval": tf, "limit": limit})
         a = np.array([[float(r[i]) for i in (1, 2, 3, 4, 5, 9)] for r in rows])
-        return pd.DataFrame(a, columns=["open", "high", "low", "close", "volume", "tb"])
+        df = pd.DataFrame(a, columns=["open", "high", "low", "close", "volume", "tb"])
+        return (df, float(rows[-1][0]) / 1000 if rows else 0.0) if zaman else df
 
     def ratings(self, sym, tfs=TFS):
         out = {}
         for tf in tfs:
+            x = self._saklanan.get((sym, tf))
+            if x and time.time() < x[0]:
+                out[tf] = x[1]
+                continue
             try:
-                df = self._klines(sym, tf)
+                df, t_son = self._klines(sym, tf, zaman=True)
                 if len(df) >= 61:
                     out[tf] = rating(df.iloc[:-1])
+                    self._saklanan[(sym, tf)] = (t_son + TF_SN.get(tf, 0) + 5, out[tf])
             except (ccxt.BaseError, ValueError, KeyError, IndexError) as e:
                 log.debug("teknik %s %s: %s", sym, tf, e)
         return out
